@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+web-build/
+dist/
+
+# Metro / React Native
+.metro-health-check*
+
+# Native build folders (if prebuild/eject is used)
+android/.gradle/
+android/app/build/
+android/build/
+ios/build/
+ios/Pods/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+
+# Test / coverage
+coverage/
+
+# OS files
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/

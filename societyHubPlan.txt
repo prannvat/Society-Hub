@@ -1,0 +1,665 @@
+# SocietyHub - Complete Build Plan 🚀
+
+---
+
+## Brand & Design Philosophy
+
+### Core Design Principles
+- **Minimal & Clean** - Let society content shine
+- **Component Based** - Every element is reusable & themeable
+- **Dark/Light Mode** ready from day one
+- **Accessibility first** - inclusive for all users
+- **Mobile first** always
+
+### The Theming System
+```
+Every society gets their own "theme token" file:
+
+{
+  "society": {
+    "name": "Manchester Sikh Society",
+    "university": "University of Manchester",
+    
+    "colors": {
+      "primary": "#003DA5",      // Main brand color
+      "secondary": "#FFD700",    // Accent color
+      "background": "#FFFFFF",   // App background
+      "surface": "#F5F5F5",      // Cards/surfaces
+      "text_primary": "#1A1A1A",
+      "text_secondary": "#666666"
+    },
+    
+    "typography": {
+      "font_family": "Inter",    // Can swap per society
+      "heading_weight": "700",
+      "body_weight": "400"
+    },
+    
+    "logo_url": "...",
+    "banner_url": "...",
+    "modules": ["events", "announcements", "chat", "religious"]
+  }
+}
+```
+> Just changing this one file completely transforms the app for each society - **zero design changes needed**
+
+---
+
+## Complete Screen List
+
+### Onboarding Flow
+1. Splash Screen
+2. Welcome / Society Landing
+3. Sign Up
+4. Log In
+5. Profile Setup
+6. Interest Selection
+7. Home (first time)
+
+### Core Screens
+8. Home / Dashboard
+9. Events List
+10. Event Detail
+11. Create Event (admin)
+12. Announcements Feed
+13. Announcement Detail
+14. Members Directory
+15. Member Profile
+16. Chat / Channels List
+17. Chat Room
+18. Settings
+19. Society Profile Page
+20. Admin Dashboard
+
+---
+
+## Wireframe Prompts 🎨
+
+> Feed each prompt directly into **Midjourney, Figma AI, Galileo AI or v0.dev** for instant wireframes
+
+---
+
+### 1. Splash Screen
+```
+Design a mobile app splash screen wireframe for a university 
+society app. Clean minimal design, centered logo placeholder 
+(circle), society name below in bold heading, subtle gradient 
+background using primary brand color, loading indicator at 
+bottom. iOS safe area respected. No clutter. Premium feel 
+similar to Notion or Linear app aesthetic.
+```
+
+---
+
+### 2. Welcome / Onboarding Screen
+```
+Design a mobile onboarding screen wireframe for a university 
+society app. Full screen hero image placeholder at top (60% 
+height), frosted glass card overlaid at bottom containing: 
+bold welcome headline 2 lines max, subtitle text 1 line, 
+large primary CTA button "Join Society", secondary text link 
+"Already a member? Log in". Floating pill navigation dots 
+showing step 1 of 3. Modern, sleek, similar to Airbnb 
+onboarding aesthetic. Dark mode variant shown alongside.
+```
+
+---
+
+### 3. Sign Up Screen
+```
+Design a clean minimal mobile sign up screen wireframe. 
+Top left back arrow, centered logo small, bold heading 
+"Create Account", subtitle "Join [Society Name]". 
+Stacked form fields with floating labels: Full Name, 
+University Email, Password, Confirm Password. 
+Each field has rounded corners (12px radius), subtle border. 
+Below fields: large full width rounded primary CTA button 
+"Get Started". Below button: "Already have an account? 
+Sign In" link. Google/Apple SSO buttons above form 
+separated by "or continue with email" divider. 
+Premium minimal feel. Figma component ready.
+```
+
+---
+
+### 4. Home Dashboard Screen
+```
+Design a premium mobile home dashboard wireframe for a 
+university society app. Structure from top to bottom:
+
+- Status bar
+- Top bar: hamburger menu left, society logo center, 
+  notification bell + avatar right
+- Greeting card: "Welcome back [Name]" with society 
+  banner image background, frosted glass text overlay
+- Horizontal quick action pills: Events, Announcements, 
+  Members, Chat
+- Section: "Upcoming Events" - horizontal scroll cards, 
+  each card has: image placeholder top, event title, 
+  date chip, RSVP button
+- Section: "Latest Announcements" - vertical list, 
+  icon left, title + preview text, timestamp right
+- Bottom navigation bar: 5 icons (Home, Events, 
+  Community, Chat, Profile)
+
+Clean card-based layout. Lots of white space. 
+Similar to Clubhouse meets Linear aesthetic.
+```
+
+---
+
+### 5. Events List Screen
+```
+Design a mobile events list screen wireframe for a society app.
+
+Top section:
+- Back arrow + "Events" title + filter icon right
+- Horizontal filter chips below: All, This Week, 
+  This Month, Free, Members Only
+
+Event cards (full width, stacked vertically):
+- Each card: image placeholder (16:9 ratio), 
+  overlaid bottom gradient with event title in white,
+  below image: date + time row with calendar icon,
+  location row with pin icon,
+  tag chips (Free, Members Only etc),
+  right side: RSVP button (filled) or Attending chip (outlined)
+- Card has subtle shadow, 16px border radius
+
+Floating Action Button (admin only): + Create Event
+
+Bottom nav bar consistent with home.
+
+Premium event app feel similar to Eventbrite meets Notion.
+```
+
+---
+
+### 6. Event Detail Screen
+```
+Design a mobile event detail page wireframe for a society app.
+
+Layout top to bottom:
+- Full bleed hero image (40% screen height), 
+  back arrow top left (floating), 
+  share icon top right (floating),
+  heart/save icon top right
+- Scrollable content below:
+  - Event title (large bold, 2 lines max)
+  - Organiser row: avatar circle + "Hosted by [Society]" + follow button
+  - Three info chips in a row: Date, Time, Location
+  - "About this event" section with body text placeholder
+  - "Attendees" section: overlapping avatar stack + "23 going" text
+  - Photo gallery strip (horizontal scroll, square thumbnails)
+  - Map placeholder card with location pin
+
+Sticky bottom bar:
+  - Price tag or "Free" label left
+  - Large "RSVP Now" CTA button right (full rounded)
+
+Clean, spacious, premium. Similar to Apple Events meets 
+Luma aesthetic.
+```
+
+---
+
+### 7. Announcements Feed Screen
+```
+Design a mobile announcements/news feed wireframe for a 
+society app. 
+
+Top bar: "Announcements" title, search icon, filter icon
+
+Pinned announcement card at top:
+- "Pinned" badge chip top left
+- Bold title, 2 line preview text
+- Bottom row: timestamp, author avatar + name, 
+  read more arrow
+
+Regular announcement list below (card style):
+- Left accent border colored with primary brand color
+- Category chip (General, Events, Important, Committee)
+- Bold title
+- 2 line text preview  
+- Bottom: avatar + author name left, timestamp + 
+  read count right
+
+Each card separated by subtle divider.
+Admin FAB: + New Announcement
+
+Minimal, editorial feel. Similar to Substack meets 
+Linear changelog aesthetic.
+```
+
+---
+
+### 8. Member Directory Screen
+```
+Design a mobile members directory screen wireframe for 
+a society app.
+
+Top: Search bar (full width, rounded, "Search members...")
+Below search: filter chips: All, Committee, New Members, 
+My Year
+
+Member grid (2 columns):
+Each member card:
+- Circular avatar placeholder top center
+- Name bold below
+- Role/year subtitle (e.g "2nd Year, Committee")
+- Small university badge chip
+- Connect/Message button small outlined
+
+List view toggle option (top right icon)
+
+List view shows:
+- Avatar left (circle, medium)
+- Name + role right
+- University tag
+- Arrow right
+
+Premium directory feel similar to Linear team page 
+meets Notion contacts.
+```
+
+---
+
+### 9. Chat / Channels Screen
+```
+Design a mobile chat channels list screen wireframe for 
+a society app.
+
+Top bar: "Community" title, compose/new chat icon right
+
+Sections:
+"Channels" section header with # icon:
+- Each channel row: # icon left, channel name bold, 
+  preview of last message, timestamp right, 
+  unread count badge (colored pill)
+- Channels: #general, #events, #freshers, #committee
+
+"Direct Messages" section header:
+- Each DM row: avatar circle left (with online dot), 
+  name bold, last message preview, timestamp, 
+  unread badge
+
+Floating compose button bottom right.
+
+Bottom nav consistent.
+
+Clean messaging UI similar to Slack meets iMessage 
+aesthetic, but more premium and minimal.
+```
+
+---
+
+### 10. Admin Dashboard Screen
+```
+Design a mobile admin dashboard wireframe for a society 
+app committee member.
+
+Top: "Admin Panel" header, settings gear icon right
+
+Stats row (4 cards horizontal scroll):
+- Total Members card: big number, trend arrow up
+- Events This Month: number + small bar chart
+- Announcements: number
+- Active Now: number + green dot
+
+Quick Actions grid (2x2):
+- Create Event (calendar icon)
+- Post Announcement (megaphone icon) 
+- Manage Members (people icon)
+- View Reports (chart icon)
+
+Recent Activity feed below:
+- Timeline style, left dot + line connector
+- Activity items: "John joined", "Event created", etc
+- Each with timestamp
+
+Pending Actions section:
+- Membership requests to approve (numbered badge)
+- Event approvals
+- Reports
+
+Premium dashboard feel similar to Linear admin 
+meets Stripe dashboard aesthetic.
+```
+
+---
+
+### 11. Profile Screen
+```
+Design a mobile user profile screen wireframe for a 
+society app.
+
+Top section (colored background using primary color):
+- Large circular avatar center (with edit button overlay)
+- Name bold large
+- Role chip (Member / Committee / President)
+- University + Year text small
+- Stats row: Events Attended | Since date | Societies
+
+Tab bar below header: About | Activity | Badges
+
+About tab content:
+- Bio text placeholder
+- Info rows with icons: Email, University, Course, Year
+- Societies list (horizontal pill chips)
+
+Badges section (in activity):
+- Grid of achievement badge circles with labels
+  (First Event, 1 Year Member, Volunteer etc)
+
+Edit Profile button top right.
+
+Clean, modern profile similar to Luma or Partiful 
+profile aesthetic.
+```
+
+---
+
+### 12. Settings Screen
+```
+Design a clean mobile settings screen wireframe for 
+a society app.
+
+Top: Back arrow + "Settings" title
+
+Grouped sections with headers:
+
+"Account"
+- Profile row (avatar + name + arrow)
+- Email & Password
+- University Verification
+
+"Notifications"  
+- Push Notifications (toggle right)
+- Event Reminders (toggle)
+- Announcements (toggle)
+- Chat Messages (toggle)
+
+"Appearance"
+- Dark Mode (toggle)
+- Text Size (slider or options)
+
+"Society"
+- My Memberships
+- Manage Roles (if admin)
+
+"Support"
+- Help Centre
+- Report a Problem
+- Rate the App
+
+"Danger Zone"
+- Leave Society (red text)
+- Delete Account (red text)
+
+Each row: icon left (colored), label, right side 
+(toggle/arrow/value). Grouped in rounded cards.
+Clean iOS settings meets Linear preferences aesthetic.
+```
+
+---
+
+## Master Prompt for Full App Generation
+
+> **Feed this single prompt to v0.dev or Vercel AI or Claude for a full app scaffold**
+
+```
+Build a white-label university society mobile app called 
+"SocietyHub" using React Native with Expo and TypeScript.
+
+DESIGN SYSTEM:
+- Use a theme token system where all colors, fonts and 
+  spacing come from a single theme config file
+- Support dark and light mode
+- Use Inter font family throughout
+- Border radius: 12px cards, 100px buttons/pills, 8px inputs
+- Shadows: subtle, 1 level only
+- Spacing system: 4px base unit (4,8,12,16,24,32,48)
+
+THEME CONFIG (in /config/theme.ts):
+Primary color: #003DA5
+Secondary color: #FFD700  
+Background: #FFFFFF / #0D0D0D (dark)
+Surface: #F5F5F5 / #1A1A1A (dark)
+Text: #1A1A1A / #FFFFFF (dark)
+Font: Inter
+
+SCREENS TO BUILD:
+1. Splash Screen
+2. Onboarding (3 slides)
+3. Login Screen
+4. Sign Up Screen
+5. Home Dashboard
+6. Events List
+7. Event Detail
+8. Announcements Feed
+9. Announcement Detail
+10. Members Directory
+11. Chat Channels List
+12. Chat Room
+13. Profile Screen
+14. Admin Dashboard
+15. Settings Screen
+
+NAVIGATION:
+- Bottom tab navigator: Home, Events, Community, Chat, Profile
+- Stack navigator for detail screens
+- Auth stack separate from main stack
+
+COMPONENTS TO BUILD (all themeable):
+- PrimaryButton
+- OutlineButton  
+- TextButton
+- InputField (with floating label)
+- Card (with shadow)
+- Avatar (circle, with online indicator option)
+- Badge/Chip (filled and outlined variants)
+- SectionHeader
+- ListItem (with icon, label, right element)
+- EventCard (horizontal and vertical variants)
+- AnnouncementCard
+- MemberCard
+- BottomNavBar
+- TopNavBar
+- SearchBar
+- FilterChips (horizontal scroll)
+- StatCard
+- EmptyState (with illustration placeholder)
+- LoadingState
+- NotificationBadge
+
+FAKE DATA:
+- Create a /data folder with mock JSON for:
+  - Society profile
+  - Events (8 items)
+  - Announcements (10 items)  
+  - Members (20 items)
+  - Chat messages (15 items)
+  - Admin stats
+
+ARCHITECTURE:
+/src
+  /screens
+  /components
+  /navigation
+  /config
+    theme.ts        ← single source of truth for all design
+    societyConfig.ts ← society specific settings
+  /data
+  /hooks
+  /utils
+  /types
+
+Make it production ready, clean code, fully commented.
+The entire app visual identity changes by only editing 
+theme.ts and societyConfig.ts - no other files need 
+to change for white labelling.
+```
+
+---
+
+## Society Config File Template
+
+```typescript
+// config/societyConfig.ts
+// THIS IS THE ONLY FILE THAT CHANGES PER SOCIETY
+
+export const societyConfig = {
+  
+  // Identity
+  name: "Manchester Sikh Society",
+  shortName: "MancSS",
+  university: "University of Manchester",
+  description: "Connecting the Sikh community at UoM",
+  founded: "2005",
+  
+  // Branding
+  theme: {
+    primary: "#003DA5",
+    secondary: "#FFD700",
+    accent: "#FF6B35",
+    background: "#FFFFFF",
+    surface: "#F8F9FA",
+    textPrimary: "#1A1A1A",
+    textSecondary: "#6B7280",
+    success: "#10B981",
+    warning: "#F59E0B",
+    error: "#EF4444",
+    darkBackground: "#0D0D0D",
+    darkSurface: "#1A1A1A",
+  },
+  
+  // Typography
+  fonts: {
+    heading: "Inter",
+    body: "Inter",
+    headingWeight: "700",
+    bodyWeight: "400",
+  },
+  
+  // Assets
+  assets: {
+    logo: require('./assets/logo.png'),
+    banner: require('./assets/banner.png'),
+    placeholder: require('./assets/placeholder.png'),
+  },
+  
+  // Features/Modules (turn on or off per society)
+  modules: {
+    events: true,
+    announcements: true,
+    memberDirectory: true,
+    chat: true,
+    donations: true,
+    religiousContent: true,   // Sikh/Islamic/Hindu etc
+    sportsFixtures: false,
+    academicResources: false,
+    volunteerTracker: false,
+    merchandise: false,
+  },
+  
+  // Social Links
+  social: {
+    instagram: "@mancsikhs",
+    facebook: "manchestersikhs",
+    linktree: "mancsikhs",
+    email: "committee@mancsikhs.com",
+  },
+  
+  // Society Settings
+  settings: {
+    membershipFee: 5.00,
+    currency: "GBP",
+    requireUniversityEmail: true,
+    allowGuestRSVP: false,
+    maxMembersVisible: true,
+  }
+}
+```
+
+---
+
+## Development Roadmap
+
+### Phase 1 - MVP (8 weeks)
+```
+Week 1-2: Setup & Design System
+├── Project setup (Expo + TypeScript)
+├── Theme system built
+├── All base components
+└── Navigation structure
+
+Week 3-4: Core Screens
+├── Auth flow (Login/Signup)
+├── Home Dashboard
+├── Events List + Detail
+└── Announcements Feed
+
+Week 5-6: Community Features  
+├── Member Directory
+├── Basic Chat
+├── Profile Screen
+└── Settings
+
+Week 7-8: Polish & Testing
+├── Admin Dashboard
+├── Push notifications
+├── Bug fixes
+└── Beta testing with your society
+```
+
+### Phase 2 - Scale (Weeks 9-16)
+```
+├── White label system fully built
+├── Society onboarding flow
+├── Web admin panel
+├── Payment integration (Stripe)
+├── Analytics dashboard
+└── 5 pilot societies onboarded
+```
+
+### Phase 3 - Growth (Months 5-12)
+```
+├── iOS App Store launch
+├── Android Play Store launch
+├── University Union partnerships
+├── Premium modules marketplace
+└── Target 50+ societies
+```
+
+---
+
+## Where to Build / Tools
+
+| Tool | Purpose | Cost |
+|------|---------|------|
+| **Expo + React Native** | Mobile app | Free |
+| **Firebase** | Backend + Auth + DB | Free tier |
+| **v0.dev** | Generate UI from prompts | Free tier |
+| **Figma** | Design & prototyping | Free |
+| **Stripe** | Payments | % per transaction |
+| **GitHub** | Code repository | Free |
+| **Vercel** | Web admin panel hosting | Free |
+
+---
+
+## Immediate Next Steps ✅
+
+1. [ ] Copy master prompt → paste into **v0.dev** to generate base UI
+2. [ ] Copy each wireframe prompt → generate in **Midjourney or Figma AI**
+3. [ ] Set up **Expo project** with the architecture above
+4. [ ] Create your `societyConfig.ts` with Manchester Sikh Society details
+5. [ ] Share with 5 society presidents for early feedback
+6. [ ] Apply for **University of Manchester** student startup fund
+
+---
+
+Want me to now write:
+- The **Firebase backend schema**?
+- The **full component library code**?
+- A **pitch deck** for approaching student unions?
+- **App Store listing** copy? 🚀
