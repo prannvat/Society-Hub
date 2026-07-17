@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
-import { Text, View, ScrollView, Pressable, Alert } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Text, View, ScrollView, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
-import { adminStats } from '@/data/adminStats';
 import { Card } from '@/components/Card';
 import { OutlineButton } from '@/components/OutlineButton';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { StatCard } from '@/components/StatCard';
-import { TopNavBar } from '@/components/TopNavBar';
 import { RoleSwitcher } from '@/components/RoleSwitcher';
 import { SectionHeader } from '@/components/SectionHeader';
 import { RootStackParamList } from '@/navigation/types';
+import { fetchMembershipRequests } from '@/services/api/memberships';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUserRoles } from '@/hooks/useUserRoles';
@@ -21,12 +20,29 @@ export const AdminDashboardScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { selectedAdminSocietyId, adminSocieties } = useUserRoles();
-  const { allSocieties, events, announcements, polls, activeSocietyMembers } = useLocalAppState();
-  
-  const [selectedTab, setSelectedTab] = useState<'Overview' | 'Content' | 'Analytics'>('Overview');
+  const { allSocieties, events, announcements, polls, activeSocietyMemberCount } = useLocalAppState();
+
+  const [selectedTab, setSelectedTab] = useState<'Overview' | 'Content'>('Overview');
+  const [pendingRequestCount, setPendingRequestCount] = useState<number | null>(null);
 
   const selectedSociety = adminSocieties.find(s => s.societyId === selectedAdminSocietyId);
   const societyDetails = allSocieties.find(s => s.id === selectedAdminSocietyId);
+
+  const loadPendingRequests = useCallback(async () => {
+    if (!selectedAdminSocietyId) {
+      return;
+    }
+    try {
+      const requests = await fetchMembershipRequests(selectedAdminSocietyId);
+      setPendingRequestCount(requests.filter((request) => request.status === 'PENDING').length);
+    } catch {
+      setPendingRequestCount(null);
+    }
+  }, [selectedAdminSocietyId]);
+
+  useEffect(() => {
+    loadPendingRequests();
+  }, [loadPendingRequests]);
 
   if (!selectedSociety || !societyDetails) {
     return (
@@ -44,12 +60,11 @@ export const AdminDashboardScreen = () => {
     );
   }
 
-  const societyStats = {
-    totalMembers: activeSocietyMembers.length || adminStats.totalMembers,
-    eventsThisMonth: events.length || adminStats.eventsThisMonth,
-    announcements: announcements.length || adminStats.announcements,
-    activePolls: polls.length || 2,
-  };
+  const now = Date.now();
+  const upcomingEventCount = events.filter((event) => {
+    const start = event.startAtIso ? new Date(event.startAtIso).getTime() : NaN;
+    return Number.isNaN(start) ? true : start >= now;
+  }).length;
 
   return (
     <ScreenLayout>
@@ -75,7 +90,7 @@ export const AdminDashboardScreen = () => {
         {/* Tab Navigation */}
         <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
           <View style={{ flexDirection: 'row', backgroundColor: theme.colors.surface, borderRadius: 12, padding: 4 }}>
-            {(['Overview', 'Content', 'Analytics'] as const).map((tab) => (
+            {(['Overview', 'Content'] as const).map((tab) => (
               <Pressable
                 key={tab}
                 onPress={() => setSelectedTab(tab)}
@@ -108,16 +123,16 @@ export const AdminDashboardScreen = () => {
               <SectionHeader title="Key Metrics" />
               <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
                 <View style={{ flexGrow: 1, flexBasis: 160 }}>
-                  <StatCard label="Members" value={societyStats.totalMembers} />
+                  <StatCard label="Members" value={activeSocietyMemberCount} />
                 </View>
                 <View style={{ flexGrow: 1, flexBasis: 160 }}>
-                  <StatCard label="Events" value={societyStats.eventsThisMonth} />
+                  <StatCard label="Upcoming Events" value={upcomingEventCount} />
                 </View>
                 <View style={{ flexGrow: 1, flexBasis: 160 }}>
-                  <StatCard label="Posts" value={societyStats.announcements} />
+                  <StatCard label="Posts" value={announcements.length} />
                 </View>
                 <View style={{ flexGrow: 1, flexBasis: 160 }}>
-                  <StatCard label="Active Polls" value={societyStats.activePolls} />
+                  <StatCard label="Polls" value={polls.length} />
                 </View>
               </View>
             </View>
@@ -149,67 +164,25 @@ export const AdminDashboardScreen = () => {
             <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
               <SectionHeader title="Pending Actions" />
               <Card style={{ marginTop: 12 }}>
-                <View style={{ gap: 12 }}>
-                  <Pressable 
-                    onPress={() => Alert.alert('Membership Requests', 'Feature coming soon')}
-                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                      <MaterialIcons name="person-add" size={20} color={theme.colors.primary} />
-                      <View>
-                        <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>Membership Requests</Text>
-                        <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>7 pending approvals</Text>
-                      </View>
-                    </View>
-                    <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSecondary} />
-                  </Pressable>
-
-                  <View style={{ height: 1, backgroundColor: theme.colors.border }} />
-
-                  <Pressable 
-                    onPress={() => Alert.alert('Event Reviews', 'Feature coming soon')}
-                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                      <MaterialIcons name="event" size={20} color={theme.colors.primary} />
-                      <View>
-                        <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>Event Reviews</Text>
-                        <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>3 need approval</Text>
-                      </View>
-                    </View>
-                    <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSecondary} />
-                  </Pressable>
-                </View>
-              </Card>
-            </View>
-
-            {/* Recent Activity */}
-            <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-              <SectionHeader title="Recent Activity" />
-              <Card style={{ marginTop: 12 }}>
-                <View style={{ gap: 16 }}>
+                <Pressable
+                  onPress={() => navigation.navigate('MainTabs', { screen: 'Members' })}
+                  style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <MaterialIcons name="person-add" size={16} color={theme.colors.success} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>New member joined</Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>2 minutes ago</Text>
+                    <MaterialIcons name="person-add" size={20} color={theme.colors.primary} />
+                    <View>
+                      <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>Membership Requests</Text>
+                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                        {pendingRequestCount === null
+                          ? 'Review join requests'
+                          : pendingRequestCount === 0
+                            ? 'No pending approvals'
+                            : `${pendingRequestCount} pending ${pendingRequestCount === 1 ? 'approval' : 'approvals'}`}
+                      </Text>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <MaterialIcons name="edit" size={16} color={theme.colors.primary} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>Event updated</Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>45 minutes ago</Text>
-                    </View>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <MaterialIcons name="poll" size={16} color={theme.colors.warning} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>New poll created</Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>1 hour ago</Text>
-                    </View>
-                  </View>
-                </View>
+                  <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSecondary} />
+                </Pressable>
               </Card>
             </View>
           </>
@@ -283,32 +256,6 @@ export const AdminDashboardScreen = () => {
                 <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSecondary} />
               </Pressable>
             </View>
-          </View>
-        )}
-
-        {/* Analytics Tab */}
-        {selectedTab === 'Analytics' && (
-          <View style={{ paddingHorizontal: 20 }}>
-            <SectionHeader title="Analytics Dashboard" />
-            <Card style={{ marginTop: 16 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary, marginBottom: 16 }}>
-                Engagement Overview
-              </Text>
-              <View style={{ gap: 12 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: theme.colors.textSecondary }}>Event Attendance Rate</Text>
-                  <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>78%</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: theme.colors.textSecondary }}>Member Growth</Text>
-                  <Text style={{ color: theme.colors.success, fontWeight: '600' }}>+12%</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: theme.colors.textSecondary }}>Poll Participation</Text>
-                  <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>64%</Text>
-                </View>
-              </View>
-            </Card>
           </View>
         )}
       </ScrollView>

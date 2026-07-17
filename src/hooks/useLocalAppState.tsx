@@ -22,6 +22,7 @@ import {
   fetchMemberships,
   fetchPolls,
   fetchSocieties,
+  isPendingJoin,
   joinMembership,
   leaveMembership,
   removeRsvpFromEvent,
@@ -70,7 +71,9 @@ type LocalAppStateContextValue = {
   cycleSociety: () => void;
   createSociety: (society: Omit<SocietyItem, 'id'>) => Promise<string>;
   updateSocietyProfile: (societyId: string, updates: Partial<SocietyItem>) => Promise<void>;
-  joinSociety: (societyId: string) => Promise<void>;
+  joinSociety: (societyId: string) => Promise<'JOINED' | 'PENDING'>;
+  pendingMembershipSocietyIds: string[];
+  activeSocietyMemberCount: number;
   leaveSociety: (societyId: string) => Promise<void>;
   assignMemberRole: (memberId: string, role: MemberRole) => Promise<void>;
   isAdminMode: boolean;
@@ -82,6 +85,7 @@ type LocalAppStateContextValue = {
   isLoadingExplore: boolean;
   loadSocieties: () => Promise<void>;
   loadExploreEvents: () => Promise<void>;
+  refreshActiveSociety: () => Promise<void>;
   isLoadingRoleSwitch: boolean;
   addEvent: (event: Omit<EventItem, 'id' | 'societyId' | 'societyName' | 'attendingCount' | 'date' | 'time' | 'location'> & {
     title: string;
@@ -274,6 +278,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
 
   const [allSocieties, setAllSocieties] = useState<SocietyItem[]>(societies);
   const [mySocietyIds, setMySocietyIds] = useState<string[]>([]);
+  const [pendingMembershipSocietyIds, setPendingMembershipSocietyIds] = useState<string[]>([]);
   const [favouritedSocietyIds, setFavouritedSocietyIds] = useState<string[]>([]);
   const [activeSocietyId, setActiveSocietyIdState] = useState<string>('manc-sikh');
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -302,6 +307,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
   );
 
   const activeSocietyRole = activeSocietyMembers.find((member) => member.id === currentUserMemberId)?.role ?? 'Member';
+  const activeSocietyMemberCount = (membershipsBySocietyId[activeSocietyId] ?? []).length;
 
   const loadSocieties = useCallback(async () => {
     try {
@@ -382,6 +388,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       return;
     }
     setMySocietyIds([]);
+    setPendingMembershipSocietyIds([]);
     setFavouritedSocietyIds([]);
     setRsvpedEventIds([]);
     setEvents([]);
@@ -418,6 +425,8 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       socket.disconnect();
     };
   }, [accessToken, activeSocietyId, actorUserId]);
+
+  const refreshActiveSociety = useCallback(() => loadSocietyData(activeSocietyId), [activeSocietyId, loadSocietyData]);
 
   const setActiveSocietyId = useCallback((societyId: string) => {
     setActiveSocietyIdState(societyId);
@@ -470,10 +479,17 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
     );
   };
 
-  const joinSociety = async (societyId: string) => {
-    await joinMembership(societyId);
-    if (!mySocietyIds.includes(societyId)) setMySocietyIds((prev) => [...prev, societyId]);
+  const joinSociety = async (societyId: string): Promise<'JOINED' | 'PENDING'> => {
+    const result = await joinMembership(societyId);
+    if (isPendingJoin(result)) {
+      // Approval-required society: membership is requested, not granted yet.
+      setPendingMembershipSocietyIds((prev) => (prev.includes(societyId) ? prev : [...prev, societyId]));
+      return 'PENDING';
+    }
+    setMySocietyIds((prev) => (prev.includes(societyId) ? prev : [...prev, societyId]));
+    setPendingMembershipSocietyIds((prev) => prev.filter((id) => id !== societyId));
     await loadSocietyData(societyId);
+    return 'JOINED';
   };
 
   const leaveSociety = async (societyId: string) => {
@@ -644,6 +660,8 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       createSociety,
       updateSocietyProfile,
       joinSociety,
+      pendingMembershipSocietyIds,
+      activeSocietyMemberCount,
       leaveSociety,
       assignMemberRole,
       isAdminMode,
@@ -655,6 +673,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       isLoadingExplore,
       loadSocieties,
       loadExploreEvents,
+      refreshActiveSociety,
       isLoadingRoleSwitch,
       addEvent,
       announcements,
@@ -688,6 +707,8 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       activeSocietyId,
       activeSocietyRole,
       activeSocietyMembers,
+      activeSocietyMemberCount,
+      pendingMembershipSocietyIds,
       isAdminMode,
       rsvpedEventIds,
       events,
@@ -707,6 +728,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       setActiveSocietyId,
       loadSocieties,
       loadExploreEvents,
+      refreshActiveSociety,
     ],
   );
 

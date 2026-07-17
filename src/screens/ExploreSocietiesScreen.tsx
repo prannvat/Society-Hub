@@ -8,6 +8,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { RootStackParamList } from '@/navigation/types';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { MaterialIcons } from '@expo/vector-icons';
+import { joinErrorMessage } from '@/services/api/memberships';
 import { SocietyItem, EventItem, AnnouncementItem } from '@/types';
 
 const { width } = Dimensions.get('window');
@@ -17,7 +18,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExploreSoci
 export const ExploreSocietiesScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NavigationProp>();
-  const { allSocieties, mySocietyIds, joinSociety, exploreEvents, loadExploreEvents, loadSocieties, announcements, profile } = useLocalAppState();
+  const { allSocieties, mySocietyIds, pendingMembershipSocietyIds, joinSociety, exploreEvents, loadExploreEvents, loadSocieties, announcements, profile } = useLocalAppState();
 
   useEffect(() => {
     loadSocieties().then(() => loadExploreEvents());
@@ -55,17 +56,25 @@ export const ExploreSocietiesScreen = () => {
 
   const handleJoin = async (societyId: string, societyName: string) => {
     try {
-      await joinSociety(societyId);
-      Alert.alert('Joined!', `You are now a member of ${societyName}.`, [
-        { text: 'Awesome' }
-      ]);
-    } catch {
-      Alert.alert('Join failed', 'Unable to join this society right now. Please try again.');
+      const result = await joinSociety(societyId);
+      if (result === 'PENDING') {
+        Alert.alert(
+          'Membership Requested',
+          `${societyName} requires approval to join. Your request is pending review by the committee.`,
+        );
+      } else {
+        Alert.alert('Joined!', `You are now a member of ${societyName}.`, [
+          { text: 'Awesome' }
+        ]);
+      }
+    } catch (error) {
+      Alert.alert('Join failed', joinErrorMessage(error));
     }
   };
 
   const renderSocietyCard = ({ item }: { item: SocietyItem }) => {
     const isMember = mySocietyIds.includes(item.id);
+    const isPending = pendingMembershipSocietyIds.includes(item.id);
     return (
       <TouchableOpacity 
         activeOpacity={0.8}
@@ -88,7 +97,11 @@ export const ExploreSocietiesScreen = () => {
             {item.description || "Official University Society."}
           </Text>
           <View style={{ flex: 1 }} />
-          {!isMember ? (
+          {isPending ? (
+            <View style={[styles.joinBtn, { backgroundColor: theme.colors.warning + '20' }]}>
+              <Text style={[styles.joinBtnText, { color: theme.colors.warning }]}>Pending Approval</Text>
+            </View>
+          ) : !isMember ? (
             <TouchableOpacity
               onPress={() => handleJoin(item.id, item.name)}
               style={[styles.joinBtn, { backgroundColor: theme.colors.primary + '15' }]}

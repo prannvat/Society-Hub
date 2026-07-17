@@ -1,14 +1,24 @@
-import React from 'react';
-import { Text, View } from 'react-native';
+import React, { useCallback, useEffect } from 'react';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Avatar } from '@/components/Avatar';
 import { FilterChips } from '@/components/FilterChips';
 import { Card } from '@/components/Card';
 import { ListItem } from '@/components/ListItem';
 import { MemberCard } from '@/components/MemberCard';
+import { OutlineButton } from '@/components/OutlineButton';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { SearchBar } from '@/components/SearchBar';
+import { SectionHeader } from '@/components/SectionHeader';
 import { TopNavBar } from '@/components/TopNavBar';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
+import {
+  approveMembershipRequest,
+  fetchMembershipRequests,
+  MembershipRequest,
+  rejectMembershipRequest,
+} from '@/services/api/memberships';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -16,10 +26,48 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 export const MembersDirectoryScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { activeSocietyMembers, activeSocietyRole } = useLocalAppState();
+  const { activeSocietyId, activeSocietyMembers, activeSocietyRole, refreshActiveSociety } = useLocalAppState();
   const [query, setQuery] = React.useState('');
   const [activeFilter, setActiveFilter] = React.useState('All');
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
+  const [membershipRequests, setMembershipRequests] = React.useState<MembershipRequest[]>([]);
+  const [actingRequestId, setActingRequestId] = React.useState<string | null>(null);
+
+  const canReviewRequests = activeSocietyRole === 'President' || activeSocietyRole === 'Committee';
+
+  const loadRequests = useCallback(async () => {
+    if (!canReviewRequests || !activeSocietyId) {
+      setMembershipRequests([]);
+      return;
+    }
+    try {
+      const requests = await fetchMembershipRequests(activeSocietyId);
+      setMembershipRequests(requests.filter((request) => request.status === 'PENDING'));
+    } catch {
+      setMembershipRequests([]);
+    }
+  }, [canReviewRequests, activeSocietyId]);
+
+  useEffect(() => {
+    loadRequests();
+  }, [loadRequests]);
+
+  const handleRequestDecision = async (request: MembershipRequest, decision: 'approve' | 'reject') => {
+    setActingRequestId(request.id);
+    try {
+      if (decision === 'approve') {
+        await approveMembershipRequest(request.id);
+        await refreshActiveSociety();
+      } else {
+        await rejectMembershipRequest(request.id);
+      }
+      setMembershipRequests((prev) => prev.filter((entry) => entry.id !== request.id));
+    } catch {
+      Alert.alert('Error', `Failed to ${decision} this request. Please try again.`);
+    } finally {
+      setActingRequestId(null);
+    }
+  };
 
   const filteredMembers = activeSocietyMembers
     .filter((member) => member.name.toLowerCase().includes(query.toLowerCase()))
@@ -45,12 +93,59 @@ export const MembersDirectoryScreen = () => {
 
   return (
     <ScreenLayout>
-      <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 96, gap: 16 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 96, gap: 16 }}
+        keyboardShouldPersistTaps="handled"
+      >
       <TopNavBar
         title="Members"
         actionLabel={viewMode === 'grid' ? 'List View' : 'Grid View'}
         onPressAction={() => setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))}
       />
+
+      {/* Membership Requests — visible to committee and presidents */}
+      {canReviewRequests && membershipRequests.length > 0 ? (
+        <View style={{ gap: 12 }}>
+          <SectionHeader title="Membership Requests" rightText={`${membershipRequests.length} pending`} />
+          {membershipRequests.map((request) => {
+            const isActing = actingRequestId === request.id;
+            return (
+              <Card key={request.id}>
+                <View style={{ gap: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Avatar name={request.user.fullName} size={40} url={request.user.avatarUrl ?? undefined} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.textPrimary, fontWeight: '700' }}>
+                        {request.user.fullName}
+                      </Text>
+                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }} numberOfLines={1}>
+                        {request.user.email} • {new Date(request.createdAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <OutlineButton
+                        label="Reject"
+                        onPress={() => handleRequestDecision(request, 'reject')}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <PrimaryButton
+                        label={isActing ? 'Working...' : 'Approve'}
+                        onPress={() => handleRequestDecision(request, 'approve')}
+                        disabled={isActing}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </Card>
+            );
+          })}
+        </View>
+      ) : null}
+
       <Card>
         <View style={{ gap: 6 }}>
           <Text style={{ color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800' }}>Access and people</Text>
@@ -96,7 +191,7 @@ export const MembersDirectoryScreen = () => {
           ))}
         </View>
       )}
-      </View>
+      </ScrollView>
     </ScreenLayout>
   );
 };

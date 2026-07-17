@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { Text, View, Pressable, ScrollView, Linking, Image, StyleSheet, ActivityIndicator } from 'react-native';
+import { Alert, Text, View, Pressable, ScrollView, Linking, Image, StyleSheet } from 'react-native';
 import { MaterialIcons, FontAwesome } from '@expo/vector-icons';
 import { BadgeChip } from '@/components/BadgeChip';
 import { OutlineButton } from '@/components/OutlineButton';
@@ -15,6 +15,7 @@ import { EventCard } from '@/components/EventCard';
 import { EventItem } from '@/types';
 import { fetchEvents } from '@/services/api/events';
 import { fetchSocietyProfile } from '@/services/api/societies';
+import { joinErrorMessage } from '@/services/api/memberships';
 
 
 const mapEvent = (event: any): EventItem => {
@@ -44,17 +45,42 @@ export const SocietyProfileScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'SocietyProfile'>>();
-  const { allSocieties, favouritedSocietyIds, toggleFavouriteSociety } = useLocalAppState();
-  
+  const { allSocieties, favouritedSocietyIds, toggleFavouriteSociety, mySocietyIds, pendingMembershipSocietyIds, joinSociety } = useLocalAppState();
+
   const [localSociety, setLocalSociety] = useState<any>(null);
   const [societyEvents, setSocietyEvents] = useState<EventItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isJoining, setIsJoining] = useState(false);
 
   // Fallback to memory if offline/loading
   const memoizedSociety = allSocieties.find((entry) => entry.id === route.params?.societyId) ?? allSocieties[0];
   const society = localSociety || memoizedSociety;
 
   const isFavourited = society ? favouritedSocietyIds.includes(society.id) : false;
+  const isMember = society ? mySocietyIds.includes(society.id) : false;
+  const isPendingMembership = society ? pendingMembershipSocietyIds.includes(society.id) : false;
+
+  const handleJoin = async () => {
+    if (!society || isJoining) {
+      return;
+    }
+    setIsJoining(true);
+    try {
+      const result = await joinSociety(society.id);
+      if (result === 'PENDING') {
+        Alert.alert(
+          'Membership Requested',
+          `${society.name} requires approval to join. Your request is pending review by the committee.`,
+        );
+      } else {
+        Alert.alert('Joined!', `You are now a member of ${society.name}.`);
+      }
+    } catch (error) {
+      Alert.alert('Join failed', joinErrorMessage(error));
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   useEffect(() => {
     const loadProfileData = async () => {
@@ -155,6 +181,14 @@ export const SocietyProfileScreen = () => {
             {society.description || 'A student-run community focused on belonging, events, and peer support.'}
           </Text>
         </View>
+
+        {!isMember ? (
+          <PrimaryButton
+            label={isPendingMembership ? 'Membership Pending Approval' : isJoining ? 'Joining...' : 'Join Society'}
+            onPress={handleJoin}
+            disabled={isPendingMembership || isJoining}
+          />
+        ) : null}
 
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1 }}>
