@@ -24,10 +24,10 @@ export async function updateUniversitySettings(
   universityId: string,
   settings: Partial<UniversitySettings>
 ): Promise<UniversitySettings> {
-  return apiRequest<UniversitySettings>(`/union-admin/universities/${universityId}/settings`, {
+  return apiRequest<UniversitySettings>(`/universities/${universityId}/settings`, {
     method: 'PATCH',
     body: settings,
-    requiresAdmin: true,
+    universityId,
   });
 }
 
@@ -35,8 +35,8 @@ export async function updateUniversitySettings(
  * Get university settings
  */
 export async function getUniversitySettings(universityId: string): Promise<UniversitySettings> {
-  return apiRequest<UniversitySettings>(`/union-admin/universities/${universityId}/settings`, {
-    requiresAdmin: true,
+  return apiRequest<UniversitySettings>(`/universities/${universityId}/settings`, {
+    universityId,
   });
 }
 
@@ -114,41 +114,28 @@ export async function requestSocietyChanges(
 
 // University Analytics
 
+export type UniversityAnalytics = {
+  users: {
+    total: number;
+    verified: number;
+    verificationRate: number;
+  };
+  societies: {
+    total: number;
+    pending: number;
+  };
+  committeeRequests: {
+    total: number;
+    pending: number;
+  };
+};
+
 /**
  * Get university analytics and statistics
  */
-export async function getUniversityAnalytics(
-  universityId: string,
-  timeRange: '7d' | '30d' | '90d' | '1y' = '30d'
-): Promise<{
-  overview: {
-    totalStudents: number;
-    totalSocieties: number;
-    activeStudents: number;
-    activeSocieties: number;
-    pendingCommitteeRequests: number;
-    pendingSocietyRequests: number;
-  };
-  growth: {
-    studentsGrowth: number;
-    societiesGrowth: number;
-    engagementGrowth: number;
-  };
-  topSocieties: Array<{
-    id: string;
-    name: string;
-    memberCount: number;
-    eventCount: number;
-    engagementScore: number;
-  }>;
-  recentActivity: Array<{
-    type: 'student_joined' | 'society_created' | 'event_created' | 'committee_approved';
-    description: string;
-    timestamp: string;
-  }>;
-}> {
-  return apiRequest(`/union-admin/universities/${universityId}/analytics?timeRange=${timeRange}`, {
-    requiresAdmin: true,
+export async function getUniversityAnalytics(universityId: string): Promise<UniversityAnalytics> {
+  return apiRequest<UniversityAnalytics>(`/universities/${universityId}/analytics`, {
+    universityId,
   });
 }
 

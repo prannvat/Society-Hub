@@ -99,8 +99,6 @@ export type UniversitySettings = {
   requireCommitteeApproval: boolean;
   maxSocietiesPerStudent: number;
   defaultJoinPolicy: 'OPEN' | 'APPROVAL_REQUIRED' | 'VERIFIED_STUDENTS_ONLY';
-  enableContentModeration: boolean;
-  autoExpireCommitteeRequests: boolean;
   committeeRequestExpiryDays: number;
 };
 

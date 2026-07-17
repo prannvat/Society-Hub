@@ -1,49 +1,13 @@
 import React from 'react';
-import { Platform, View, Text } from 'react-native';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { ProfileScreen } from '@/screens/ProfileScreen';
 import { CommitteeRequestsScreen } from '@/screens/union-admin/CommitteeRequestsScreen';
-
-// Create placeholder screens for now - will be implemented in the next phase
-const UniversityDashboardScreen = () => {
-  const theme = useAppTheme();
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <MaterialIcons name="dashboard" size={48} color={theme.colors.textSecondary} />
-      <Text style={{ marginTop: 16, fontSize: 16, color: theme.colors.textPrimary }}>
-        University Dashboard - Coming Soon
-      </Text>
-    </View>
-  );
-};
-
-// CommitteeRequestsScreen is now imported from the actual implementation
-
-const UniversitySettingsScreen = () => {
-  const theme = useAppTheme();
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <MaterialIcons name="settings" size={48} color={theme.colors.textSecondary} />
-      <Text style={{ marginTop: 16, fontSize: 16, color: theme.colors.textPrimary }}>
-        University Settings - Coming Soon
-      </Text>
-    </View>
-  );
-};
-
-const UniversitySocietiesScreen = () => {
-  const theme = useAppTheme();
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <MaterialIcons name="groups" size={48} color={theme.colors.textSecondary} />
-      <Text style={{ marginTop: 16, fontSize: 16, color: theme.colors.textPrimary }}>
-        University Societies - Coming Soon
-      </Text>
-    </View>
-  );
-};
+import { UnionDashboardScreen } from '@/screens/union-admin/UnionDashboardScreen';
+import { UnionSocietiesScreen } from '@/screens/union-admin/UnionSocietiesScreen';
+import { UnionSettingsScreen } from '@/screens/union-admin/UnionSettingsScreen';
 
 export type UnionAdminTabParamList = {
   Dashboard: undefined;
@@ -95,9 +59,9 @@ export const UnionAdminNavigator = () => {
         }
       })}
     >
-      <Tab.Screen 
-        name="Dashboard" 
-        component={UniversityDashboardScreen}
+      <Tab.Screen
+        name="Dashboard"
+        component={UnionDashboardScreen}
         options={{ tabBarLabel: 'Dashboard' }}
       />
       <Tab.Screen 
@@ -105,14 +69,14 @@ export const UnionAdminNavigator = () => {
         component={CommitteeRequestsScreen}
         options={{ tabBarLabel: 'Requests' }}
       />
-      <Tab.Screen 
-        name="Societies" 
-        component={UniversitySocietiesScreen}
+      <Tab.Screen
+        name="Societies"
+        component={UnionSocietiesScreen}
         options={{ tabBarLabel: 'Societies' }}
       />
-      <Tab.Screen 
-        name="Settings" 
-        component={UniversitySettingsScreen}
+      <Tab.Screen
+        name="Settings"
+        component={UnionSettingsScreen}
         options={{ tabBarLabel: 'Settings' }}
       />
       <Tab.Screen 
