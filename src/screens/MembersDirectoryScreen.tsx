@@ -1,17 +1,19 @@
 import React, { useCallback, useEffect } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar } from '@/components/Avatar';
-import { FilterChips } from '@/components/FilterChips';
+import { BadgeChip } from '@/components/BadgeChip';
 import { Card } from '@/components/Card';
-import { ListItem } from '@/components/ListItem';
+import { EmptyState } from '@/components/EmptyState';
+import { FilterChips } from '@/components/FilterChips';
+import { ListRow } from '@/components/ListRow';
 import { MemberCard } from '@/components/MemberCard';
-import { OutlineButton } from '@/components/OutlineButton';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SearchBar } from '@/components/SearchBar';
 import { SectionHeader } from '@/components/SectionHeader';
 import { TopNavBar } from '@/components/TopNavBar';
+import { useToast } from '@/components/Toast';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import {
   approveMembershipRequest,
@@ -25,6 +27,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 
 export const MembersDirectoryScreen = () => {
   const theme = useAppTheme();
+  const toast = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { activeSocietyId, activeSocietyMembers, activeSocietyRole, refreshActiveSociety } = useLocalAppState();
   const [query, setQuery] = React.useState('');
@@ -62,8 +65,14 @@ export const MembersDirectoryScreen = () => {
         await rejectMembershipRequest(request.id);
       }
       setMembershipRequests((prev) => prev.filter((entry) => entry.id !== request.id));
+      toast.show(
+        decision === 'approve'
+          ? `${request.user.fullName} approved`
+          : `Request from ${request.user.fullName} rejected`,
+        'success'
+      );
     } catch {
-      Alert.alert('Error', `Failed to ${decision} this request. Please try again.`);
+      toast.show(`Failed to ${decision} this request. Please try again.`, 'error');
     } finally {
       setActingRequestId(null);
     }
@@ -92,106 +101,155 @@ export const MembersDirectoryScreen = () => {
     });
 
   return (
-    <ScreenLayout>
+    <ScreenLayout scroll={false}>
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 96, gap: 16 }}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-      <TopNavBar
-        title="Members"
-        actionLabel={viewMode === 'grid' ? 'List View' : 'Grid View'}
-        onPressAction={() => setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))}
-      />
+        <TopNavBar
+          title="Members"
+          subtitle={`${activeSocietyRole} access`}
+          actionLabel={viewMode === 'grid' ? 'List view' : 'Grid view'}
+          onPressAction={() => setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))}
+        />
 
-      {/* Membership Requests — visible to committee and presidents */}
-      {canReviewRequests && membershipRequests.length > 0 ? (
-        <View style={{ gap: 12 }}>
-          <SectionHeader title="Membership Requests" rightText={`${membershipRequests.length} pending`} />
-          {membershipRequests.map((request) => {
-            const isActing = actingRequestId === request.id;
-            return (
-              <Card key={request.id}>
-                <View style={{ gap: 12 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <Avatar name={request.user.fullName} size={40} url={request.user.avatarUrl ?? undefined} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.textPrimary, fontWeight: '700' }}>
-                        {request.user.fullName}
-                      </Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }} numberOfLines={1}>
-                        {request.user.email} • {new Date(request.requestedAt).toLocaleDateString()}
-                      </Text>
+        {/* Membership requests — most urgent, so they lead the screen */}
+        {canReviewRequests && membershipRequests.length > 0 ? (
+          <View style={styles.section}>
+            <SectionHeader title="Membership requests" rightText={`${membershipRequests.length} pending`} />
+            {membershipRequests.map((request) => {
+              const isActing = actingRequestId === request.id;
+              return (
+                <Card key={request.id} style={{ borderColor: theme.colors.warning }}>
+                  <View style={styles.requestBody}>
+                    <View style={styles.requestPerson}>
+                      <Avatar name={request.user.fullName} size={44} url={request.user.avatarUrl ?? undefined} />
+                      <View style={styles.requestText}>
+                        <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                          {request.user.fullName}
+                        </Text>
+                        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                          {request.user.email} • {new Date(request.requestedAt).toLocaleDateString()}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <View style={{ flex: 1 }}>
-                      <OutlineButton
+                    <View style={styles.requestActions}>
+                      <PrimaryButton
                         label="Reject"
+                        variant="ghost"
+                        size="sm"
+                        disabled={isActing}
                         onPress={() => handleRequestDecision(request, 'reject')}
                       />
-                    </View>
-                    <View style={{ flex: 1 }}>
                       <PrimaryButton
-                        label={isActing ? 'Working...' : 'Approve'}
+                        label="Approve"
+                        size="sm"
+                        loading={isActing}
                         onPress={() => handleRequestDecision(request, 'approve')}
-                        disabled={isActing}
                       />
                     </View>
                   </View>
-                </View>
-              </Card>
-            );
-          })}
-        </View>
-      ) : null}
-
-      <Card>
-        <View style={{ gap: 6 }}>
-          <Text style={{ color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800' }}>Access and people</Text>
-          <Text style={{ color: theme.colors.textSecondary, lineHeight: 20 }}>
-            Current access: {activeSocietyRole}. Presidents can change member roles from each profile.
-          </Text>
-        </View>
-      </Card>
-      <SearchBar value={query} onChangeText={setQuery} placeholder="Search members..." />
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={{ color: theme.colors.textSecondary }}>{filteredMembers.length} members found</Text>
-        <Text style={{ color: theme.colors.primary, fontWeight: '700' }} onPress={() => setQuery('')}>Clear</Text>
-      </View>
-      <FilterChips items={['All', 'Committee', 'New Members', 'My Year']} onChange={setActiveFilter} />
-      {filteredMembers.length === 0 ? (
-        <Card>
-          <View style={{ alignItems: 'center', gap: 8, paddingVertical: 12 }}>
-            <Text style={{ color: theme.colors.textPrimary, fontSize: 16, fontWeight: '700' }}>No members match this filter</Text>
-            <Text style={{ color: theme.colors.textSecondary, textAlign: 'center' }}>
-              Try a different filter or clear your search to see everyone in this society.
-            </Text>
+                </Card>
+              );
+            })}
           </View>
-        </Card>
-      ) : viewMode === 'grid' ? (
-        <View style={{ gap: 12 }}>
-          {filteredMembers.slice(0, 12).map((member) => (
-            <MemberCard
-              key={member.id}
-              member={member}
-              onPressProfile={(selectedMember) => navigation.navigate('MemberProfile', { memberId: selectedMember.id })}
-            />
-          ))}
+        ) : null}
+
+        <SearchBar value={query} onChangeText={setQuery} placeholder="Search members..." />
+        <FilterChips items={['All', 'Committee', 'New Members', 'My Year']} onChange={setActiveFilter} />
+        <View style={styles.countRow}>
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+            {filteredMembers.length} {filteredMembers.length === 1 ? 'member' : 'members'} found
+          </Text>
+          {query.length > 0 ? (
+            <Text
+              style={[theme.typography.captionMedium, { color: theme.colors.primary }]}
+              onPress={() => setQuery('')}
+              suppressHighlighting
+            >
+              Clear
+            </Text>
+          ) : null}
         </View>
-      ) : (
-        <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 12, overflow: 'hidden' }}>
-          {filteredMembers.map((member) => (
-            <ListItem
-              key={member.id}
-              label={member.name}
-              right={<Text style={{ color: theme.colors.textSecondary }}>{member.role}</Text>}
-              onPress={() => navigation.navigate('MemberProfile', { memberId: member.id })}
-            />
-          ))}
-        </View>
-      )}
+
+        {filteredMembers.length === 0 ? (
+          <EmptyState
+            icon="group-off"
+            title="No members match"
+            subtitle="Try a different filter or clear your search to see everyone in this society."
+            actionLabel={query.length > 0 ? 'Clear search' : undefined}
+            onAction={query.length > 0 ? () => setQuery('') : undefined}
+          />
+        ) : viewMode === 'grid' ? (
+          <View style={styles.section}>
+            {filteredMembers.slice(0, 12).map((member) => (
+              <MemberCard
+                key={member.id}
+                member={member}
+                onPressProfile={(selectedMember) => navigation.navigate('MemberProfile', { memberId: selectedMember.id })}
+              />
+            ))}
+          </View>
+        ) : (
+          <Card padding={0} style={styles.listCard}>
+            {filteredMembers.map((member) => (
+              <ListRow
+                key={member.id}
+                title={member.name}
+                subtitle={member.year}
+                leading={<Avatar name={member.name} size={40} online={member.online} />}
+                trailing={
+                  <BadgeChip label={member.role} variant={member.role === 'Member' ? 'neutral' : 'primary'} />
+                }
+                chevron
+                onPress={() => navigation.navigate('MemberProfile', { memberId: member.id })}
+              />
+            ))}
+          </Card>
+        )}
       </ScrollView>
     </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  scroll: {
+    flex: 1
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 96,
+    gap: 16
+  },
+  section: {
+    gap: 12
+  },
+  requestBody: {
+    gap: 14
+  },
+  requestPerson: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  requestText: {
+    flex: 1,
+    gap: 2
+  },
+  requestActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10
+  },
+  countRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  listCard: {
+    overflow: 'hidden'
+  }
+});

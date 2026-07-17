@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -33,18 +33,24 @@ import { CommitteeRequestScreen } from '@/screens/CommitteeRequestScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const NavigatorFallback = ({ icon }: { icon: keyof typeof MaterialIcons.glyphMap }) => {
+  const theme = useAppTheme();
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, backgroundColor: theme.colors.background }}>
+      <MaterialIcons name={icon} size={44} color={theme.colors.textTertiary} />
+      <ActivityIndicator size="small" color={theme.colors.primary} />
+    </View>
+  );
+};
+
 const MainTabs = () => {
   const { currentMode } = useUserRoles();
 
   // Render different navigators based on current mode
   if (currentMode === 'Admin') {
     return (
-      <React.Suspense fallback={
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <MaterialIcons name="admin-panel-settings" size={48} color="#666" />
-          <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>Loading Admin Dashboard...</Text>
-        </View>
-      }>
+      <React.Suspense fallback={<NavigatorFallback icon="admin-panel-settings" />}>
         <AdminNavigator />
       </React.Suspense>
     );
@@ -52,17 +58,12 @@ const MainTabs = () => {
 
   if (currentMode === 'UnionAdmin') {
     return (
-      <React.Suspense fallback={
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <MaterialIcons name="school" size={48} color="#666" />
-          <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>Loading Union Admin Dashboard...</Text>
-        </View>
-      }>
+      <React.Suspense fallback={<NavigatorFallback icon="account-balance" />}>
         <UnionAdminNavigator />
       </React.Suspense>
     );
   }
-  
+
   return <ConsumerNavigator />;
 };
 
@@ -83,7 +84,14 @@ export const AppNavigator = () => {
 
   return (
     <NavigationContainer theme={navTheme}>
-      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        initialRouteName="Splash"
+        screenOptions={{
+          headerShown: false,
+          // Match the app background so screen transitions never flash white in dark mode.
+          contentStyle: { backgroundColor: theme.colors.background }
+        }}
+      >
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />

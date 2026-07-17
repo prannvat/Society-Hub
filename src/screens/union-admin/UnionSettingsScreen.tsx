@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { getUniversitySettings, updateUniversitySettings } from '@/services/api/union-admin';
 import { UniversitySettings } from '@/types/union-admin';
-import { BadgeChip } from '@/components/BadgeChip';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
+import { ListRow } from '@/components/ListRow';
 import { LoadingState } from '@/components/LoadingState';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
 import { TopNavBar } from '@/components/TopNavBar';
+import { useToast } from '@/components/Toast';
 import { ScreenLayout } from '../ScreenLayout';
 
 const JOIN_POLICIES: { label: string; value: UniversitySettings['defaultJoinPolicy'] }[] = [
@@ -20,10 +21,15 @@ const JOIN_POLICIES: { label: string; value: UniversitySettings['defaultJoinPoli
   { label: 'Verified Students', value: 'VERIFIED_STUDENTS_ONLY' },
 ];
 
-const BOOLEAN_FIELDS: { key: keyof Pick<
+type BooleanFieldKey = keyof Pick<
   UniversitySettings,
   'requireEmailVerification' | 'allowSelfSocietyCreation' | 'requireSocietyApproval' | 'requireCommitteeApproval'
->; label: string; description: string }[] = [
+>;
+
+type BooleanField = { key: BooleanFieldKey; label: string; description: string };
+
+// Grouped so the screen reads as: how people join, then what the union reviews.
+const MEMBERSHIP_FIELDS: BooleanField[] = [
   {
     key: 'requireEmailVerification',
     label: 'Require Email Verification',
@@ -34,6 +40,9 @@ const BOOLEAN_FIELDS: { key: keyof Pick<
     label: 'Allow Society Creation',
     description: 'Students can create new societies themselves.',
   },
+];
+
+const APPROVAL_FIELDS: BooleanField[] = [
   {
     key: 'requireSocietyApproval',
     label: 'Require Society Approval',
@@ -73,6 +82,7 @@ const NUMERIC_FIELDS: NumericField[] = [
 
 export const UnionSettingsScreen = () => {
   const theme = useAppTheme();
+  const toast = useToast();
   const { selectedUniversityId, unionAdminRelationships } = useUserRoles();
 
   const [savedSettings, setSavedSettings] = useState<UniversitySettings | null>(null);
@@ -81,7 +91,6 @@ export const UnionSettingsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   const selectedUniversity = unionAdminRelationships.find(
     (entry) => entry.universityId === selectedUniversityId,
@@ -103,7 +112,6 @@ export const UnionSettingsScreen = () => {
 
   useEffect(() => {
     setIsLoading(true);
-    setFeedback(null);
     loadSettings().finally(() => setIsLoading(false));
   }, [loadSettings]);
 
@@ -117,7 +125,6 @@ export const UnionSettingsScreen = () => {
     savedSettings !== null && draft !== null && JSON.stringify(savedSettings) !== JSON.stringify(draft);
 
   const updateDraft = <K extends keyof UniversitySettings>(key: K, value: UniversitySettings[K]) => {
-    setFeedback(null);
     setDraft((prev: UniversitySettings | null) => (prev ? { ...prev, [key]: value } : prev));
   };
 
@@ -139,12 +146,48 @@ export const UnionSettingsScreen = () => {
       const updated = await updateUniversitySettings(selectedUniversityId, changes);
       setSavedSettings(updated);
       setDraft(updated);
-      setFeedback({ kind: 'success', message: 'Settings saved.' });
+      toast.show('Settings saved', 'success');
     } catch {
-      setFeedback({ kind: 'error', message: 'Failed to save settings. Please try again.' });
+      toast.show('Failed to save settings. Please try again.', 'error');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const renderToggleGroup = (title: string, fields: BooleanField[]) => {
+    if (!draft) {
+      return null;
+    }
+    return (
+      <View style={styles.section}>
+        <SectionHeader title={title} />
+        <Card padding={0} style={styles.groupCard}>
+          {fields.map((field, index) => (
+            <View
+              key={field.key}
+              style={
+                index < fields.length - 1
+                  ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border }
+                  : undefined
+              }
+            >
+              <ListRow
+                title={field.label}
+                subtitle={field.description}
+                trailing={
+                  <Switch
+                    value={draft[field.key]}
+                    onValueChange={(next) => updateDraft(field.key, next)}
+                    trackColor={{ false: theme.colors.surfaceSunken, true: theme.colors.primary }}
+                    ios_backgroundColor={theme.colors.surfaceSunken}
+                  />
+                }
+              />
+            </View>
+          ))}
+        </Card>
+      </View>
+    );
   };
 
   const renderStepper = (field: NumericField) => {
@@ -152,59 +195,41 @@ export const UnionSettingsScreen = () => {
       return null;
     }
     const value = draft[field.key];
+    const atMin = value <= field.min;
+    const atMax = value >= field.max;
+
+    const stepperButton = (iconName: 'remove' | 'add', disabled: boolean, onPress: () => void) => (
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={`${iconName === 'add' ? 'Increase' : 'Decrease'} ${field.label}`}
+        style={({ pressed }) => [
+          styles.stepperButton,
+          {
+            borderColor: pressed && !disabled ? theme.colors.primary : theme.colors.borderStrong,
+            backgroundColor: pressed && !disabled ? theme.colors.primarySoft : theme.colors.surface,
+            opacity: disabled ? 0.4 : 1,
+            transform: [{ scale: pressed && !disabled ? 0.95 : 1 }]
+          }
+        ]}
+      >
+        <MaterialIcons name={iconName} size={18} color={theme.colors.primary} />
+      </Pressable>
+    );
+
     return (
       <Card key={field.key}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.textPrimary }}>{field.label}</Text>
-            <Text style={{ fontSize: 13, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 18 }}>
-              {field.description}
-            </Text>
+        <View style={styles.stepperRow}>
+          <View style={styles.stepperText}>
+            <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]}>{field.label}</Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{field.description}</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Pressable
-              onPress={() => updateDraft(field.key, Math.max(field.min, value - 1))}
-              disabled={value <= field.min}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: value <= field.min ? 0.4 : 1,
-              }}
-            >
-              <MaterialIcons name="remove" size={18} color={theme.colors.textPrimary} />
-            </Pressable>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: '700',
-                color: theme.colors.textPrimary,
-                minWidth: 32,
-                textAlign: 'center',
-              }}
-            >
-              {value}
-            </Text>
-            <Pressable
-              onPress={() => updateDraft(field.key, Math.min(field.max, value + 1))}
-              disabled={value >= field.max}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: value >= field.max ? 0.4 : 1,
-              }}
-            >
-              <MaterialIcons name="add" size={18} color={theme.colors.textPrimary} />
-            </Pressable>
+          <View style={styles.stepperControls}>
+            {stepperButton('remove', atMin, () => updateDraft(field.key, Math.max(field.min, value - 1)))}
+            <Text style={[theme.typography.h3, styles.stepperValue, { color: theme.colors.textPrimary }]}>{value}</Text>
+            {stepperButton('add', atMax, () => updateDraft(field.key, Math.min(field.max, value + 1)))}
           </View>
         </View>
       </Card>
@@ -212,104 +237,174 @@ export const UnionSettingsScreen = () => {
   };
 
   return (
-    <ScreenLayout>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-      >
-        <TopNavBar title="Settings" subtitle={selectedUniversity?.universityName} />
+    <ScreenLayout scroll={false}>
+      <View style={styles.screen}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.textTertiary} />
+          }
+        >
+          <TopNavBar title="Settings" subtitle={selectedUniversity?.universityName} />
 
-        {isLoading ? (
-          <LoadingState />
-        ) : errorMessage || !draft ? (
-          <EmptyState
-            title="Something went wrong"
-            subtitle={errorMessage ?? 'University settings are unavailable right now.'}
-          />
-        ) : (
-          <View style={{ paddingHorizontal: 20, marginTop: 16, gap: 24 }}>
-            {/* Boolean toggles */}
-            <View>
-              <SectionHeader title="Policies" />
-              <View style={{ gap: 12, marginTop: 12 }}>
-                {BOOLEAN_FIELDS.map((field) => (
-                  <Card key={field.key}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.textPrimary }}>
-                          {field.label}
-                        </Text>
-                        <Text
-                          style={{ fontSize: 13, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 18 }}
-                        >
-                          {field.description}
-                        </Text>
-                      </View>
-                      <Switch
-                        value={draft[field.key]}
-                        onValueChange={(next) => updateDraft(field.key, next)}
-                        trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-                      />
-                    </View>
-                  </Card>
-                ))}
+          {isLoading ? (
+            <LoadingState />
+          ) : errorMessage || !draft ? (
+            <EmptyState
+              icon="cloud-off"
+              title="Something went wrong"
+              subtitle={errorMessage ?? 'University settings are unavailable right now.'}
+            />
+          ) : (
+            <View style={styles.sections}>
+              {renderToggleGroup('Membership policies', MEMBERSHIP_FIELDS)}
+              {renderToggleGroup('Approvals', APPROVAL_FIELDS)}
+
+              {/* Numeric limits */}
+              <View style={styles.section}>
+                <SectionHeader title="Limits" />
+                <View style={styles.limitList}>{NUMERIC_FIELDS.map(renderStepper)}</View>
               </View>
-            </View>
 
-            {/* Numeric limits */}
-            <View>
-              <SectionHeader title="Limits" />
-              <View style={{ gap: 12, marginTop: 12 }}>{NUMERIC_FIELDS.map(renderStepper)}</View>
-            </View>
-
-            {/* Default join policy */}
-            <View>
-              <SectionHeader title="Default Join Policy" />
-              <Text style={{ fontSize: 13, color: theme.colors.textSecondary, marginTop: 4, lineHeight: 18 }}>
-                Applied to new societies unless they choose their own policy.
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-                {JOIN_POLICIES.map((policy) => (
-                  <Pressable key={policy.value} onPress={() => updateDraft('defaultJoinPolicy', policy.value)}>
-                    <BadgeChip
-                      label={policy.label}
-                      variant={draft.defaultJoinPolicy === policy.value ? 'filled' : 'outlined'}
-                    />
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-
-            {feedback ? (
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: feedback.kind === 'success' ? theme.colors.success : theme.colors.error,
-                  borderRadius: 12,
-                  padding: 12,
-                  backgroundColor: theme.colors.surface,
-                }}
-              >
-                <Text
-                  style={{
-                    color: feedback.kind === 'success' ? theme.colors.success : theme.colors.error,
-                    fontWeight: '600',
-                  }}
-                >
-                  {feedback.message}
+              {/* Default join policy */}
+              <View style={styles.section}>
+                <SectionHeader title="Default join policy" />
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                  Applied to new societies unless they choose their own policy.
                 </Text>
+                <View style={styles.policyRow}>
+                  {JOIN_POLICIES.map((policy) => {
+                    const selected = draft.defaultJoinPolicy === policy.value;
+                    return (
+                      <Pressable
+                        key={policy.value}
+                        onPress={() => updateDraft('defaultJoinPolicy', policy.value)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                        android_ripple={{ color: 'rgba(0,0,0,0.08)', borderless: false }}
+                        style={({ pressed }) => [
+                          styles.policyChip,
+                          {
+                            borderRadius: theme.radius.pill,
+                            backgroundColor: selected ? theme.colors.primary : theme.colors.surface,
+                            borderColor: selected ? theme.colors.primary : theme.colors.border,
+                            opacity: pressed && Platform.OS === 'ios' ? 0.85 : 1,
+                            transform: [{ scale: pressed ? 0.97 : 1 }]
+                          }
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            theme.typography.captionMedium,
+                            { color: selected ? theme.colors.textOnPrimary : theme.colors.textSecondary, fontSize: 14 }
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {policy.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
-            ) : null}
+            </View>
+          )}
+        </ScrollView>
 
+        {/* Sticky save bar — only actionable when the draft differs from saved settings */}
+        {!isLoading && draft ? (
+          <View
+            style={[
+              styles.saveBar,
+              {
+                backgroundColor: theme.colors.surface,
+                borderTopColor: theme.colors.border
+              }
+            ]}
+          >
             <PrimaryButton
-              label={isSaving ? 'Saving...' : 'Save Changes'}
+              label={isDirty ? 'Save Changes' : 'All changes saved'}
               onPress={handleSave}
-              disabled={!isDirty || isSaving}
+              loading={isSaving}
+              disabled={!isDirty}
             />
           </View>
-        )}
-      </ScrollView>
+        ) : null}
+      </View>
     </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1
+  },
+  scroll: {
+    flex: 1
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24
+  },
+  sections: {
+    marginTop: 16,
+    gap: 24
+  },
+  section: {
+    gap: 12
+  },
+  groupCard: {
+    overflow: 'hidden'
+  },
+  limitList: {
+    gap: 12
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  stepperText: {
+    flex: 1,
+    gap: 2
+  },
+  stepperControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  stepperButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  stepperValue: {
+    minWidth: 36,
+    textAlign: 'center'
+  },
+  policyRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  policyChip: {
+    borderWidth: 1,
+    minHeight: 36,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  saveBar: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16
+  }
+});

@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Text, View, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
-import { OutlineButton } from '@/components/OutlineButton';
-import { PrimaryButton } from '@/components/PrimaryButton';
-import { StatCard } from '@/components/StatCard';
+import { EmptyState } from '@/components/EmptyState';
 import { RoleSwitcher } from '@/components/RoleSwitcher';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { SectionHeader } from '@/components/SectionHeader';
+import { StatCard } from '@/components/StatCard';
 import { RootStackParamList } from '@/navigation/types';
 import { fetchMembershipRequests } from '@/services/api/memberships';
 import { ScreenLayout } from './ScreenLayout';
@@ -22,7 +22,6 @@ export const AdminDashboardScreen = () => {
   const { selectedAdminSocietyId, adminSocieties } = useUserRoles();
   const { allSocieties, events, announcements, polls, activeSocietyMemberCount } = useLocalAppState();
 
-  const [selectedTab, setSelectedTab] = useState<'Overview' | 'Content'>('Overview');
   const [pendingRequestCount, setPendingRequestCount] = useState<number | null>(null);
 
   const selectedSociety = adminSocieties.find(s => s.societyId === selectedAdminSocietyId);
@@ -46,15 +45,13 @@ export const AdminDashboardScreen = () => {
 
   if (!selectedSociety || !societyDetails) {
     return (
-      <ScreenLayout>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <MaterialIcons name="admin-panel-settings" size={64} color={theme.colors.textSecondary} />
-          <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.textPrimary, marginTop: 16 }}>
-            No Society Selected
-          </Text>
-          <Text style={{ fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center', marginTop: 8 }}>
-            Please select a society to manage from your admin dashboard
-          </Text>
+      <ScreenLayout scroll={false}>
+        <View style={styles.centerWrap}>
+          <EmptyState
+            icon="admin-panel-settings"
+            title="No society selected"
+            subtitle="Select a society to manage from the mode switcher above."
+          />
         </View>
       </ScreenLayout>
     );
@@ -66,199 +63,171 @@ export const AdminDashboardScreen = () => {
     return Number.isNaN(start) ? true : start >= now;
   }).length;
 
+  const quickActions: {
+    icon: keyof typeof MaterialIcons.glyphMap;
+    label: string;
+    onPress: () => void;
+  }[] = [
+    { icon: 'event', label: 'Create event', onPress: () => navigation.navigate('CreateEvent') },
+    { icon: 'post-add', label: 'New post', onPress: () => navigation.navigate('AnnouncementsFeed') },
+    { icon: 'poll', label: 'New poll', onPress: () => navigation.navigate('MainTabs', { screen: 'Polls' }) },
+    { icon: 'edit', label: 'Edit profile', onPress: () => navigation.navigate('EditSocietyProfile') }
+  ];
+
   return (
     <ScreenLayout>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Header */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, color: theme.colors.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>
-                {selectedSociety.role} Dashboard
-              </Text>
-              <Text style={{ fontSize: 24, fontWeight: '800', color: theme.colors.textPrimary, marginTop: 4 }}>
-                {societyDetails.shortName}
-              </Text>
-              <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginTop: 2 }}>
-                {societyDetails.name}
-              </Text>
-            </View>
-            <RoleSwitcher compact />
+      <View style={styles.page}>
+        <ScreenHeader
+          title="Dashboard"
+          subtitle={societyDetails.name}
+          accessory={<RoleSwitcher compact showModeText={false} />}
+        />
+
+        {/* Key metrics — all real values from local app state */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statCell}>
+            <StatCard label="Members" value={activeSocietyMemberCount} icon="groups" />
+          </View>
+          <View style={styles.statCell}>
+            <StatCard label="Upcoming events" value={upcomingEventCount} icon="event" />
+          </View>
+          <View style={styles.statCell}>
+            <StatCard label="Posts" value={announcements.length} icon="article" />
+          </View>
+          <View style={styles.statCell}>
+            <StatCard label="Polls" value={polls.length} icon="poll" />
           </View>
         </View>
 
-        {/* Tab Navigation */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-          <View style={{ flexDirection: 'row', backgroundColor: theme.colors.surface, borderRadius: 12, padding: 4 }}>
-            {(['Overview', 'Content'] as const).map((tab) => (
-              <Pressable
-                key={tab}
-                onPress={() => setSelectedTab(tab)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  borderRadius: 8,
-                  backgroundColor: selectedTab === tab ? theme.colors.primary : 'transparent',
-                  alignItems: 'center',
-                }}
+        {/* Needs attention */}
+        <View style={styles.section}>
+          <SectionHeader title="Needs attention" />
+          <Card
+            onPress={() => navigation.navigate('MainTabs', { screen: 'Members' })}
+            style={
+              pendingRequestCount !== null && pendingRequestCount > 0
+                ? { borderColor: theme.colors.warning, backgroundColor: theme.colors.warningSoft }
+                : undefined
+            }
+          >
+            <View style={styles.attentionRow}>
+              <View
+                style={[
+                  styles.attentionIcon,
+                  {
+                    backgroundColor:
+                      pendingRequestCount !== null && pendingRequestCount > 0
+                        ? theme.colors.warningSoft
+                        : theme.colors.primarySoft
+                  }
+                ]}
               >
-                <Text style={{
-                  fontSize: 14,
-                  fontWeight: '600',
-                  color: selectedTab === tab ? theme.colors.background : theme.colors.textSecondary,
-                }}>
-                  {tab}
+                <MaterialIcons
+                  name="person-add"
+                  size={20}
+                  color={pendingRequestCount !== null && pendingRequestCount > 0 ? theme.colors.warning : theme.colors.primary}
+                />
+              </View>
+              <View style={styles.attentionText}>
+                <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]}>
+                  Membership requests
                 </Text>
-              </Pressable>
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                  {pendingRequestCount === null
+                    ? 'Review join requests'
+                    : pendingRequestCount === 0
+                      ? 'No pending approvals'
+                      : `${pendingRequestCount} pending ${pendingRequestCount === 1 ? 'approval' : 'approvals'}`}
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color={theme.colors.textTertiary} />
+            </View>
+          </Card>
+        </View>
+
+        {/* Quick actions */}
+        <View style={styles.section}>
+          <SectionHeader title="Quick actions" />
+          <View style={styles.actionsGrid}>
+            {quickActions.map((action) => (
+              <View key={action.label} style={styles.actionCell}>
+                <Card onPress={action.onPress}>
+                  <View style={styles.actionContent}>
+                    <View style={[styles.actionIcon, { backgroundColor: theme.colors.primarySoft }]}>
+                      <MaterialIcons name={action.icon} size={22} color={theme.colors.primary} />
+                    </View>
+                    <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                      {action.label}
+                    </Text>
+                  </View>
+                </Card>
+              </View>
             ))}
           </View>
         </View>
-
-        {/* Overview Tab */}
-        {selectedTab === 'Overview' && (
-          <>
-            {/* Stats Grid */}
-            <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-              <SectionHeader title="Key Metrics" />
-              <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
-                <View style={{ flexGrow: 1, flexBasis: 160 }}>
-                  <StatCard label="Members" value={activeSocietyMemberCount} />
-                </View>
-                <View style={{ flexGrow: 1, flexBasis: 160 }}>
-                  <StatCard label="Upcoming Events" value={upcomingEventCount} />
-                </View>
-                <View style={{ flexGrow: 1, flexBasis: 160 }}>
-                  <StatCard label="Posts" value={announcements.length} />
-                </View>
-                <View style={{ flexGrow: 1, flexBasis: 160 }}>
-                  <StatCard label="Polls" value={polls.length} />
-                </View>
-              </View>
-            </View>
-
-            {/* Quick Actions */}
-            <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-              <SectionHeader title="Quick Actions" />
-              <View style={{ gap: 12, marginTop: 12 }}>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <PrimaryButton label="Create Event" onPress={() => navigation.navigate('CreateEvent')} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <OutlineButton label="New Post" onPress={() => navigation.navigate('AnnouncementsFeed')} />
-                  </View>
-                </View>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <OutlineButton label="Manage Members" onPress={() => navigation.navigate('MainTabs', { screen: 'Members' })} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <OutlineButton label="Edit Profile" onPress={() => navigation.navigate('EditSocietyProfile')} />
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Pending Actions */}
-            <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-              <SectionHeader title="Pending Actions" />
-              <Card style={{ marginTop: 12 }}>
-                <Pressable
-                  onPress={() => navigation.navigate('MainTabs', { screen: 'Members' })}
-                  style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <MaterialIcons name="person-add" size={20} color={theme.colors.primary} />
-                    <View>
-                      <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>Membership Requests</Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-                        {pendingRequestCount === null
-                          ? 'Review join requests'
-                          : pendingRequestCount === 0
-                            ? 'No pending approvals'
-                            : `${pendingRequestCount} pending ${pendingRequestCount === 1 ? 'approval' : 'approvals'}`}
-                      </Text>
-                    </View>
-                  </View>
-                  <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSecondary} />
-                </Pressable>
-              </Card>
-            </View>
-          </>
-        )}
-
-        {/* Content Tab */}
-        {selectedTab === 'Content' && (
-          <View style={{ paddingHorizontal: 20 }}>
-            <SectionHeader title="Content Management" />
-            <View style={{ gap: 16, marginTop: 16 }}>
-              <Pressable
-                onPress={() => navigation.navigate('CreateEvent')}
-                style={{
-                  backgroundColor: theme.colors.surface,
-                  borderRadius: 12,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <MaterialIcons name="event" size={24} color={theme.colors.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary }}>Events</Text>
-                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Create and manage events</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSecondary} />
-              </Pressable>
-
-              <Pressable
-                onPress={() => navigation.navigate('AnnouncementsFeed')}
-                style={{
-                  backgroundColor: theme.colors.surface,
-                  borderRadius: 12,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <MaterialIcons name="article" size={24} color={theme.colors.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary }}>Announcements</Text>
-                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Create posts and updates</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSecondary} />
-              </Pressable>
-
-              <Pressable
-                onPress={() => navigation.navigate('MainTabs', { screen: 'Polls' })}
-                style={{
-                  backgroundColor: theme.colors.surface,
-                  borderRadius: 12,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <MaterialIcons name="poll" size={24} color={theme.colors.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary }}>Polls</Text>
-                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Create and manage polls</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSecondary} />
-              </Pressable>
-            </View>
-          </View>
-        )}
-      </ScrollView>
+      </View>
     </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  centerWrap: {
+    flex: 1,
+    justifyContent: 'center'
+  },
+  page: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 96,
+    gap: 24
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  statCell: {
+    flexGrow: 1,
+    flexBasis: '44%'
+  },
+  section: {
+    gap: 12
+  },
+  attentionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 44
+  },
+  attentionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  attentionText: {
+    flex: 1,
+    gap: 2
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  actionCell: {
+    flexGrow: 1,
+    flexBasis: '44%'
+  },
+  actionContent: {
+    alignItems: 'flex-start',
+    gap: 10
+  },
+  actionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
+});

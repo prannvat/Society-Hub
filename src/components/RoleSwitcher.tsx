@@ -1,21 +1,31 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Modal, ScrollView, Platform } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Avatar } from '@/components/Avatar';
+import { BadgeChip } from '@/components/BadgeChip';
 import { AppMode } from '@/types';
 
 type RoleSwitcherProps = {
   showModeText?: boolean;
   compact?: boolean;
+  /**
+   * 'trigger' (default) renders the compact pill that opens the switch sheet.
+   * 'banner' renders the slim persistent mode bar used above the admin tab
+   * navigators — tapping it (or its Switch action) opens the same sheet.
+   */
+  variant?: 'trigger' | 'banner';
 };
 
-export const RoleSwitcher = ({ showModeText = true, compact = false }: RoleSwitcherProps) => {
+export const RoleSwitcher = ({ showModeText = true, compact = false, variant = 'trigger' }: RoleSwitcherProps) => {
   const theme = useAppTheme();
-  const { 
-    currentMode, 
-    setCurrentMode, 
-    canSwitchToAdmin, 
+  const insets = useSafeAreaInsets();
+  const {
+    currentMode,
+    setCurrentMode,
+    canSwitchToAdmin,
     adminSocieties,
     selectedAdminSocietyId,
     setSelectedAdminSocietyId,
@@ -25,209 +35,318 @@ export const RoleSwitcher = ({ showModeText = true, compact = false }: RoleSwitc
     setSelectedUniversityId
   } = useUserRoles();
   const [modalVisible, setModalVisible] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
 
   const handleModeSwitch = () => {
-    if (!canSwitchToAdmin) return;
+    if (!canSwitchToAdmin && !canSwitchToUnionAdmin) return;
     setModalVisible(true);
   };
 
-  const selectMode = async (mode: AppMode) => {
+  const closeSheet = () => {
+    if (isSwitching) return;
     setModalVisible(false);
-    await setCurrentMode(mode);
-    
-    // Auto-select first admin society when switching to admin mode
-    if (mode === 'Admin' && !selectedAdminSocietyId && adminSocieties.length > 0) {
-      setSelectedAdminSocietyId(adminSocieties[0].societyId);
+  };
+
+  const selectMode = async (mode: AppMode) => {
+    if (isSwitching) return;
+    setIsSwitching(true);
+    try {
+      await setCurrentMode(mode);
+
+      // Auto-select first admin society when switching to admin mode
+      if (mode === 'Admin' && !selectedAdminSocietyId && adminSocieties.length > 0) {
+        setSelectedAdminSocietyId(adminSocieties[0].societyId);
+      }
+    } finally {
+      setIsSwitching(false);
+      setModalVisible(false);
     }
   };
 
   const selectAdminSociety = async (societyId: string) => {
-    setSelectedAdminSocietyId(societyId);
-    setModalVisible(false);
-    await setCurrentMode('Admin');
+    if (isSwitching) return;
+    setIsSwitching(true);
+    try {
+      setSelectedAdminSocietyId(societyId);
+      await setCurrentMode('Admin');
+    } finally {
+      setIsSwitching(false);
+      setModalVisible(false);
+    }
   };
 
   const selectUnionAdmin = async (universityId: string) => {
-    setSelectedUniversityId(universityId);
-    setModalVisible(false);
-    await setCurrentMode('UnionAdmin');
+    if (isSwitching) return;
+    setIsSwitching(true);
+    try {
+      setSelectedUniversityId(universityId);
+      await setCurrentMode('UnionAdmin');
+    } finally {
+      setIsSwitching(false);
+      setModalVisible(false);
+    }
   };
 
   const selectedSociety = adminSocieties.find(s => s.societyId === selectedAdminSocietyId);
+  const selectedUniversity = unionAdminRelationships.find(u => u.universityId === selectedUniversityId);
 
   if (!canSwitchToAdmin && !canSwitchToUnionAdmin) {
     return null; // Don't show switcher if user can't switch
   }
 
+  const renderOptionCard = ({
+    key,
+    icon,
+    iconColor,
+    iconBackground,
+    leading,
+    title,
+    description,
+    chipLabel,
+    chipVariant,
+    selected,
+    onPress
+  }: {
+    key?: string;
+    icon?: keyof typeof MaterialIcons.glyphMap;
+    iconColor?: string;
+    iconBackground?: string;
+    leading?: React.ReactNode;
+    title: string;
+    description?: string;
+    chipLabel?: string;
+    chipVariant?: 'primary' | 'warning' | 'neutral';
+    selected: boolean;
+    onPress: () => void;
+  }) => (
+    <Pressable
+      key={key}
+      onPress={onPress}
+      disabled={isSwitching}
+      android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: false }}
+      style={({ pressed }) => [
+        styles.optionCard,
+        {
+          borderRadius: theme.radius.card,
+          borderColor: selected ? theme.colors.primary : theme.colors.border,
+          backgroundColor: selected
+            ? theme.colors.primarySoft
+            : pressed
+              ? theme.colors.surfaceSunken
+              : theme.colors.surface,
+          opacity: isSwitching && !selected ? 0.55 : 1,
+          transform: [{ scale: pressed && !isSwitching ? 0.99 : 1 }]
+        }
+      ]}
+    >
+      {leading ?? (
+        <View style={[styles.optionIcon, { backgroundColor: iconBackground ?? theme.colors.primarySoft }]}>
+          <MaterialIcons name={icon ?? 'person'} size={22} color={iconColor ?? theme.colors.primary} />
+        </View>
+      )}
+      <View style={styles.optionText}>
+        <View style={styles.optionTitleRow}>
+          <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary, flexShrink: 1 }]} numberOfLines={1}>
+            {title}
+          </Text>
+          {chipLabel ? <BadgeChip label={chipLabel} variant={chipVariant ?? 'neutral'} /> : null}
+        </View>
+        {description ? (
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]} numberOfLines={2}>
+            {description}
+          </Text>
+        ) : null}
+      </View>
+      {selected ? (
+        isSwitching ? (
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        ) : (
+          <MaterialIcons name="check-circle" size={22} color={theme.colors.primary} />
+        )
+      ) : null}
+    </Pressable>
+  );
+
+  const sheet = (
+    <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={closeSheet}>
+      <View style={[styles.sheetOverlay, { backgroundColor: theme.colors.overlay }]}>
+        <Pressable style={styles.sheetDismissArea} onPress={closeSheet} accessibilityLabel="Close switch mode sheet" />
+        <View
+          style={[
+            styles.sheet,
+            theme.elevation.e3,
+            {
+              backgroundColor: theme.colors.surfaceElevated,
+              borderTopLeftRadius: theme.radius.xl,
+              borderTopRightRadius: theme.radius.xl,
+              paddingBottom: Math.max(insets.bottom, 16)
+            }
+          ]}
+        >
+          <View style={[styles.dragHandle, { backgroundColor: theme.colors.borderStrong }]} />
+          <View style={styles.sheetHeader}>
+            <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, flex: 1 }]}>Switch mode</Text>
+            <Pressable
+              onPress={closeSheet}
+              hitSlop={12}
+              accessibilityLabel="Close"
+              style={({ pressed }) => [
+                styles.closeButton,
+                { backgroundColor: pressed ? theme.colors.surfaceSunken : 'transparent' }
+              ]}
+            >
+              <MaterialIcons name="close" size={22} color={theme.colors.textSecondary} />
+            </Pressable>
+          </View>
+
+          <ScrollView style={styles.sheetBody} contentContainerStyle={styles.sheetBodyContent} bounces={false}>
+            {renderOptionCard({
+              icon: 'school',
+              title: 'Student',
+              description: 'Discover events, join societies, and engage with content',
+              selected: currentMode === 'Consumer',
+              onPress: () => selectMode('Consumer')
+            })}
+
+            {canSwitchToAdmin ? (
+              <>
+                <Text style={[theme.typography.micro, styles.sheetSectionLabel, { color: theme.colors.textTertiary }]}>
+                  Society admin
+                </Text>
+                {adminSocieties.map((society) =>
+                  renderOptionCard({
+                    key: society.societyId,
+                    leading: <Avatar name={society.societyName} size={40} />,
+                    title: society.societyName,
+                    description: 'Manage events, posts, and members',
+                    chipLabel: society.role,
+                    chipVariant: 'primary',
+                    selected: currentMode === 'Admin' && selectedAdminSocietyId === society.societyId,
+                    onPress: () => selectAdminSociety(society.societyId)
+                  })
+                )}
+              </>
+            ) : null}
+
+            {canSwitchToUnionAdmin ? (
+              <>
+                <Text style={[theme.typography.micro, styles.sheetSectionLabel, { color: theme.colors.textTertiary }]}>
+                  Union admin
+                </Text>
+                {unionAdminRelationships.map((university) =>
+                  renderOptionCard({
+                    key: university.universityId,
+                    icon: 'account-balance',
+                    iconColor: theme.colors.warning,
+                    iconBackground: theme.colors.warningSoft,
+                    title: university.universityName,
+                    description: 'Manage committee approvals and university settings',
+                    chipLabel: university.role,
+                    chipVariant: 'warning',
+                    selected: currentMode === 'UnionAdmin' && selectedUniversityId === university.universityId,
+                    onPress: () => selectUnionAdmin(university.universityId)
+                  })
+                )}
+              </>
+            ) : null}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  if (variant === 'banner') {
+    const isUnion = currentMode === 'UnionAdmin';
+    const bannerBackground = isUnion ? theme.colors.warningSoft : theme.colors.primarySoft;
+    const bannerTint = isUnion ? theme.colors.warning : theme.colors.primary;
+    const bannerLabel = isUnion
+      ? `Union Admin — ${selectedUniversity?.universityName ?? 'University'}`
+      : currentMode === 'Admin'
+        ? `Managing: ${selectedSociety?.societyName ?? 'Society'}`
+        : 'Student mode';
+
+    return (
+      <>
+        <Pressable
+          onPress={handleModeSwitch}
+          accessibilityRole="button"
+          accessibilityLabel={`${bannerLabel}. Switch mode`}
+          style={({ pressed }) => [
+            styles.banner,
+            {
+              paddingTop: insets.top,
+              backgroundColor: bannerBackground,
+              borderBottomColor: theme.colors.border,
+              opacity: pressed ? 0.92 : 1
+            }
+          ]}
+        >
+          <View style={styles.bannerRow}>
+            <MaterialIcons
+              name={isUnion ? 'account-balance' : 'admin-panel-settings'}
+              size={16}
+              color={bannerTint}
+            />
+            <Text style={[theme.typography.captionMedium, styles.bannerLabel, { color: bannerTint }]} numberOfLines={1}>
+              {bannerLabel}
+            </Text>
+            <View style={styles.bannerSwitch}>
+              <Text style={[theme.typography.captionMedium, { color: bannerTint }]}>Switch</Text>
+              <MaterialIcons name="unfold-more" size={14} color={bannerTint} />
+            </View>
+          </View>
+        </Pressable>
+        {sheet}
+      </>
+    );
+  }
+
   return (
     <>
       <Pressable
-        style={[
+        onPress={handleModeSwitch}
+        accessibilityRole="button"
+        accessibilityLabel="Switch mode"
+        hitSlop={compact ? 6 : 0}
+        style={({ pressed }) => [
           styles.switcher,
           compact && styles.switcherCompact,
-          { borderColor: theme.colors.border }
+          {
+            borderRadius: theme.radius.pill,
+            borderColor: pressed ? theme.colors.primary : theme.colors.border,
+            backgroundColor: pressed ? theme.colors.primarySoft : theme.colors.surface
+          }
         ]}
-        onPress={handleModeSwitch}
       >
         <View style={styles.switcherContent}>
           <MaterialIcons
-            name={currentMode === 'Consumer' ? 'person' : 'admin-panel-settings'}
+            name={
+              currentMode === 'Consumer' ? 'person' : currentMode === 'Admin' ? 'admin-panel-settings' : 'account-balance'
+            }
             size={compact ? 16 : 20}
-            color={theme.colors.textPrimary}
+            color={currentMode === 'UnionAdmin' ? theme.colors.warning : theme.colors.primary}
           />
           {showModeText && (
             <View style={styles.modeInfo}>
-          <Text style={[styles.modeText, { color: theme.colors.textPrimary }]}>
-            {currentMode === 'Consumer' ? 'Student' : 
-             currentMode === 'Admin' ? 'Society Admin' : 'Union Admin'}
-          </Text>
-          {currentMode === 'Admin' && selectedSociety && (
-            <Text style={[styles.societyText, { color: theme.colors.textSecondary }]}>
-              {selectedSociety.societyName}
-            </Text>
-          )}
-          {currentMode === 'UnionAdmin' && unionAdminRelationships.length > 0 && (
-            <Text style={[styles.societyText, { color: theme.colors.textSecondary }]}>
-              {unionAdminRelationships.find(u => u.universityId === selectedUniversityId)?.universityName}
-            </Text>
-          )}
+              <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                {currentMode === 'Consumer' ? 'Student' : currentMode === 'Admin' ? 'Society Admin' : 'Union Admin'}
+              </Text>
+              {currentMode === 'Admin' && selectedSociety && (
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 14 }]} numberOfLines={1}>
+                  {selectedSociety.societyName}
+                </Text>
+              )}
+              {currentMode === 'UnionAdmin' && selectedUniversity && (
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 14 }]} numberOfLines={1}>
+                  {selectedUniversity.universityName}
+                </Text>
+              )}
             </View>
           )}
-          <MaterialIcons
-            name="expand-more"
-            size={16}
-            color={theme.colors.textSecondary}
-          />
+          <MaterialIcons name="expand-more" size={16} color={theme.colors.textTertiary} />
         </View>
       </Pressable>
-
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <Pressable 
-          style={styles.modalOverlay}
-          onPress={() => setModalVisible(false)}
-        >
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: theme.colors.border }]}>
-              <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>
-                Switch Mode
-              </Text>
-              <Pressable onPress={() => setModalVisible(false)}>
-                <MaterialIcons name="close" size={24} color={theme.colors.textSecondary} />
-              </Pressable>
-            </View>
-            
-            <ScrollView style={styles.modalBody}>
-              {/* Consumer Mode */}
-              <Pressable
-                style={[
-                  styles.modeOption,
-                  currentMode === 'Consumer' && { backgroundColor: theme.colors.background },
-                  { borderBottomColor: theme.colors.border }
-                ]}
-                onPress={() => selectMode('Consumer')}
-              >
-                <View style={styles.modeOptionContent}>
-                  <View style={styles.modeOptionIcon}>
-                    <MaterialIcons name="person" size={24} color={theme.colors.primary} />
-                  </View>
-                  <View style={styles.modeOptionText}>
-                    <Text style={[styles.modeOptionTitle, { color: theme.colors.textPrimary }]}>
-                      Student Mode
-                    </Text>
-                    <Text style={[styles.modeOptionDescription, { color: theme.colors.textSecondary }]}>
-                      Discover events, join societies, and engage with content
-                    </Text>
-                  </View>
-                  {currentMode === 'Consumer' && (
-                    <MaterialIcons name="check" size={20} color={theme.colors.primary} />
-                  )}
-                </View>
-              </Pressable>
-
-              {/* Society Admin Modes */}
-              {canSwitchToAdmin && (
-                <>
-                  <Text style={[styles.sectionHeader, { color: theme.colors.textSecondary }]}>
-                    Society Administration
-                  </Text>
-                  
-                  {adminSocieties.map((society) => (
-                    <Pressable
-                      key={society.societyId}
-                      style={[
-                        styles.modeOption,
-                        currentMode === 'Admin' && selectedAdminSocietyId === society.societyId && 
-                          { backgroundColor: theme.colors.background },
-                      ]}
-                      onPress={() => selectAdminSociety(society.societyId)}
-                    >
-                      <View style={styles.modeOptionContent}>
-                        <View style={styles.modeOptionIcon}>
-                          <MaterialIcons name="admin-panel-settings" size={24} color={theme.colors.primary} />
-                        </View>
-                        <View style={styles.modeOptionText}>
-                          <Text style={[styles.modeOptionTitle, { color: theme.colors.textPrimary }]}>
-                            {society.societyName}
-                          </Text>
-                          <Text style={[styles.modeOptionDescription, { color: theme.colors.textSecondary }]}>
-                            {society.role} • Manage events, posts, and members
-                          </Text>
-                        </View>
-                        {currentMode === 'Admin' && selectedAdminSocietyId === society.societyId && (
-                          <MaterialIcons name="check" size={20} color={theme.colors.primary} />
-                        )}
-                      </View>
-                    </Pressable>
-                  ))}
-                </>
-              )}
-
-              {/* Union Admin Modes */}
-              {canSwitchToUnionAdmin && (
-                <>
-                  <Text style={[styles.sectionHeader, { color: theme.colors.textSecondary }]}>
-                    Union Administration
-                  </Text>
-                  
-                  {unionAdminRelationships.map((university) => (
-                    <Pressable
-                      key={university.universityId}
-                      style={[
-                        styles.modeOption,
-                        currentMode === 'UnionAdmin' && selectedUniversityId === university.universityId && 
-                          { backgroundColor: theme.colors.background },
-                      ]}
-                      onPress={() => selectUnionAdmin(university.universityId)}
-                    >
-                      <View style={styles.modeOptionContent}>
-                        <View style={styles.modeOptionIcon}>
-                          <MaterialIcons name="school" size={24} color={theme.colors.primary} />
-                        </View>
-                        <View style={styles.modeOptionText}>
-                          <Text style={[styles.modeOptionTitle, { color: theme.colors.textPrimary }]}>
-                            {university.universityName}
-                          </Text>
-                          <Text style={[styles.modeOptionDescription, { color: theme.colors.textSecondary }]}>
-                            {university.role} • Manage committee approvals and university settings
-                          </Text>
-                        </View>
-                        {currentMode === 'UnionAdmin' && selectedUniversityId === university.universityId && (
-                          <MaterialIcons name="check" size={20} color={theme.colors.primary} />
-                        )}
-                      </View>
-                    </Pressable>
-                  ))}
-                </>
-              )}
-            </ScrollView>
-          </View>
-        </Pressable>
-      </Modal>
+      {sheet}
     </>
   );
 };
@@ -235,105 +354,110 @@ export const RoleSwitcher = ({ showModeText = true, compact = false }: RoleSwitc
 const styles = StyleSheet.create({
   switcher: {
     borderWidth: 1,
-    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    minWidth: 120,
+    minHeight: 44,
+    justifyContent: 'center'
   },
   switcherCompact: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    minWidth: 80,
+    minHeight: 36
   },
   switcherContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 8
   },
   modeInfo: {
-    flex: 1,
+    flexShrink: 1
   },
-  modeText: {
-    fontSize: 14,
-    fontWeight: '600',
+  banner: {
+    borderBottomWidth: StyleSheet.hairlineWidth
   },
-  societyText: {
-    fontSize: 12,
-    marginTop: 1,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+  bannerRow: {
+    minHeight: 32,
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    gap: 6,
+    paddingHorizontal: 16
   },
-  modalContent: {
-    width: '100%',
-    maxWidth: 400,
+  bannerLabel: {
+    flex: 1
+  },
+  bannerSwitch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingLeft: 8
+  },
+  sheetOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end'
+  },
+  sheetDismissArea: {
+    flex: 1
+  },
+  sheet: {
     maxHeight: '80%',
+    paddingTop: 8
+  },
+  dragHandle: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 8
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 4,
+    gap: 12
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.25,
-        shadowRadius: 20,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
+    justifyContent: 'center'
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  sheetBody: {
+    flexGrow: 0
   },
-  modalBody: {
-    maxHeight: 400,
+  sheetBodyContent: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    gap: 10
   },
-  sectionHeader: {
-    fontSize: 14,
-    fontWeight: '600',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    textTransform: 'uppercase',
+  sheetSectionLabel: {
+    marginTop: 10,
+    marginBottom: 2
   },
-  modeOption: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  modeOptionContent: {
+  optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
     gap: 12,
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minHeight: 64
   },
-  modeOptionIcon: {
+  optionIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center'
   },
-  modeOptionText: {
+  optionText: {
     flex: 1,
+    gap: 2
   },
-  modeOptionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modeOptionDescription: {
-    fontSize: 14,
-    marginTop: 2,
-    lineHeight: 18,
-  },
+  optionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  }
 });

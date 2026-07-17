@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { StyleSheet } from 'react-native';
 import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import type { AppTheme } from '@/config/theme';
 
@@ -10,22 +11,23 @@ export const getTabNavigatorOptions = (theme: AppTheme): BottomTabNavigationOpti
   headerShown: false,
   tabBarShowLabel: true,
   tabBarActiveTintColor: theme.colors.primary,
-  tabBarInactiveTintColor: theme.colors.textSecondary,
+  tabBarInactiveTintColor: theme.colors.textTertiary,
   tabBarStyle: {
-    height: Platform.OS === 'ios' ? 82 : 68,
-    paddingBottom: Platform.OS === 'ios' ? 18 : 10,
-    paddingTop: Platform.OS === 'ios' ? 8 : 6,
+    height: Platform.OS === 'ios' ? 84 : 68,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
+    paddingTop: 8,
+    backgroundColor: theme.colors.tabBarBackground,
     borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.background,
-    borderTopWidth: Platform.OS === 'ios' ? 0.5 : 1,
-    elevation: Platform.OS === 'android' ? 8 : 0,
-    shadowColor: Platform.OS === 'ios' ? '#000000' : undefined,
-    shadowOffset: Platform.OS === 'ios' ? { width: 0, height: -2 } : undefined,
-    shadowOpacity: Platform.OS === 'ios' ? 0.08 : undefined,
-    shadowRadius: Platform.OS === 'ios' ? 8 : undefined
+    borderTopWidth: StyleSheet.hairlineWidth,
+    elevation: 0,
+    shadowOpacity: 0
+  },
+  tabBarItemStyle: {
+    paddingVertical: 2
   },
   tabBarLabelStyle: {
+    ...theme.typography.captionMedium,
     fontSize: 11,
-    fontWeight: '700'
+    lineHeight: 14
   }
 });

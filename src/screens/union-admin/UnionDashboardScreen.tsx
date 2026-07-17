@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -7,10 +7,12 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { getUniversityAnalytics, UniversityAnalytics } from '@/services/api/union-admin';
 import type { UnionAdminTabParamList } from '@/navigation/UnionAdminNavigator';
+import { BadgeChip } from '@/components/BadgeChip';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingState } from '@/components/LoadingState';
 import { RoleSwitcher } from '@/components/RoleSwitcher';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { SectionHeader } from '@/components/SectionHeader';
 import { StatCard } from '@/components/StatCard';
 import { ScreenLayout } from '../ScreenLayout';
@@ -59,125 +61,111 @@ export const UnionDashboardScreen = () => {
     setRefreshing(false);
   };
 
-  return (
-    <ScreenLayout>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-      >
-        {/* Header */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: theme.colors.textSecondary,
-                  fontWeight: '600',
-                  textTransform: 'uppercase',
-                  letterSpacing: 1,
-                }}
-              >
-                Union Dashboard
-              </Text>
-              <Text style={{ fontSize: 24, fontWeight: '800', color: theme.colors.textPrimary, marginTop: 4 }}>
-                {selectedUniversity?.universityName ?? 'University'}
-              </Text>
-            </View>
-            <RoleSwitcher compact />
-          </View>
+  const renderAttentionCard = ({
+    icon,
+    title,
+    totalLabel,
+    pending,
+    onPress
+  }: {
+    icon: keyof typeof MaterialIcons.glyphMap;
+    title: string;
+    totalLabel: string;
+    pending: number;
+    onPress: () => void;
+  }) => (
+    <Card
+      onPress={onPress}
+      style={pending > 0 ? { borderColor: theme.colors.warning, backgroundColor: theme.colors.warningSoft } : undefined}
+    >
+      <View style={styles.attentionRow}>
+        <View
+          style={[
+            styles.attentionIcon,
+            { backgroundColor: pending > 0 ? theme.colors.warningSoft : theme.colors.primarySoft }
+          ]}
+        >
+          <MaterialIcons name={icon} size={20} color={pending > 0 ? theme.colors.warning : theme.colors.primary} />
         </View>
+        <View style={styles.attentionText}>
+          <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]}>{title}</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{totalLabel}</Text>
+        </View>
+        {pending > 0 ? <BadgeChip label={`${pending} pending`} variant="warning" /> : null}
+        <MaterialIcons name="chevron-right" size={22} color={theme.colors.textTertiary} />
+      </View>
+    </Card>
+  );
+
+  return (
+    <ScreenLayout scroll={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.textTertiary} />
+        }
+      >
+        <ScreenHeader
+          title="Union Dashboard"
+          subtitle={selectedUniversity?.universityName ?? 'University'}
+          accessory={<RoleSwitcher compact showModeText={false} />}
+        />
 
         {isLoading ? (
           <LoadingState />
         ) : errorMessage ? (
-          <EmptyState title="Something went wrong" subtitle={errorMessage} />
+          <EmptyState icon="cloud-off" title="Something went wrong" subtitle={errorMessage} />
         ) : !analytics ? (
-          <EmptyState title="No analytics yet" subtitle="Analytics will appear once your university has activity." />
+          <EmptyState
+            icon="insights"
+            title="No analytics yet"
+            subtitle="Analytics will appear once your university has activity."
+          />
         ) : (
           <>
             {/* Students */}
-            <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+            <View style={styles.section}>
               <SectionHeader title="Students" />
-              <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
-                <View style={{ flexGrow: 1, flexBasis: 100 }}>
-                  <StatCard label="Total" value={analytics.users.total} />
+              <View style={styles.statsGrid}>
+                <View style={styles.statCell}>
+                  <StatCard label="Students" value={analytics.users.total} icon="school" />
                 </View>
-                <View style={{ flexGrow: 1, flexBasis: 100 }}>
-                  <StatCard label="Verified" value={analytics.users.verified} />
+                <View style={styles.statCell}>
+                  <StatCard label="Verified" value={analytics.users.verified} icon="verified" />
                 </View>
-                <View style={{ flexGrow: 1, flexBasis: 100 }}>
-                  <StatCard label="Verification Rate" value={formatRate(analytics.users.verificationRate)} />
+                <View style={styles.statCell}>
+                  <StatCard
+                    label="Verification rate"
+                    value={formatRate(analytics.users.verificationRate)}
+                    icon="fact-check"
+                  />
+                </View>
+                <View style={styles.statCell}>
+                  <StatCard label="Societies" value={analytics.societies.total} icon="groups" />
                 </View>
               </View>
             </View>
 
             {/* Approvals */}
-            <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-              <SectionHeader title="Approvals" />
-              <View style={{ gap: 12, marginTop: 12 }}>
-                <Pressable onPress={() => navigation.navigate('Societies')}>
-                  <Card>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                      <MaterialIcons name="groups" size={24} color={theme.colors.primary} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: theme.colors.textPrimary, fontWeight: '700', fontSize: 16 }}>
-                          Societies
-                        </Text>
-                        <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 }}>
-                          {analytics.societies.total} total
-                        </Text>
-                      </View>
-                      {analytics.societies.pending > 0 ? (
-                        <View
-                          style={{
-                            backgroundColor: theme.colors.warning,
-                            borderRadius: 100,
-                            paddingHorizontal: 10,
-                            paddingVertical: 4,
-                          }}
-                        >
-                          <Text style={{ color: theme.colors.background, fontWeight: '700', fontSize: 12 }}>
-                            {analytics.societies.pending} pending
-                          </Text>
-                        </View>
-                      ) : null}
-                      <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSecondary} />
-                    </View>
-                  </Card>
-                </Pressable>
-
-                <Pressable onPress={() => navigation.navigate('Requests')}>
-                  <Card>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                      <MaterialIcons name="approval" size={24} color={theme.colors.primary} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: theme.colors.textPrimary, fontWeight: '700', fontSize: 16 }}>
-                          Committee Requests
-                        </Text>
-                        <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 }}>
-                          {analytics.committeeRequests.total} total
-                        </Text>
-                      </View>
-                      {analytics.committeeRequests.pending > 0 ? (
-                        <View
-                          style={{
-                            backgroundColor: theme.colors.warning,
-                            borderRadius: 100,
-                            paddingHorizontal: 10,
-                            paddingVertical: 4,
-                          }}
-                        >
-                          <Text style={{ color: theme.colors.background, fontWeight: '700', fontSize: 12 }}>
-                            {analytics.committeeRequests.pending} pending
-                          </Text>
-                        </View>
-                      ) : null}
-                      <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSecondary} />
-                    </View>
-                  </Card>
-                </Pressable>
+            <View style={styles.section}>
+              <SectionHeader title="Needs attention" />
+              <View style={styles.attentionList}>
+                {renderAttentionCard({
+                  icon: 'groups',
+                  title: 'Societies',
+                  totalLabel: `${analytics.societies.total} total`,
+                  pending: analytics.societies.pending,
+                  onPress: () => navigation.navigate('Societies')
+                })}
+                {renderAttentionCard({
+                  icon: 'approval',
+                  title: 'Committee requests',
+                  totalLabel: `${analytics.committeeRequests.total} total`,
+                  pending: analytics.committeeRequests.pending,
+                  onPress: () => navigation.navigate('Requests')
+                })}
               </View>
             </View>
           </>
@@ -186,3 +174,47 @@ export const UnionDashboardScreen = () => {
     </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  scroll: {
+    flex: 1
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 96,
+    gap: 24
+  },
+  section: {
+    gap: 12
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  statCell: {
+    flexGrow: 1,
+    flexBasis: '44%'
+  },
+  attentionList: {
+    gap: 12
+  },
+  attentionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 44
+  },
+  attentionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  attentionText: {
+    flex: 1,
+    gap: 2
+  }
+});

@@ -5,10 +5,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as ImagePicker from 'expo-image-picker';
+import { MaterialIcons } from '@expo/vector-icons';
+import { BadgeChip } from '@/components/BadgeChip';
 import { InputField } from '@/components/InputField';
 import { PrimaryButton } from '@/components/PrimaryButton';
-import { BadgeChip } from '@/components/BadgeChip';
-import { OutlineButton } from '@/components/OutlineButton';
+import { SectionHeader } from '@/components/SectionHeader';
+import { TopNavBar } from '@/components/TopNavBar';
+import { useToast } from '@/components/Toast';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
@@ -16,6 +19,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 
 export const CreateEventScreen = () => {
   const theme = useAppTheme();
+  const toast = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { addEvent } = useLocalAppState();
   const [title, setTitle] = useState('');
@@ -36,6 +40,7 @@ export const CreateEventScreen = () => {
   const [isFree, setIsFree] = useState(true);
   const [membersOnly, setMembersOnly] = useState(false);
   const [formError, setFormError] = useState('');
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
@@ -209,6 +214,7 @@ export const CreateEventScreen = () => {
       return;
     }
 
+    setIsPublishing(true);
     try {
       const newEventId = await addEvent({
         title: title.trim(),
@@ -226,146 +232,222 @@ export const CreateEventScreen = () => {
       });
 
       setFormError('');
+      toast.show('Event published', 'success');
       navigation.replace('EventDetail', { eventId: newEventId });
     } catch (error) {
       setFormError(normalizeErrorMessage(error));
+    } finally {
+      setIsPublishing(false);
     }
   };
 
   return (
     <ScreenLayout>
       <View style={styles.formWrap}>
-        <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Create Event</Text>
-        <InputField label="Title" placeholder="Event title" value={title} onChangeText={setTitle} />
-        <InputField
-          label="Description"
-          placeholder="What's happening at this event?"
-          value={description}
-          onChangeText={setDescription}
-        />
+        <TopNavBar title="Create Event" onBack={() => navigation.goBack()} />
 
-        <Pressable onPress={showDatePicker}>
-          <View pointerEvents="none">
-            <InputField label="Date" placeholder="Select Date" value={date} onChangeText={() => {}} />
-          </View>
-        </Pressable>
+        {/* Details */}
+        <View style={styles.formSection}>
+          <SectionHeader title="Details" />
+          <InputField label="Title" placeholder="Event title" value={title} onChangeText={setTitle} />
+          <InputField
+            label="Description"
+            placeholder="What's happening at this event?"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+          />
+        </View>
 
-        <Pressable onPress={showTimePicker}>
-          <View pointerEvents="none">
-            <InputField label="Time" placeholder="Select Time" value={time} onChangeText={() => {}} />
-          </View>
-        </Pressable>
-
-        <InputField
-          label="Location"
-          placeholder="Search venue, street, or landmark"
-          value={location}
-          onChangeText={(value) => {
-            setLocation(value);
-            setLocationPlaceId(undefined);
-            setLocationLatitude(undefined);
-            setLocationLongitude(undefined);
-          }}
-        />
-        <Text style={[styles.helperText, { color: hasSelectedLocation ? theme.colors.success : theme.colors.textSecondary }]}>
-          {locationHint}
-        </Text>
-
-        {locationSuggestions.length > 0 ? (
-          <View style={[styles.suggestionWrap, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}> 
-            {locationSuggestions.map((suggestion) => (
-              <Pressable
-                key={suggestion.placeId}
-                onPress={() => {
-                  setLocation(suggestion.name);
-                  setLocationPlaceId(suggestion.placeId);
-                  setLocationLatitude(suggestion.lat);
-                  setLocationLongitude(suggestion.lon);
-                  setLocationSuggestions([]);
-                }}
-                style={styles.suggestionRow}
-              >
-                <Text style={[styles.suggestionText, { color: theme.colors.textPrimary }]} numberOfLines={2}>
-                  {suggestion.name}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-
-        <View style={styles.posterActions}>
-          <Text style={[styles.posterLabel, { color: theme.colors.textSecondary }]}>Poster (optional)</Text>
-          <PrimaryButton label={posterImageLocalUri ? 'Change Poster' : 'Choose from Camera Roll'} onPress={pickPosterFromLibrary} />
-          {posterImageLocalUri ? (
-            <Pressable
-              onPress={() => {
-                setPosterImageLocalUri(undefined);
-                setPosterImageUrl(undefined);
-                setPosterPreviewFailed(false);
-              }}
-            >
-              <Text style={[styles.removePosterText, { color: theme.colors.error }]}>Remove poster</Text>
+        {/* Schedule */}
+        <View style={styles.formSection}>
+          <SectionHeader title="Schedule" />
+          <View style={styles.scheduleRow}>
+            <Pressable onPress={showDatePicker} style={styles.scheduleCell} accessibilityRole="button" accessibilityLabel="Select date">
+              <View pointerEvents="none">
+                <InputField label="Date" placeholder="Select date" value={date} onChangeText={() => {}} icon="event" />
+              </View>
             </Pressable>
+            <Pressable onPress={showTimePicker} style={styles.scheduleCell} accessibilityRole="button" accessibilityLabel="Select time">
+              <View pointerEvents="none">
+                <InputField label="Time" placeholder="Select time" value={time} onChangeText={() => {}} icon="schedule" />
+              </View>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Location */}
+        <View style={styles.formSection}>
+          <SectionHeader title="Location" />
+          <InputField
+            label="Venue"
+            placeholder="Search venue, street, or landmark"
+            value={location}
+            icon="place"
+            onChangeText={(value) => {
+              setLocation(value);
+              setLocationPlaceId(undefined);
+              setLocationLatitude(undefined);
+              setLocationLongitude(undefined);
+            }}
+          />
+          <View style={styles.locationHintRow}>
+            {hasSelectedLocation ? (
+              <MaterialIcons name="check-circle" size={14} color={theme.colors.success} />
+            ) : null}
+            <Text
+              style={[
+                theme.typography.caption,
+                { color: hasSelectedLocation ? theme.colors.success : theme.colors.textTertiary }
+              ]}
+            >
+              {locationHint}
+            </Text>
+          </View>
+
+          {locationSuggestions.length > 0 ? (
+            <View
+              style={[
+                styles.suggestionWrap,
+                theme.elevation.e1,
+                { borderColor: theme.colors.border, borderRadius: theme.radius.card, backgroundColor: theme.colors.surface }
+              ]}
+            >
+              {locationSuggestions.map((suggestion, index) => (
+                <Pressable
+                  key={suggestion.placeId}
+                  onPress={() => {
+                    setLocation(suggestion.name);
+                    setLocationPlaceId(suggestion.placeId);
+                    setLocationLatitude(suggestion.lat);
+                    setLocationLongitude(suggestion.lon);
+                    setLocationSuggestions([]);
+                  }}
+                  android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: false }}
+                  style={({ pressed }) => [
+                    styles.suggestionRow,
+                    {
+                      backgroundColor: pressed ? theme.colors.surfaceSunken : 'transparent',
+                      borderBottomColor: theme.colors.border,
+                      borderBottomWidth: index === locationSuggestions.length - 1 ? 0 : StyleSheet.hairlineWidth
+                    }
+                  ]}
+                >
+                  <MaterialIcons name="place" size={16} color={theme.colors.textTertiary} />
+                  <Text style={[theme.typography.caption, styles.suggestionText, { color: theme.colors.textPrimary }]} numberOfLines={2}>
+                    {suggestion.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           ) : null}
         </View>
 
-        <View style={[styles.previewCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          {hasPosterImage && !posterPreviewFailed ? (
-            <Image
-              source={{ uri: posterImageLocalUri ?? posterImageUrl }}
-              style={styles.previewMedia}
-              resizeMode="cover"
-              onError={() => setPosterPreviewFailed(true)}
-            />
-          ) : hasSelectedLocation ? (
-            <MapView
-              provider={PROVIDER_DEFAULT}
-              style={styles.previewMedia}
-              initialRegion={{
-                latitude: locationLatitude!,
-                longitude: locationLongitude!,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-              scrollEnabled={false}
-              zoomEnabled={false}
-              pitchEnabled={false}
-              rotateEnabled={false}
-            >
-              <Marker coordinate={{ latitude: locationLatitude!, longitude: locationLongitude! }} />
-            </MapView>
-          ) : (
-            <View style={styles.emptyPreview}>
-              <Text style={[styles.emptyPreviewText, { color: theme.colors.textSecondary }]}>Poster preview will appear here</Text>
-              <Text style={[styles.emptyPreviewText, { color: theme.colors.textSecondary }]}>If no poster is set, attendees will see a map.</Text>
-            </View>
-          )}
+        {/* Poster */}
+        <View style={styles.formSection}>
+          <SectionHeader title="Poster" rightText={posterImageLocalUri ? 'Remove' : undefined} onPressRight={
+            posterImageLocalUri
+              ? () => {
+                  setPosterImageLocalUri(undefined);
+                  setPosterImageUrl(undefined);
+                  setPosterPreviewFailed(false);
+                }
+              : undefined
+          } />
+          <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>
+            Optional — if no poster is set, attendees will see a map of the venue.
+          </Text>
+          <PrimaryButton
+            label={posterImageLocalUri ? 'Change poster' : 'Choose from camera roll'}
+            variant="secondary"
+            size="md"
+            icon="add-photo-alternate"
+            onPress={pickPosterFromLibrary}
+          />
+
+          <View
+            style={[
+              styles.previewCard,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radius.lg }
+            ]}
+          >
+            {hasPosterImage && !posterPreviewFailed ? (
+              <Image
+                source={{ uri: posterImageLocalUri ?? posterImageUrl }}
+                style={styles.previewMedia}
+                resizeMode="cover"
+                onError={() => setPosterPreviewFailed(true)}
+              />
+            ) : hasSelectedLocation ? (
+              <MapView
+                provider={PROVIDER_DEFAULT}
+                style={styles.previewMedia}
+                initialRegion={{
+                  latitude: locationLatitude!,
+                  longitude: locationLongitude!,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+                scrollEnabled={false}
+                zoomEnabled={false}
+                pitchEnabled={false}
+                rotateEnabled={false}
+              >
+                <Marker coordinate={{ latitude: locationLatitude!, longitude: locationLongitude! }} />
+              </MapView>
+            ) : (
+              <View style={styles.emptyPreview}>
+                <MaterialIcons name="image" size={28} color={theme.colors.textTertiary} />
+                <Text style={[theme.typography.caption, styles.emptyPreviewText, { color: theme.colors.textTertiary }]}>
+                  Poster preview will appear here
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
-        <View style={styles.segmentRow}>
-          <Text style={[styles.segmentTitle, { color: theme.colors.textSecondary }]}>Pricing</Text>
-          <Pressable onPress={() => setIsFree(true)}>
-            <BadgeChip label="Free" variant={isFree ? 'filled' : 'outlined'} />
-          </Pressable>
-          <Pressable onPress={() => setIsFree(false)}>
-            <BadgeChip label="Paid" variant={!isFree ? 'filled' : 'outlined'} />
-          </Pressable>
+        {/* Options */}
+        <View style={styles.formSection}>
+          <SectionHeader title="Options" />
+          <View style={styles.segmentRow}>
+            <Text style={[theme.typography.captionMedium, styles.segmentTitle, { color: theme.colors.textSecondary }]}>
+              Pricing
+            </Text>
+            <Pressable onPress={() => setIsFree(true)} hitSlop={6}>
+              <BadgeChip label="Free" variant={isFree ? 'filled' : 'outlined'} />
+            </Pressable>
+            <Pressable onPress={() => setIsFree(false)} hitSlop={6}>
+              <BadgeChip label="Paid" variant={!isFree ? 'filled' : 'outlined'} />
+            </Pressable>
+          </View>
+
+          <View style={styles.segmentRow}>
+            <Text style={[theme.typography.captionMedium, styles.segmentTitle, { color: theme.colors.textSecondary }]}>
+              Access
+            </Text>
+            <Pressable onPress={() => setMembersOnly(false)} hitSlop={6}>
+              <BadgeChip label="Open" variant={!membersOnly ? 'filled' : 'outlined'} />
+            </Pressable>
+            <Pressable onPress={() => setMembersOnly(true)} hitSlop={6}>
+              <BadgeChip label="Members Only" variant={membersOnly ? 'filled' : 'outlined'} />
+            </Pressable>
+          </View>
         </View>
 
-        <View style={styles.segmentRow}>
-          <Text style={[styles.segmentTitle, { color: theme.colors.textSecondary }]}>Access</Text>
-          <Pressable onPress={() => setMembersOnly(false)}>
-            <BadgeChip label="Open" variant={!membersOnly ? 'filled' : 'outlined'} />
-          </Pressable>
-          <Pressable onPress={() => setMembersOnly(true)}>
-            <BadgeChip label="Members Only" variant={membersOnly ? 'filled' : 'outlined'} />
-          </Pressable>
-        </View>
+        {formError ? (
+          <View
+            style={[
+              styles.errorBox,
+              { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger, borderRadius: theme.radius.card }
+            ]}
+          >
+            <MaterialIcons name="error-outline" size={18} color={theme.colors.danger} />
+            <Text style={[theme.typography.caption, { color: theme.colors.danger, flex: 1 }]}>{formError}</Text>
+          </View>
+        ) : null}
 
-        {formError ? <Text style={{ color: theme.colors.error }}>{formError}</Text> : null}
-
-        <PrimaryButton label="Publish Event" onPress={publishEvent} />
-        <OutlineButton label="Cancel" onPress={() => navigation.goBack()} />
+        <PrimaryButton label="Publish Event" onPress={publishEvent} loading={isPublishing} />
+        <PrimaryButton label="Cancel" variant="ghost" size="md" disabled={isPublishing} onPress={() => navigation.goBack()} />
 
         <DateTimePickerModal
           isVisible={isDatePickerVisible}
@@ -393,45 +475,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 40,
-    gap: 16,
+    gap: 20,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
+  formSection: {
+    gap: 12,
   },
-  helperText: {
-    fontSize: 12,
-    marginTop: -10,
+  scheduleRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  scheduleCell: {
+    flex: 1,
+  },
+  locationHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: -6,
   },
   suggestionWrap: {
     borderWidth: 1,
-    borderRadius: 12,
     overflow: 'hidden',
   },
   suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#d4d4d8',
+    paddingVertical: 12,
+    minHeight: 44,
   },
   suggestionText: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  posterActions: {
-    gap: 10,
-  },
-  posterLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  removePosterText: {
-    fontSize: 13,
-    fontWeight: '700',
+    flex: 1,
   },
   previewCard: {
     borderWidth: 1,
-    borderRadius: 16,
     minHeight: 170,
     overflow: 'hidden',
   },
@@ -447,7 +525,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyPreviewText: {
-    fontSize: 13,
     textAlign: 'center',
   },
   segmentRow: {
@@ -455,9 +532,18 @@ const styles = StyleSheet.create({
     gap: 8,
     alignItems: 'center',
     flexWrap: 'wrap',
+    minHeight: 36,
   },
   segmentTitle: {
-    fontWeight: '700',
     marginRight: 4,
+    minWidth: 56,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
 });

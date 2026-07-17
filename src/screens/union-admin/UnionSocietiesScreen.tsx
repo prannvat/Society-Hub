@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUserRoles } from '@/hooks/useUserRoles';
@@ -10,14 +10,17 @@ import {
   UnionSocietyListItem,
 } from '@/services/api/union-admin';
 import { SocietyRegistrationStatus } from '@/types/union-admin';
+import { Avatar } from '@/components/Avatar';
 import { BadgeChip } from '@/components/BadgeChip';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
+import { FilterChips } from '@/components/FilterChips';
+import { InputField } from '@/components/InputField';
 import { LoadingState } from '@/components/LoadingState';
-import { OutlineButton } from '@/components/OutlineButton';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
 import { TopNavBar } from '@/components/TopNavBar';
+import { useToast } from '@/components/Toast';
 import { ScreenLayout } from '../ScreenLayout';
 
 const FILTERS: { label: string; status: SocietyRegistrationStatus }[] = [
@@ -26,10 +29,18 @@ const FILTERS: { label: string; status: SocietyRegistrationStatus }[] = [
   { label: 'Rejected', status: 'REJECTED' },
 ];
 
+const STATUS_CHIP_VARIANT: Record<SocietyRegistrationStatus, 'warning' | 'success' | 'danger' | 'neutral'> = {
+  PENDING: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'danger',
+  REQUIRES_CHANGES: 'neutral',
+};
+
 const PAGE_SIZE = 20;
 
 export const UnionSocietiesScreen = () => {
   const theme = useAppTheme();
+  const toast = useToast();
   const { selectedUniversityId, unionAdminRelationships } = useUserRoles();
 
   const [statusFilter, setStatusFilter] = useState<SocietyRegistrationStatus>('PENDING');
@@ -90,8 +101,9 @@ export const UnionSocietiesScreen = () => {
           try {
             await approveUnionSociety(society.id, selectedUniversityId);
             await loadSocieties();
+            toast.show(`${society.name} approved`, 'success');
           } catch {
-            Alert.alert('Error', 'Failed to approve this society. Please try again.');
+            toast.show('Failed to approve this society. Please try again.', 'error');
           } finally {
             setActingSocietyId(null);
           }
@@ -110,49 +122,50 @@ export const UnionSocietiesScreen = () => {
       setRejectingSocietyId(null);
       setRejectReason('');
       await loadSocieties();
+      toast.show(`${society.name} rejected`, 'success');
     } catch {
-      Alert.alert('Error', 'Failed to reject this society. Please try again.');
+      toast.show('Failed to reject this society. Please try again.', 'error');
     } finally {
       setActingSocietyId(null);
     }
   };
 
+  const activeFilterLabel = FILTERS.find((filter) => filter.status === statusFilter)?.label ?? 'Pending';
+
   return (
-    <ScreenLayout>
+    <ScreenLayout scroll={false}>
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.textTertiary} />
+        }
         keyboardShouldPersistTaps="handled"
       >
         <TopNavBar title="Societies" subtitle={selectedUniversity?.universityName} />
 
-        {/* Status Filter */}
-        <View style={{ paddingHorizontal: 20, marginTop: 16, marginBottom: 20 }}>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {FILTERS.map((filter) => (
-              <Pressable key={filter.status} onPress={() => setStatusFilter(filter.status)}>
-                <BadgeChip
-                  label={filter.label}
-                  variant={statusFilter === filter.status ? 'filled' : 'outlined'}
-                />
-              </Pressable>
-            ))}
-          </View>
-        </View>
+        {/* Status filter */}
+        <FilterChips
+          items={FILTERS.map((filter) => filter.label)}
+          onChange={(label) => {
+            const match = FILTERS.find((filter) => filter.label === label);
+            if (match) {
+              setStatusFilter(match.status);
+            }
+          }}
+        />
 
-        <View style={{ paddingHorizontal: 20 }}>
-          <SectionHeader
-            title={`${FILTERS.find((filter) => filter.status === statusFilter)?.label} Societies`}
-            rightText={`${total} total`}
-          />
+        <View style={styles.listWrap}>
+          <SectionHeader title={`${activeFilterLabel} societies`} rightText={`${total} total`} />
 
           {isLoading ? (
             <LoadingState />
           ) : errorMessage ? (
-            <EmptyState title="Something went wrong" subtitle={errorMessage} />
+            <EmptyState icon="cloud-off" title="Something went wrong" subtitle={errorMessage} />
           ) : societies.length === 0 ? (
             <EmptyState
+              icon={statusFilter === 'PENDING' ? 'inbox' : statusFilter === 'APPROVED' ? 'check-circle-outline' : 'block'}
               title={`No ${statusFilter.toLowerCase()} societies`}
               subtitle={
                 statusFilter === 'PENDING'
@@ -161,40 +174,42 @@ export const UnionSocietiesScreen = () => {
               }
             />
           ) : (
-            <View style={{ gap: 12, marginTop: 12 }}>
+            <View style={styles.cardList}>
               {societies.map((society) => {
                 const isActing = actingSocietyId === society.id;
                 const isRejecting = rejectingSocietyId === society.id;
 
                 return (
                   <Card key={society.id}>
-                    <View style={{ gap: 12 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.textPrimary }}>
+                    <View style={styles.cardBody}>
+                      <View style={styles.cardHeader}>
+                        <Avatar name={society.name} size={44} />
+                        <View style={styles.cardTitleWrap}>
+                          <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]} numberOfLines={1}>
                             {society.name}
                           </Text>
-                          <Text style={{ fontSize: 13, color: theme.colors.textSecondary, marginTop: 2 }}>
-                            {society.shortName} • {society._count.memberships} members
+                          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                            {society.shortName} • {society._count.memberships}{' '}
+                            {society._count.memberships === 1 ? 'member' : 'members'}
                           </Text>
                         </View>
-                        <BadgeChip label={society.registrationStatus.toLowerCase()} variant="outlined" />
+                        <BadgeChip
+                          label={society.registrationStatus.toLowerCase()}
+                          variant={STATUS_CHIP_VARIANT[society.registrationStatus]}
+                        />
                       </View>
 
                       {society.description ? (
-                        <Text
-                          style={{ fontSize: 14, color: theme.colors.textPrimary, lineHeight: 20 }}
-                          numberOfLines={3}
-                        >
+                        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]} numberOfLines={2}>
                           {society.description}
                         </Text>
                       ) : null}
 
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <MaterialIcons name="person" size={14} color={theme.colors.textSecondary} />
-                        <Text style={{ fontSize: 13, color: theme.colors.textSecondary, flex: 1 }} numberOfLines={1}>
+                      <View style={styles.requesterRow}>
+                        <MaterialIcons name="person-outline" size={14} color={theme.colors.textTertiary} />
+                        <Text style={[theme.typography.caption, { color: theme.colors.textTertiary, flex: 1 }]} numberOfLines={1}>
                           {society.requestedBy
-                            ? `Requested by ${society.requestedBy.fullName} (${society.requestedBy.email})`
+                            ? `Requested by ${society.requestedBy.fullName}`
                             : 'Requester unknown'}
                           {' • '}
                           {new Date(society.createdAt).toLocaleDateString()}
@@ -202,64 +217,57 @@ export const UnionSocietiesScreen = () => {
                       </View>
 
                       {society.registrationStatus === 'PENDING' && !isRejecting ? (
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                          <View style={{ flex: 1 }}>
-                            <OutlineButton
-                              label="Reject"
-                              onPress={() => {
-                                setRejectingSocietyId(society.id);
-                                setRejectReason('');
-                              }}
-                            />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <PrimaryButton
-                              label={isActing ? 'Approving...' : 'Approve'}
-                              onPress={() => handleApprove(society)}
-                              disabled={isActing}
-                            />
-                          </View>
+                        <View style={styles.actionRow}>
+                          <PrimaryButton
+                            label="Reject"
+                            variant="ghost"
+                            size="sm"
+                            disabled={isActing}
+                            onPress={() => {
+                              setRejectingSocietyId(society.id);
+                              setRejectReason('');
+                            }}
+                          />
+                          <PrimaryButton
+                            label="Approve"
+                            size="sm"
+                            loading={isActing}
+                            onPress={() => handleApprove(society)}
+                          />
                         </View>
                       ) : null}
 
                       {isRejecting ? (
-                        <View style={{ gap: 12 }}>
-                          <TextInput
-                            style={{
-                              borderWidth: 1,
-                              borderColor: theme.colors.border,
-                              borderRadius: 8,
-                              backgroundColor: theme.colors.surface,
-                              color: theme.colors.textPrimary,
-                              paddingHorizontal: 14,
-                              paddingVertical: 10,
-                              minHeight: 72,
-                              textAlignVertical: 'top',
+                        <View style={styles.rejectWrap}>
+                          <InputField
+                            label="Reason for rejection"
+                            placeholder="Optional — shared with the requester"
+                            value={rejectReason}
+                            onChangeText={(value) => {
+                              if (value.length <= 500) {
+                                setRejectReason(value);
+                              }
                             }}
                             multiline
-                            placeholder="Reason for rejection (optional)"
-                            placeholderTextColor={theme.colors.textSecondary}
-                            value={rejectReason}
-                            onChangeText={setRejectReason}
-                            maxLength={500}
                           />
-                          <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <View style={{ flex: 1 }}>
-                              <OutlineButton
-                                label="Cancel"
-                                onPress={() => {
-                                  setRejectingSocietyId(null);
-                                  setRejectReason('');
-                                }}
-                              />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <PrimaryButton
-                                label={isActing ? 'Rejecting...' : 'Confirm Reject'}
-                                onPress={() => handleConfirmReject(society)}
-                                disabled={isActing}
-                              />
-                            </View>
+                          <View style={styles.actionRow}>
+                            <PrimaryButton
+                              label="Cancel"
+                              variant="ghost"
+                              size="sm"
+                              disabled={isActing}
+                              onPress={() => {
+                                setRejectingSocietyId(null);
+                                setRejectReason('');
+                              }}
+                            />
+                            <PrimaryButton
+                              label="Confirm reject"
+                              variant="danger"
+                              size="sm"
+                              loading={isActing}
+                              onPress={() => handleConfirmReject(society)}
+                            />
                           </View>
                         </View>
                       ) : null}
@@ -274,3 +282,46 @@ export const UnionSocietiesScreen = () => {
     </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  scroll: {
+    flex: 1
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 96,
+    gap: 16
+  },
+  listWrap: {
+    gap: 12
+  },
+  cardList: {
+    gap: 12
+  },
+  cardBody: {
+    gap: 12
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  cardTitleWrap: {
+    flex: 1,
+    gap: 2
+  },
+  requesterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10
+  },
+  rejectWrap: {
+    gap: 12
+  }
+});

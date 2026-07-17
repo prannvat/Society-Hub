@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, TextInput } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -8,24 +8,22 @@ import { useCommitteeRequests } from '@/hooks/useCommitteeRequests';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { RootStackParamList } from '@/navigation/types';
 import { MemberRole } from '@/types';
-import { TopNavBar } from '@/components/TopNavBar';
-import { SectionHeader } from '@/components/SectionHeader';
+import { Avatar } from '@/components/Avatar';
 import { BadgeChip } from '@/components/BadgeChip';
-import { PrimaryButton } from '@/components/PrimaryButton';
-import { OutlineButton } from '@/components/OutlineButton';
 import { Card } from '@/components/Card';
+import { EmptyState } from '@/components/EmptyState';
 import { InputField } from '@/components/InputField';
+import { PrimaryButton } from '@/components/PrimaryButton';
+import { SectionHeader } from '@/components/SectionHeader';
+import { TopNavBar } from '@/components/TopNavBar';
+import { useToast } from '@/components/Toast';
 import { ScreenLayout } from './ScreenLayout';
 
 type CommitteeRequestScreenRouteProp = RouteProp<RootStackParamList, 'CommitteeRequest'>;
 
-type CommitteeRequestScreenParams = {
-  societyId: string;
-  currentRole: MemberRole;
-};
-
 export const CommitteeRequestScreen = () => {
   const theme = useAppTheme();
+  const toast = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<CommitteeRequestScreenRouteProp>();
   const { submitRequest } = useCommitteeRequests();
@@ -33,7 +31,7 @@ export const CommitteeRequestScreen = () => {
 
   // Get params from route or use defaults
   const societyId = route.params?.societyId || '';
-  const currentRole = route.params?.currentRole || 'Member';
+  const currentRole = (route.params?.currentRole || 'Member') as MemberRole;
 
   const [requestedRole, setRequestedRole] = useState<MemberRole>('Committee');
   const [justification, setJustification] = useState('');
@@ -43,12 +41,12 @@ export const CommitteeRequestScreen = () => {
 
   const handleSubmit = async () => {
     if (!justification.trim()) {
-      Alert.alert('Error', 'Please provide a justification for your request');
+      toast.show('Please provide a justification for your request', 'error');
       return;
     }
 
     if (!society) {
-      Alert.alert('Error', 'Society not found');
+      toast.show('Society not found', 'error');
       return;
     }
 
@@ -60,18 +58,10 @@ export const CommitteeRequestScreen = () => {
         justification: justification.trim(),
       });
 
-      Alert.alert(
-        'Request Submitted',
-        'Your committee role request has been submitted for union admin review. You will be notified when it is processed.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      toast.show('Request submitted for union admin review', 'success');
+      navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit request. Please try again.');
+      toast.show('Failed to submit request. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -103,18 +93,14 @@ export const CommitteeRequestScreen = () => {
 
   if (!society) {
     return (
-      <ScreenLayout>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <MaterialIcons name="error" size={48} color={theme.colors.error} />
-          <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary, marginTop: 12 }}>
-            Society Not Found
-          </Text>
-          <Text style={{ fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center', marginTop: 4 }}>
-            The society you're trying to request a committee role for could not be found.
-          </Text>
-          <OutlineButton 
-            label="Go Back" 
-            onPress={() => navigation.goBack()} 
+      <ScreenLayout scroll={false}>
+        <View style={styles.centerWrap}>
+          <EmptyState
+            icon="error-outline"
+            title="Society not found"
+            subtitle="The society you're trying to request a committee role for could not be found."
+            actionLabel="Go back"
+            onAction={() => navigation.goBack()}
           />
         </View>
       </ScreenLayout>
@@ -123,18 +109,14 @@ export const CommitteeRequestScreen = () => {
 
   if (availableRoles.length === 0) {
     return (
-      <ScreenLayout>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <MaterialIcons name="verified" size={48} color={theme.colors.success} />
-          <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary, marginTop: 12 }}>
-            Maximum Role Reached
-          </Text>
-          <Text style={{ fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center', marginTop: 4 }}>
-            You already have the highest available role in {society.name}.
-          </Text>
-          <OutlineButton 
-            label="Go Back" 
-            onPress={() => navigation.goBack()} 
+      <ScreenLayout scroll={false}>
+        <View style={styles.centerWrap}>
+          <EmptyState
+            icon="verified"
+            title="Maximum role reached"
+            subtitle={`You already have the highest available role in ${society.name}.`}
+            actionLabel="Go back"
+            onAction={() => navigation.goBack()}
           />
         </View>
       </ScreenLayout>
@@ -143,161 +125,173 @@ export const CommitteeRequestScreen = () => {
 
   return (
     <ScreenLayout>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Header */}
-        <TopNavBar
-          title="Request Committee Role"
-          subtitle={society.name}
-          onBack={() => navigation.goBack()}
-        />
-
-        {/* Current Status */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-          <SectionHeader title="Current Status" />
-          <Card style={{ padding: 16, marginTop: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <MaterialIcons name="person" size={24} color={theme.colors.primary} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary }}>
+      <TopNavBar title="Request Committee Role" subtitle={society.name} onBack={() => navigation.goBack()} />
+      <View style={styles.page}>
+        {/* Current status */}
+        <View style={styles.section}>
+          <SectionHeader title="Current status" />
+          <Card>
+            <View style={styles.statusRow}>
+              <Avatar name={profile.fullName} size={44} />
+              <View style={styles.statusText}>
+                <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
                   {profile.fullName}
                 </Text>
-                <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>
-                  Current Role: {currentRole}
+                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                  Current role in {society.shortName ?? society.name}
                 </Text>
               </View>
-              <BadgeChip label={currentRole} variant="filled" />
+              <BadgeChip label={currentRole} variant={currentRole === 'Member' ? 'neutral' : 'primary'} />
             </View>
           </Card>
         </View>
 
-        {/* Role Selection */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-          <SectionHeader title="Requested Role" />
-          <View style={{ gap: 12, marginTop: 12 }}>
-            {availableRoles.map((role) => (
-              <Pressable
-                key={role}
-                onPress={() => setRequestedRole(role)}
-                style={[
-                  {
-                    borderWidth: 2,
-                    borderRadius: 12,
-                    padding: 16,
-                    backgroundColor: requestedRole === role ? theme.colors.surface : 'transparent',
-                  },
-                  {
-                    borderColor: requestedRole === role ? theme.colors.primary : theme.colors.border,
-                  }
-                ]}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <View style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 10,
-                    borderWidth: 2,
-                    borderColor: requestedRole === role ? theme.colors.primary : theme.colors.border,
-                    backgroundColor: requestedRole === role ? theme.colors.primary : 'transparent',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    {requestedRole === role && (
-                      <View style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: theme.colors.background,
-                      }} />
-                    )}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary }}>
-                      {role}
-                    </Text>
-                    <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 18 }}>
+        {/* Role selection */}
+        <View style={styles.section}>
+          <SectionHeader title="Requested role" />
+          <View style={styles.roleList}>
+            {availableRoles.map((role) => {
+              const selected = requestedRole === role;
+              return (
+                <Pressable
+                  key={role}
+                  onPress={() => setRequestedRole(role)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  style={({ pressed }) => [
+                    styles.roleCard,
+                    {
+                      borderRadius: theme.radius.card,
+                      borderColor: selected ? theme.colors.primary : theme.colors.border,
+                      backgroundColor: selected
+                        ? theme.colors.primarySoft
+                        : pressed
+                          ? theme.colors.surfaceSunken
+                          : theme.colors.surface,
+                      transform: [{ scale: pressed ? 0.99 : 1 }]
+                    }
+                  ]}
+                >
+                  <MaterialIcons
+                    name={selected ? 'radio-button-checked' : 'radio-button-unchecked'}
+                    size={22}
+                    color={selected ? theme.colors.primary : theme.colors.textTertiary}
+                  />
+                  <View style={styles.roleText}>
+                    <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]}>{role}</Text>
+                    <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
                       {getRoleDescription(role)}
                     </Text>
                   </View>
-                </View>
-              </Pressable>
-            ))}
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
         {/* Justification */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+        <View style={styles.section}>
           <SectionHeader title="Justification" />
-          <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginTop: 8, marginBottom: 12, lineHeight: 18 }}>
-            Explain why you believe you should be granted this committee role. Include relevant experience, 
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+            Explain why you believe you should be granted this committee role. Include relevant experience,
             contributions to the society, and plans for your role.
           </Text>
-          
-          <View style={{ 
-            borderWidth: 1, 
-            borderColor: theme.colors.border, 
-            borderRadius: 12, 
-            backgroundColor: theme.colors.surface,
-            minHeight: 120,
-          }}>
-            <TextInput
-              style={{
-                padding: 16,
-                fontSize: 16,
-                color: theme.colors.textPrimary,
-                textAlignVertical: 'top',
-                minHeight: 120,
-              }}
-              multiline
-              placeholder="Describe your qualifications, experience, and motivation for this role..."
-              placeholderTextColor={theme.colors.textSecondary}
-              value={justification}
-              onChangeText={setJustification}
-              maxLength={1000}
-            />
-          </View>
-          
-          <Text style={{ 
-            fontSize: 12, 
-            color: theme.colors.textSecondary, 
-            textAlign: 'right', 
-            marginTop: 8 
-          }}>
+          <InputField
+            placeholder="Describe your qualifications, experience, and motivation for this role..."
+            value={justification}
+            onChangeText={(value) => {
+              if (value.length <= 1000) {
+                setJustification(value);
+              }
+            }}
+            multiline
+          />
+          <Text style={[theme.typography.caption, styles.charCount, { color: theme.colors.textTertiary }]}>
             {justification.length}/1000 characters
           </Text>
         </View>
 
-        {/* Important Notice */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-          <Card style={{ 
-            padding: 16, 
-            backgroundColor: theme.colors.warning + '20', 
-            borderColor: theme.colors.warning,
-            borderWidth: 1,
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-              <MaterialIcons name="info" size={20} color={theme.colors.warning} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary, marginBottom: 4 }}>
-                  Union Admin Review Required
-                </Text>
-                <Text style={{ fontSize: 14, color: theme.colors.textPrimary, lineHeight: 18 }}>
-                  Your request will be reviewed by university union administrators. This process may take 
-                  several days. You'll receive a notification once your request has been processed.
-                </Text>
-              </View>
-            </View>
-          </Card>
+        {/* Review notice */}
+        <View
+          style={[
+            styles.noticeCard,
+            { backgroundColor: theme.colors.warningSoft, borderColor: theme.colors.warning, borderRadius: theme.radius.card }
+          ]}
+        >
+          <MaterialIcons name="info-outline" size={20} color={theme.colors.warning} />
+          <View style={styles.noticeText}>
+            <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary }]}>
+              Union admin review required
+            </Text>
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+              Your request will be reviewed by university union administrators. This process may take several days.
+              You'll receive a notification once your request has been processed.
+            </Text>
+          </View>
         </View>
 
-        {/* Submit Button */}
-        <View style={{ paddingHorizontal: 20 }}>
-          <PrimaryButton 
-            label={isSubmitting ? "Submitting..." : "Submit Request"} 
-            onPress={handleSubmit}
-            disabled={isSubmitting || !justification.trim()}
-          />
-        </View>
-      </ScrollView>
+        <PrimaryButton
+          label="Submit Request"
+          onPress={handleSubmit}
+          loading={isSubmitting}
+          disabled={!justification.trim()}
+        />
+      </View>
     </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  centerWrap: {
+    flex: 1,
+    justifyContent: 'center'
+  },
+  page: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 100,
+    gap: 24
+  },
+  section: {
+    gap: 12
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  statusText: {
+    flex: 1,
+    gap: 2
+  },
+  roleList: {
+    gap: 12
+  },
+  roleCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    borderWidth: 1.5,
+    padding: 16,
+    minHeight: 64
+  },
+  roleText: {
+    flex: 1,
+    gap: 2
+  },
+  charCount: {
+    textAlign: 'right',
+    marginTop: -4
+  },
+  noticeCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    borderWidth: 1,
+    padding: 14
+  },
+  noticeText: {
+    flex: 1,
+    gap: 4
+  }
+});

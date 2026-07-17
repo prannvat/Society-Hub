@@ -1,27 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, RefreshControl } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useCommitteeRequests } from '@/hooks/useCommitteeRequests';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { RootStackParamList } from '@/navigation/types';
 import { CommitteeRequestStatus } from '@/types/union-admin';
-import { TopNavBar } from '@/components/TopNavBar';
-import { SectionHeader } from '@/components/SectionHeader';
+import { Avatar } from '@/components/Avatar';
 import { BadgeChip } from '@/components/BadgeChip';
-import { PrimaryButton } from '@/components/PrimaryButton';
-import { OutlineButton } from '@/components/OutlineButton';
 import { Card } from '@/components/Card';
+import { EmptyState } from '@/components/EmptyState';
+import { FilterChips } from '@/components/FilterChips';
+import { LoadingState } from '@/components/LoadingState';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { SearchBar } from '@/components/SearchBar';
+import { SectionHeader } from '@/components/SectionHeader';
+import { StatCard } from '@/components/StatCard';
+import { TopNavBar } from '@/components/TopNavBar';
+import { useToast } from '@/components/Toast';
 import { ScreenLayout } from '../ScreenLayout';
 
 type FilterStatus = 'ALL' | CommitteeRequestStatus;
 
+const FILTER_ITEMS: { label: string; value: FilterStatus }[] = [
+  { label: 'All', value: 'ALL' },
+  { label: 'Pending', value: 'PENDING' },
+  { label: 'Approved', value: 'APPROVED' },
+  { label: 'Rejected', value: 'REJECTED' },
+  { label: 'Expired', value: 'EXPIRED' },
+];
+
+const STATUS_CHIP_VARIANT: Record<CommitteeRequestStatus, 'warning' | 'success' | 'danger' | 'neutral'> = {
+  PENDING: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'danger',
+  EXPIRED: 'neutral',
+};
+
 export const CommitteeRequestsScreen = () => {
   const theme = useAppTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const toast = useToast();
   const { selectedUniversityId, unionAdminRelationships } = useUserRoles();
   const {
     universityRequests,
@@ -63,10 +80,10 @@ export const CommitteeRequestsScreen = () => {
   const handleApprove = async (requestId: string) => {
     try {
       await approveRequest(requestId);
-      Alert.alert('Success', 'Committee request approved successfully');
+      toast.show('Committee request approved', 'success');
       setSelectedRequests(prev => prev.filter(id => id !== requestId));
     } catch (error) {
-      Alert.alert('Error', 'Failed to approve request');
+      toast.show('Failed to approve request', 'error');
     }
   };
 
@@ -78,10 +95,10 @@ export const CommitteeRequestsScreen = () => {
         if (reason) {
           try {
             await rejectRequest(requestId, reason);
-            Alert.alert('Success', 'Committee request rejected');
+            toast.show('Committee request rejected', 'success');
             setSelectedRequests(prev => prev.filter(id => id !== requestId));
           } catch (error) {
-            Alert.alert('Error', 'Failed to reject request');
+            toast.show('Failed to reject request', 'error');
           }
         }
       }
@@ -101,10 +118,10 @@ export const CommitteeRequestsScreen = () => {
           onPress: async () => {
             try {
               await bulkApprove(selectedRequests);
-              Alert.alert('Success', `${selectedRequests.length} requests approved`);
+              toast.show(`${selectedRequests.length} requests approved`, 'success');
               setSelectedRequests([]);
             } catch (error) {
-              Alert.alert('Error', 'Failed to approve some requests');
+              toast.show('Failed to approve some requests', 'error');
             }
           }
         }
@@ -122,10 +139,10 @@ export const CommitteeRequestsScreen = () => {
         if (reason) {
           try {
             await bulkReject(selectedRequests, reason);
-            Alert.alert('Success', `${selectedRequests.length} requests rejected`);
+            toast.show(`${selectedRequests.length} requests rejected`, 'success');
             setSelectedRequests([]);
           } catch (error) {
-            Alert.alert('Error', 'Failed to reject some requests');
+            toast.show('Failed to reject some requests', 'error');
           }
         }
       }
@@ -133,240 +150,184 @@ export const CommitteeRequestsScreen = () => {
   };
 
   const toggleRequestSelection = (requestId: string) => {
-    setSelectedRequests(prev => 
-      prev.includes(requestId) 
+    setSelectedRequests(prev =>
+      prev.includes(requestId)
         ? prev.filter(id => id !== requestId)
         : [...prev, requestId]
     );
   };
 
   const filteredRequests = universityRequests.filter(request =>
-    !searchQuery || 
+    !searchQuery ||
     request.user?.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     request.society?.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getStatusColor = (status: CommitteeRequestStatus) => {
-    switch (status) {
-      case 'PENDING': return theme.colors.warning;
-      case 'APPROVED': return theme.colors.success;
-      case 'REJECTED': return theme.colors.error;
-      case 'EXPIRED': return theme.colors.textSecondary;
-      default: return theme.colors.textSecondary;
-    }
-  };
-
   return (
-    <ScreenLayout>
-      <ScrollView 
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+    <ScreenLayout scroll={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.textTertiary} />
+        }
       >
-        {/* Header */}
-        <TopNavBar 
-          title="Committee Requests"
-          subtitle={selectedUniversity?.universityName}
+        <TopNavBar title="Committee Requests" subtitle={selectedUniversity?.universityName} />
+
+        {/* Stats overview */}
+        {requestStats && (
+          <View style={styles.statsGrid}>
+            <View style={styles.statCell}>
+              <StatCard label="Pending" value={requestStats.pending} icon="hourglass-empty" />
+            </View>
+            <View style={styles.statCell}>
+              <StatCard label="Approved" value={requestStats.approved} icon="check-circle" />
+            </View>
+            <View style={styles.statCell}>
+              <StatCard label="Rejected" value={requestStats.rejected} icon="block" />
+            </View>
+          </View>
+        )}
+
+        {/* Search and filters */}
+        <SearchBar
+          placeholder="Search by student or society name..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        <FilterChips
+          items={FILTER_ITEMS.map((item) => item.label)}
+          onChange={(label) => {
+            const match = FILTER_ITEMS.find((item) => item.label === label);
+            if (match) {
+              setSelectedFilter(match.value);
+            }
+          }}
         />
 
-        {/* Stats Overview */}
-        {requestStats && (
-          <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
-            <SectionHeader title="Overview" />
-            <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
-              <View style={{ flex: 1, minWidth: 100 }}>
-                <Card style={{ alignItems: 'center', padding: 12 }}>
-                  <Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.warning }}>
-                    {requestStats.pending}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Pending</Text>
-                </Card>
-              </View>
-              <View style={{ flex: 1, minWidth: 100 }}>
-                <Card style={{ alignItems: 'center', padding: 12 }}>
-                  <Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.success }}>
-                    {requestStats.approved}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Approved</Text>
-                </Card>
-              </View>
-              <View style={{ flex: 1, minWidth: 100 }}>
-                <Card style={{ alignItems: 'center', padding: 12 }}>
-                  <Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.error }}>
-                    {requestStats.rejected}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Rejected</Text>
-                </Card>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Search and Filters */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
-          <SearchBar
-            placeholder="Search by student or society name..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
-            style={{ marginTop: 16 }}
-          >
-            {(['ALL', 'PENDING', 'APPROVED', 'REJECTED', 'EXPIRED'] as FilterStatus[]).map((filter) => (
-              <Pressable key={filter} onPress={() => setSelectedFilter(filter)}>
-                <BadgeChip 
-                  label={filter === 'ALL' ? 'All' : filter.toLowerCase()} 
-                  variant={selectedFilter === filter ? 'filled' : 'outlined'} 
-                />
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Bulk Actions */}
+        {/* Bulk actions */}
         {selectedRequests.length > 0 && (
-          <View style={{ 
-            paddingHorizontal: 20, 
-            marginBottom: 20,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: theme.colors.surface,
-            marginHorizontal: 20,
-            borderRadius: 12,
-            padding: 16,
-          }}>
-            <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>
-              {selectedRequests.length} selected
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <OutlineButton label="Reject" onPress={handleBulkReject} />
-              <PrimaryButton label="Approve" onPress={handleBulkApprove} />
+          <Card style={{ borderColor: theme.colors.primary }}>
+            <View style={styles.bulkRow}>
+              <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary, flex: 1 }]}>
+                {selectedRequests.length} selected
+              </Text>
+              <PrimaryButton label="Reject" variant="ghost" size="sm" onPress={handleBulkReject} />
+              <PrimaryButton label="Approve" size="sm" onPress={handleBulkApprove} />
             </View>
-          </View>
+          </Card>
         )}
 
-        {/* Requests List */}
-        <View style={{ paddingHorizontal: 20 }}>
-          <SectionHeader 
-            title="Requests" 
+        {/* Requests list */}
+        <View style={styles.listWrap}>
+          <SectionHeader
+            title="Requests"
             rightText={`${filteredRequests.length} of ${totalUniversityRequests}`}
           />
-          
-          {filteredRequests.length === 0 ? (
-            <Card style={{ alignItems: 'center', padding: 40 }}>
-              <MaterialIcons name="inbox" size={48} color={theme.colors.textSecondary} />
-              <Text style={{ 
-                fontSize: 16, 
-                fontWeight: '600', 
-                color: theme.colors.textPrimary, 
-                marginTop: 12 
-              }}>
-                No requests found
-              </Text>
-              <Text style={{ 
-                fontSize: 14, 
-                color: theme.colors.textSecondary, 
-                textAlign: 'center',
-                marginTop: 4
-              }}>
-                {searchQuery ? 'Try adjusting your search terms' : 'All committee requests will appear here'}
-              </Text>
-            </Card>
-          ) : (
-            <View style={{ gap: 12, marginTop: 12 }}>
-              {filteredRequests.map((request) => (
-                <Card key={request.id} style={{ padding: 16 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                    {/* Selection Checkbox */}
-                    <Pressable
-                      onPress={() => toggleRequestSelection(request.id)}
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 4,
-                        borderWidth: 2,
-                        borderColor: selectedRequests.includes(request.id) ? theme.colors.primary : theme.colors.border,
-                        backgroundColor: selectedRequests.includes(request.id) ? theme.colors.primary : 'transparent',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginTop: 2,
-                      }}
-                    >
-                      {selectedRequests.includes(request.id) && (
-                        <MaterialIcons name="check" size={14} color={theme.colors.background} />
-                      )}
-                    </Pressable>
 
-                    {/* Request Details */}
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.textPrimary }}>
+          {isLoadingUniversityRequests && filteredRequests.length === 0 ? (
+            <LoadingState />
+          ) : filteredRequests.length === 0 ? (
+            <EmptyState
+              icon="inbox"
+              title="No requests found"
+              subtitle={searchQuery ? 'Try adjusting your search terms.' : 'All committee requests will appear here.'}
+              actionLabel={searchQuery ? 'Clear search' : undefined}
+              onAction={searchQuery ? () => setSearchQuery('') : undefined}
+            />
+          ) : (
+            <View style={styles.cardList}>
+              {filteredRequests.map((request) => {
+                const isSelected = selectedRequests.includes(request.id);
+                return (
+                  <Card key={request.id} style={isSelected ? { borderColor: theme.colors.primary } : undefined}>
+                    <View style={styles.cardBody}>
+                      <View style={styles.cardHeader}>
+                        {/* Selection checkbox */}
+                        <Pressable
+                          onPress={() => toggleRequestSelection(request.id)}
+                          hitSlop={12}
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked: isSelected }}
+                          style={[
+                            styles.checkbox,
+                            {
+                              borderRadius: theme.radius.sm,
+                              borderColor: isSelected ? theme.colors.primary : theme.colors.borderStrong,
+                              backgroundColor: isSelected ? theme.colors.primary : 'transparent',
+                            }
+                          ]}
+                        >
+                          {isSelected && (
+                            <MaterialIcons name="check" size={14} color={theme.colors.textOnPrimary} />
+                          )}
+                        </Pressable>
+
+                        <Avatar name={request.user?.fullName ?? '?'} size={44} />
+
+                        <View style={styles.cardTitleWrap}>
+                          <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]} numberOfLines={1}>
                             {request.user?.fullName}
                           </Text>
-                          <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginTop: 2 }}>
+                          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]} numberOfLines={1}>
                             {request.society?.name} • {request.currentRole} → {request.requestedRole}
                           </Text>
                         </View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                          <BadgeChip 
-                            label={request.status.toLowerCase()} 
-                            variant="filled"
-                            style={{ backgroundColor: getStatusColor(request.status) }}
+
+                        <View style={styles.statusWrap}>
+                          <BadgeChip
+                            label={request.status.toLowerCase()}
+                            variant={STATUS_CHIP_VARIANT[request.status] ?? 'neutral'}
                           />
-                          <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 4 }}>
+                          <Text style={[theme.typography.caption, styles.dateText, { color: theme.colors.textTertiary }]}>
                             {new Date(request.requestedAt).toLocaleDateString()}
                           </Text>
                         </View>
                       </View>
 
                       {request.justification && (
-                        <Text style={{ fontSize: 14, color: theme.colors.textPrimary, lineHeight: 20, marginBottom: 12 }}>
+                        <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]} numberOfLines={4}>
                           {request.justification}
                         </Text>
                       )}
 
                       {request.status === 'PENDING' && (
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                          <View style={{ flex: 1 }}>
-                            <OutlineButton 
-                              label="Reject" 
-                              onPress={() => handleReject(request.id)} 
-                            />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <PrimaryButton 
-                              label="Approve" 
-                              onPress={() => handleApprove(request.id)} 
-                            />
-                          </View>
+                        <View style={styles.actionRow}>
+                          <PrimaryButton
+                            label="Reject"
+                            variant="ghost"
+                            size="sm"
+                            onPress={() => handleReject(request.id)}
+                          />
+                          <PrimaryButton
+                            label="Approve"
+                            size="sm"
+                            onPress={() => handleApprove(request.id)}
+                          />
                         </View>
                       )}
 
                       {request.reviewerComments && (
-                        <View style={{ 
-                          marginTop: 12, 
-                          padding: 12, 
-                          backgroundColor: theme.colors.background,
-                          borderRadius: 8,
-                        }}>
-                          <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary, marginBottom: 4 }}>
-                            Admin Comment:
+                        <View
+                          style={[
+                            styles.commentBox,
+                            { backgroundColor: theme.colors.surfaceSunken, borderRadius: theme.radius.sm }
+                          ]}
+                        >
+                          <Text style={[theme.typography.captionMedium, { color: theme.colors.textSecondary }]}>
+                            Admin comment
                           </Text>
-                          <Text style={{ fontSize: 14, color: theme.colors.textPrimary }}>
+                          <Text style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>
                             {request.reviewerComments}
                           </Text>
                         </View>
                       )}
                     </View>
-                  </View>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </View>
           )}
         </View>
@@ -374,3 +335,71 @@ export const CommitteeRequestsScreen = () => {
     </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  scroll: {
+    flex: 1
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 96,
+    gap: 16
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  statCell: {
+    flexGrow: 1,
+    flexBasis: '28%'
+  },
+  bulkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  listWrap: {
+    gap: 12
+  },
+  cardList: {
+    gap: 12
+  },
+  cardBody: {
+    gap: 12
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  cardTitleWrap: {
+    flex: 1,
+    gap: 2
+  },
+  statusWrap: {
+    alignItems: 'flex-end',
+    gap: 4
+  },
+  dateText: {
+    fontSize: 11,
+    lineHeight: 14
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10
+  },
+  commentBox: {
+    padding: 12,
+    gap: 4
+  }
+});
