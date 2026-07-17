@@ -32,7 +32,13 @@ export async function loginRequest(input: SignInInput) {
   });
 }
 
-/** Maps auth API errors to user-friendly messages for inline display. */
+const GENERIC_ERROR_MESSAGE = 'Something went wrong on our end. Please try again.';
+const NETWORK_ERROR_MESSAGE = "Can't reach SocietyHub — check your connection.";
+
+/**
+ * Maps auth API errors to user-friendly messages for inline display.
+ * Never surfaces raw API/server text — every path resolves to curated copy.
+ */
 export function authErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'INVALID_CREDENTIALS') {
@@ -41,9 +47,17 @@ export function authErrorMessage(error: unknown): string {
     if (error.code === 'EMAIL_TAKEN') {
       return 'An account with this email already exists. Try logging in instead.';
     }
-    if (error.message) {
-      return error.message;
+    if (error.code?.startsWith('VALIDATION')) {
+      return "Some of those details don't look right. Please double-check and try again.";
     }
+    // Any other API error (404/500/RESOURCE_NOT_FOUND, unparsable bodies, …)
+    return GENERIC_ERROR_MESSAGE;
   }
-  return 'Something went wrong. Please check your connection and try again.';
+  if (
+    error instanceof Error &&
+    /network request failed|failed to fetch|network error|internet|timed? ?out/i.test(error.message)
+  ) {
+    return NETWORK_ERROR_MESSAGE;
+  }
+  return GENERIC_ERROR_MESSAGE;
 }

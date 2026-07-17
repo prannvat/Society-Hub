@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { societyConfig } from '@/config/societyConfig';
 import { RootStackParamList } from '@/navigation/types';
-import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -21,12 +22,26 @@ export const SplashScreen = () => {
   }, [isRestoring, isAuthenticated, navigation]);
 
   return (
-    <ScreenLayout scroll={false}>
-      <View style={[styles.container, { backgroundColor: theme.colors.primary, borderRadius: 24 }]}> 
-        <Text style={[styles.logo, { color: theme.colors.background }]}>{societyConfig.shortName}</Text>
-        <Text style={[styles.title, { color: theme.colors.background }]}>{societyConfig.name}</Text>
+    <LinearGradient
+      colors={[theme.colors.primary, theme.colors.primaryPressed]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.container}
+    >
+      <View style={styles.markCircle}>
+        <MaterialIcons name="groups" size={44} color={theme.colors.textOnPrimary} />
       </View>
-    </ScreenLayout>
+      <Text style={[theme.typography.display, { color: theme.colors.textOnPrimary }]}>SocietyHub</Text>
+      <Text
+        style={[
+          theme.typography.captionMedium,
+          styles.subline,
+          { color: theme.colors.textOnPrimary }
+        ]}
+      >
+        {societyConfig.name}
+      </Text>
+    </LinearGradient>
   );
 };
 
@@ -36,15 +51,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  logo: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '900'
+  markCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Translucent brand-glass layer on the gradient — intentionally not a theme token.
+    backgroundColor: 'rgba(255, 255, 255, 0.18)'
   },
-  title: {
-    marginTop: 10,
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600'
+  subline: {
+    marginTop: 6,
+    opacity: 0.85
   }
 });

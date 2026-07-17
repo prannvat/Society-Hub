@@ -1,15 +1,42 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { InputField } from '@/components/InputField';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { authErrorMessage } from '@/services/api/auth';
+
+const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
+
+/** Inline alert for API-level auth errors (screen-local by design). */
+const ErrorBanner = ({ message }: { message: string }) => {
+  const theme = useAppTheme();
+  return (
+    <View
+      style={[
+        styles.errorBanner,
+        { borderRadius: theme.radius.card, backgroundColor: theme.colors.dangerSoft }
+      ]}
+    >
+      <MaterialIcons name="error-outline" size={20} color={theme.colors.danger} />
+      <Text style={[theme.typography.captionMedium, styles.errorText, { color: theme.colors.danger }]}>
+        {message}
+      </Text>
+    </View>
+  );
+};
+
+type FieldErrors = {
+  email?: string;
+  password?: string;
+};
 
 export const LoginScreen = () => {
   const theme = useAppTheme();
@@ -18,13 +45,24 @@ export const LoginScreen = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !isSubmitting;
-
   const handleSignIn = async () => {
-    if (!canSubmit) {
+    if (isSubmitting) {
+      return;
+    }
+
+    const errors: FieldErrors = {};
+    if (!EMAIL_PATTERN.test(email.trim())) {
+      errors.email = 'Enter a valid email address.';
+    }
+    if (!password) {
+      errors.password = 'Enter your password.';
+    }
+    setFieldErrors(errors);
+    if (errors.email || errors.password) {
       return;
     }
 
@@ -42,58 +80,87 @@ export const LoginScreen = () => {
 
   return (
     <ScreenLayout>
-      <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 60, paddingBottom: 40, gap: 16 }}>
-        <Text style={{ color: theme.colors.primary, fontWeight: '700' }} onPress={() => navigation.goBack()}>
-          Back
-        </Text>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: theme.colors.textPrimary }}>Log In</Text>
-        <Text style={{ color: theme.colors.textSecondary, lineHeight: 20 }}>
-          Welcome back. Sign in to continue to your societies, events, and polls.
-        </Text>
+      <View style={[styles.container, { paddingHorizontal: theme.spacing.lg }]}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          hitSlop={8}
+          style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.6 : 1 }]}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.textSecondary} />
+        </Pressable>
 
-        <InputField
-          label="Email"
-          placeholder="name@manchester.ac.uk"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <InputField
-          label="Password"
-          placeholder="Your password"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
+        <ScreenHeader
+          title="Welcome back"
+          subtitle="Sign in to continue to your societies, events, and polls."
         />
 
-        {errorMessage ? (
-          <View
-            style={{
-              borderWidth: 1,
-              borderColor: theme.colors.error,
-              borderRadius: 12,
-              padding: 12,
-              backgroundColor: theme.colors.surface
+        <View style={{ gap: theme.spacing.lg, marginTop: theme.spacing.xl }}>
+          <InputField
+            label="Email"
+            placeholder="name@manchester.ac.uk"
+            keyboardType="email-address"
+            icon="mail-outline"
+            value={email}
+            onChangeText={(value: string) => {
+              setEmail(value);
+              setFieldErrors((prev: FieldErrors) => ({ ...prev, email: undefined }));
             }}
-          >
-            <Text style={{ color: theme.colors.error, fontWeight: '600' }}>{errorMessage}</Text>
-          </View>
-        ) : null}
+            {...(fieldErrors.email ? { error: fieldErrors.email } : {})}
+          />
+          <InputField
+            label="Password"
+            placeholder="Your password"
+            secureTextEntry
+            icon="lock-outline"
+            value={password}
+            onChangeText={(value: string) => {
+              setPassword(value);
+              setFieldErrors((prev: FieldErrors) => ({ ...prev, password: undefined }));
+            }}
+            {...(fieldErrors.password ? { error: fieldErrors.password } : {})}
+          />
 
-        <View style={{ gap: 8 }}>
-          {isSubmitting ? (
-            <View style={{ minHeight: 50, alignItems: 'center', justifyContent: 'center' }}>
-              <ActivityIndicator color={theme.colors.primary} />
-            </View>
-          ) : (
-            <PrimaryButton label="Sign In" onPress={handleSignIn} disabled={!canSubmit} />
-          )}
+          {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
+
+          <PrimaryButton label="Sign In" size="lg" onPress={handleSignIn} loading={isSubmitting} />
         </View>
 
-        <View style={{ alignItems: 'center' }}>
+        <View style={[styles.footerLink, { marginTop: theme.spacing.lg }]}>
           <TextButton label="New here? Create an account" onPress={() => navigation.navigate('SignUp')} />
         </View>
       </View>
     </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 8,
+    paddingBottom: 40
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -10,
+    marginBottom: 8
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: 14
+  },
+  errorText: {
+    flex: 1
+  },
+  footerLink: {
+    alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center'
+  }
+});

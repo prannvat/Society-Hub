@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
 import { InputField } from '@/components/InputField';
+import { ListRow } from '@/components/ListRow';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
@@ -14,6 +16,32 @@ import { authErrorMessage } from '@/services/api/auth';
 import { ApiUniversitySummary, fetchUniversities } from '@/services/api/universities';
 
 const MIN_PASSWORD_LENGTH = 8;
+const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
+
+/** Inline alert for API-level auth errors (screen-local by design). */
+const ErrorBanner = ({ message }: { message: string }) => {
+  const theme = useAppTheme();
+  return (
+    <View
+      style={[
+        styles.errorBanner,
+        { borderRadius: theme.radius.card, backgroundColor: theme.colors.dangerSoft }
+      ]}
+    >
+      <MaterialIcons name="error-outline" size={20} color={theme.colors.danger} />
+      <Text style={[theme.typography.captionMedium, styles.errorText, { color: theme.colors.danger }]}>
+        {message}
+      </Text>
+    </View>
+  );
+};
+
+type FieldErrors = {
+  fullName?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+};
 
 export const SignUpScreen = () => {
   const theme = useAppTheme();
@@ -27,6 +55,7 @@ export const SignUpScreen = () => {
   const [universities, setUniversities] = useState<ApiUniversitySummary[]>([]);
   const [selectedUniversityId, setSelectedUniversityId] = useState<string | null>(null);
   const [showUniversityList, setShowUniversityList] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -49,20 +78,8 @@ export const SignUpScreen = () => {
 
   const selectedUniversity = universities.find((entry) => entry.id === selectedUniversityId);
 
-  const validate = (): string | null => {
-    if (!fullName.trim()) {
-      return 'Please enter your full name.';
-    }
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-      return 'Please enter a valid email address.';
-    }
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
-    }
-    if (password !== confirmPassword) {
-      return 'Passwords do not match.';
-    }
-    return null;
+  const clearFieldError = (field: keyof FieldErrors) => {
+    setFieldErrors((prev: FieldErrors) => ({ ...prev, [field]: undefined }));
   };
 
   const handleSignUp = async () => {
@@ -70,9 +87,21 @@ export const SignUpScreen = () => {
       return;
     }
 
-    const validationError = validate();
-    if (validationError) {
-      setErrorMessage(validationError);
+    const errors: FieldErrors = {};
+    if (!fullName.trim()) {
+      errors.fullName = 'Enter your full name.';
+    }
+    if (!EMAIL_PATTERN.test(email.trim())) {
+      errors.email = 'Enter a valid email address.';
+    }
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+    }
+    if (password !== confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match.';
+    }
+    setFieldErrors(errors);
+    if (Object.values(errors).some(Boolean)) {
       return;
     }
 
@@ -95,143 +124,226 @@ export const SignUpScreen = () => {
 
   return (
     <ScreenLayout>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 60, paddingBottom: 40, gap: 16 }}>
-        <Text style={{ color: theme.colors.primary, fontWeight: '700' }} onPress={() => navigation.goBack()}>
-          Back
-        </Text>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: theme.colors.textPrimary }}>Create Account</Text>
-        <Text style={{ color: theme.colors.textSecondary }}>Join your society with your university email.</Text>
+      <View style={[styles.content, { paddingHorizontal: theme.spacing.lg }]}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          hitSlop={8}
+          style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.6 : 1 }]}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.textSecondary} />
+        </Pressable>
 
-        <InputField label="Full Name" placeholder="Your full name" value={fullName} onChangeText={setFullName} />
-        <InputField
-          label="University Email"
-          placeholder="name@manchester.ac.uk"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <InputField
-          label="Password"
-          placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-        <InputField
-          label="Confirm Password"
-          placeholder="Repeat password"
-          secureTextEntry
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
+        <ScreenHeader
+          title="Create Account"
+          subtitle="Join your society with your university email."
         />
 
-        {universities.length > 0 ? (
-          <View style={{ gap: 6 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary }}>
-              University (optional)
-            </Text>
-            <Pressable
-              onPress={() => setShowUniversityList((prev) => !prev)}
-              style={{
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                borderRadius: 8,
-                backgroundColor: theme.colors.surface,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}
-            >
-              <Text style={{ color: selectedUniversity ? theme.colors.textPrimary : theme.colors.textSecondary }}>
-                {selectedUniversity ? selectedUniversity.name : 'Select your university'}
+        <View style={{ gap: theme.spacing.lg, marginTop: theme.spacing.xl }}>
+          <InputField
+            label="Full Name"
+            placeholder="Your full name"
+            icon="person-outline"
+            autoCapitalize="words"
+            value={fullName}
+            onChangeText={(value: string) => {
+              setFullName(value);
+              clearFieldError('fullName');
+            }}
+            {...(fieldErrors.fullName ? { error: fieldErrors.fullName } : {})}
+          />
+          <InputField
+            label="University Email"
+            placeholder="name@manchester.ac.uk"
+            keyboardType="email-address"
+            icon="mail-outline"
+            value={email}
+            onChangeText={(value: string) => {
+              setEmail(value);
+              clearFieldError('email');
+            }}
+            {...(fieldErrors.email ? { error: fieldErrors.email } : {})}
+          />
+          <InputField
+            label="Password"
+            placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+            secureTextEntry
+            icon="lock-outline"
+            value={password}
+            onChangeText={(value: string) => {
+              setPassword(value);
+              clearFieldError('password');
+            }}
+            {...(fieldErrors.password ? { error: fieldErrors.password } : {})}
+          />
+          <InputField
+            label="Confirm Password"
+            placeholder="Repeat password"
+            secureTextEntry
+            icon="lock-outline"
+            value={confirmPassword}
+            onChangeText={(value: string) => {
+              setConfirmPassword(value);
+              clearFieldError('confirmPassword');
+            }}
+            {...(fieldErrors.confirmPassword ? { error: fieldErrors.confirmPassword } : {})}
+          />
+
+          {universities.length > 0 ? (
+            <View style={{ gap: 6 }}>
+              <Text style={[theme.typography.captionMedium, { color: theme.colors.textSecondary }]}>
+                University (optional)
               </Text>
-              <MaterialIcons
-                name={showUniversityList ? 'expand-less' : 'expand-more'}
-                size={20}
-                color={theme.colors.textSecondary}
-              />
-            </Pressable>
-            {showUniversityList ? (
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                  borderRadius: 8,
-                  backgroundColor: theme.colors.surface,
-                  maxHeight: 240,
-                  overflow: 'hidden'
-                }}
+              <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>
+                We'll match you automatically from your uni email — or pick manually.
+              </Text>
+              <Pressable
+                onPress={() => setShowUniversityList((prev: boolean) => !prev)}
+                style={({ pressed }) => [
+                  styles.pickerTrigger,
+                  {
+                    borderColor: showUniversityList ? theme.colors.primary : theme.colors.border,
+                    borderRadius: theme.radius.input,
+                    backgroundColor: pressed ? theme.colors.surfaceSunken : theme.colors.surface
+                  }
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Choose your university"
               >
-                <ScrollView nestedScrollEnabled>
-                  <Pressable
-                    onPress={() => {
-                      setSelectedUniversityId(null);
-                      setShowUniversityList(false);
-                    }}
-                    style={{ paddingHorizontal: 14, paddingVertical: 12 }}
-                  >
-                    <Text style={{ color: theme.colors.textSecondary }}>No university</Text>
-                  </Pressable>
-                  {universities.map((university) => (
-                    <Pressable
-                      key={university.id}
+                <MaterialIcons
+                  name="school"
+                  size={20}
+                  color={selectedUniversity ? theme.colors.primary : theme.colors.textTertiary}
+                />
+                <Text
+                  style={[
+                    theme.typography.body,
+                    styles.pickerLabel,
+                    { color: selectedUniversity ? theme.colors.textPrimary : theme.colors.textTertiary }
+                  ]}
+                  numberOfLines={1}
+                >
+                  {selectedUniversity ? selectedUniversity.name : 'Select your university'}
+                </Text>
+                <MaterialIcons
+                  name={showUniversityList ? 'expand-less' : 'expand-more'}
+                  size={22}
+                  color={theme.colors.textSecondary}
+                />
+              </Pressable>
+              {showUniversityList ? (
+                <View
+                  style={[
+                    styles.pickerList,
+                    {
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.radius.card,
+                      backgroundColor: theme.colors.surface
+                    },
+                    theme.elevation.e1
+                  ]}
+                >
+                  <ScrollView nestedScrollEnabled>
+                    <ListRow
+                      title="No university"
+                      subtitle="You can add this later"
+                      leading={<MaterialIcons name="remove-circle-outline" size={20} color={theme.colors.textTertiary} />}
+                      trailing={
+                        selectedUniversityId === null ? (
+                          <MaterialIcons name="check" size={20} color={theme.colors.primary} />
+                        ) : undefined
+                      }
                       onPress={() => {
-                        setSelectedUniversityId(university.id);
+                        setSelectedUniversityId(null);
                         setShowUniversityList(false);
                       }}
-                      style={{
-                        paddingHorizontal: 14,
-                        paddingVertical: 12,
-                        borderTopWidth: 1,
-                        borderTopColor: theme.colors.border,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                      }}
-                    >
-                      <Text style={{ color: theme.colors.textPrimary, flex: 1, paddingRight: 8 }}>
-                        {university.name}
-                      </Text>
-                      {selectedUniversityId === university.id ? (
-                        <MaterialIcons name="check" size={18} color={theme.colors.primary} />
-                      ) : null}
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null}
-          </View>
-        ) : null}
-
-        {errorMessage ? (
-          <View
-            style={{
-              borderWidth: 1,
-              borderColor: theme.colors.error,
-              borderRadius: 12,
-              padding: 12,
-              backgroundColor: theme.colors.surface
-            }}
-          >
-            <Text style={{ color: theme.colors.error, fontWeight: '600' }}>{errorMessage}</Text>
-          </View>
-        ) : null}
-
-        <View style={{ marginTop: 8 }}>
-          {isSubmitting ? (
-            <View style={{ minHeight: 50, alignItems: 'center', justifyContent: 'center' }}>
-              <ActivityIndicator color={theme.colors.primary} />
+                    />
+                    {universities.map((university) => (
+                      <View
+                        key={university.id}
+                        style={[styles.pickerDivider, { borderTopColor: theme.colors.border }]}
+                      >
+                        <ListRow
+                          title={university.name}
+                          leading={<MaterialIcons name="school" size={20} color={theme.colors.textTertiary} />}
+                          trailing={
+                            selectedUniversityId === university.id ? (
+                              <MaterialIcons name="check" size={20} color={theme.colors.primary} />
+                            ) : undefined
+                          }
+                          onPress={() => {
+                            setSelectedUniversityId(university.id);
+                            setShowUniversityList(false);
+                          }}
+                        />
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : null}
             </View>
-          ) : (
-            <PrimaryButton label="Get Started" onPress={handleSignUp} />
-          )}
+          ) : null}
+
+          {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
+
+          <PrimaryButton label="Get Started" size="lg" onPress={handleSignUp} loading={isSubmitting} />
         </View>
-        <View style={{ alignItems: 'center' }}>
+
+        <View style={[styles.footerLink, { marginTop: theme.spacing.lg }]}>
           <TextButton label="Already have an account? Log In" onPress={() => navigation.navigate('Login')} />
         </View>
-      </ScrollView>
+      </View>
     </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  content: {
+    flexGrow: 1,
+    paddingTop: 8,
+    paddingBottom: 40
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -10,
+    marginBottom: 8
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: 14
+  },
+  errorText: {
+    flex: 1
+  },
+  pickerTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    minHeight: 52,
+    paddingHorizontal: 14,
+    marginTop: 2
+  },
+  pickerLabel: {
+    flex: 1
+  },
+  pickerList: {
+    borderWidth: 1,
+    maxHeight: 264,
+    overflow: 'hidden'
+  },
+  pickerDivider: {
+    borderTopWidth: 1
+  },
+  footerLink: {
+    alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center'
+  }
+});

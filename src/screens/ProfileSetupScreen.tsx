@@ -1,109 +1,206 @@
 import React, { useState } from 'react';
-import { View, Text, Switch, StyleSheet, ScrollView } from 'react-native';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { InputField } from '@/components/InputField';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
+/** Two-step onboarding progress affordance (profile → interests). */
+const StepIndicator = ({ current }: { current: 1 | 2 }) => {
+  const theme = useAppTheme();
+  return (
+    <View style={styles.stepIndicator}>
+      <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>
+        Step {current} of 2
+      </Text>
+      <View style={styles.stepTrack}>
+        {[1, 2].map((step) => (
+          <View
+            key={step}
+            style={[
+              styles.stepSegment,
+              {
+                borderRadius: theme.radius.pill,
+                backgroundColor: step <= current ? theme.colors.primary : theme.colors.border
+              }
+            ]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+};
+
 export const ProfileSetupScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { profile, updateProfile } = useLocalAppState();
-  
+
   const [location, setLocation] = useState(profile.location || '');
   const [isStudent, setIsStudent] = useState(profile.isStudent ?? true);
   const [university, setUniversity] = useState(profile.university || '');
   const [course, setCourse] = useState(profile.course || '');
   const [year, setYear] = useState(profile.year || '');
   const [bio, setBio] = useState(profile.bio || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleContinue = async () => {
+    if (isSaving) {
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await updateProfile({
+        ...profile,
+        location: location.trim() || profile.location,
+        isStudent,
+        university: isStudent ? (university.trim() || profile.university) : '',
+        course: isStudent ? (course.trim() || profile.course) : '',
+        year: isStudent ? (year.trim() || profile.year) : '',
+        bio: bio.trim() || profile.bio
+      });
+      navigation.navigate('InterestSelection');
+    } catch (e) {
+      console.error('Failed to update profile', e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <ScreenLayout>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 60, paddingBottom: 40, gap: 20 }}>
-        <View style={{ gap: 8 }}>
-          <Text style={{ fontSize: 24, fontWeight: '800', color: theme.colors.textPrimary }}>Profile Setup</Text>
-          <Text style={{ color: theme.colors.textSecondary, lineHeight: 22 }}>
-            Complete your basics so you can discover relevant societies and events.
-          </Text>
-        </View>
+      <View style={[styles.content, { paddingHorizontal: theme.spacing.lg }]}>
+        <StepIndicator current={1} />
 
-        <InputField 
-          label="Where are you based?" 
-          placeholder="e.g. London" 
-          value={location} 
-          onChangeText={setLocation} 
-        />
-
-        <View style={styles.switchRow}>
-          <View style={{ flex: 1, paddingRight: 16 }}>
-            <Text style={{ color: theme.colors.textPrimary, fontSize: 16, fontWeight: '600' }}>Are you a university student?</Text>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 }}>Unlock campus-specific groups and societies. Committee roles require union approval.</Text>
-          </View>
-          <Switch 
-            value={isStudent} 
-            onValueChange={setIsStudent}
-            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+        <View style={{ marginTop: theme.spacing.md }}>
+          <ScreenHeader
+            title="Set Up Your Profile"
+            subtitle="Complete your basics so you can discover relevant societies and events."
           />
         </View>
 
-        {isStudent && (
-          <View style={{ gap: 16, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: theme.colors.border }}>
-            <View>
-              <InputField label="University *" placeholder="e.g. King's College London" value={university} onChangeText={setUniversity} />
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginTop: 4, lineHeight: 16 }}>
-                Self-declare your university to access relevant societies. Committee roles require union admin verification.
+        <View style={{ gap: theme.spacing.xl, marginTop: theme.spacing.xl }}>
+          <InputField
+            label="Where are you based?"
+            placeholder="e.g. London"
+            icon="place"
+            autoCapitalize="words"
+            value={location}
+            onChangeText={setLocation}
+          />
+
+          <View style={[styles.switchRow, { borderColor: theme.colors.border }]}>
+            <View style={styles.switchText}>
+              <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>
+                Are you a university student?
+              </Text>
+              <Text style={[theme.typography.caption, styles.switchCaption, { color: theme.colors.textSecondary }]}>
+                Unlock campus-specific groups and societies. Committee roles require union approval.
               </Text>
             </View>
-            <InputField label="Course" placeholder="e.g. Computer Science" value={course} onChangeText={setCourse} />
-            <InputField label="Year" placeholder="e.g. 2nd Year" value={year} onChangeText={setYear} />
+            <Switch
+              value={isStudent}
+              onValueChange={setIsStudent}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            />
           </View>
-        )}
 
-        <InputField 
-          label="Bio (Optional)" 
-          placeholder="Tell us a little about yourself" 
-          value={bio} 
-          onChangeText={setBio} 
-        />
+          {isStudent && (
+            <View style={[styles.studentSection, { borderLeftColor: theme.colors.border, gap: theme.spacing.lg }]}>
+              <View>
+                <InputField
+                  label="University *"
+                  placeholder="e.g. King's College London"
+                  icon="school"
+                  autoCapitalize="words"
+                  value={university}
+                  onChangeText={setUniversity}
+                />
+                <Text style={[theme.typography.caption, styles.helperText, { color: theme.colors.textTertiary }]}>
+                  Self-declare your university to access relevant societies. Committee roles require union admin
+                  verification.
+                </Text>
+              </View>
+              <InputField
+                label="Course"
+                placeholder="e.g. Computer Science"
+                icon="menu-book"
+                autoCapitalize="words"
+                value={course}
+                onChangeText={setCourse}
+              />
+              <InputField
+                label="Year"
+                placeholder="e.g. 2nd Year"
+                icon="timeline"
+                value={year}
+                onChangeText={setYear}
+              />
+            </View>
+          )}
 
-        <View style={{ marginTop: 20 }}>
-          <PrimaryButton
-            label="Continue"
-            onPress={async () => {
-              try {
-                await updateProfile({
-                  ...profile,
-                  location: location.trim() || profile.location,
-                  isStudent,
-                  university: isStudent ? (university.trim() || profile.university) : '',
-                  course: isStudent ? (course.trim() || profile.course) : '',
-                  year: isStudent ? (year.trim() || profile.year) : '',
-                  bio: bio.trim() || profile.bio
-                });
-                navigation.navigate('InterestSelection');
-              } catch (e) {
-                console.error('Failed to update profile', e);
-              }
-            }}
+          <InputField
+            label="Bio (Optional)"
+            placeholder="Tell us a little about yourself"
+            multiline
+            value={bio}
+            onChangeText={setBio}
           />
         </View>
-      </ScrollView>
+
+        <View style={[styles.footer, { paddingTop: theme.spacing.xl }]}>
+          <PrimaryButton label="Continue" size="lg" onPress={handleContinue} loading={isSaving} />
+        </View>
+      </View>
     </ScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
+  content: {
+    flexGrow: 1,
+    paddingTop: 16,
+    paddingBottom: 32
+  },
+  stepIndicator: {
+    gap: 8
+  },
+  stepTrack: {
+    flexDirection: 'row',
+    gap: 6
+  },
+  stepSegment: {
+    flex: 1,
+    height: 4
+  },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#E0E0E0' // Using static for now, theme takes precedence if available
+    borderBottomWidth: 1
+  },
+  switchText: {
+    flex: 1
+  },
+  switchCaption: {
+    marginTop: 2
+  },
+  studentSection: {
+    paddingLeft: 12,
+    borderLeftWidth: 2
+  },
+  helperText: {
+    marginTop: 6
+  },
+  footer: {
+    marginTop: 'auto'
   }
 });
