@@ -174,7 +174,7 @@ export const CommitteeRequestsScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.textTertiary} />
         }
       >
-        <TopNavBar title="Committee Requests" subtitle={selectedUniversity?.universityName} />
+        <TopNavBar gutter={false} title="Committee Requests" subtitle={selectedUniversity?.universityName} />
 
         {/* Stats overview */}
         {requestStats && (
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     flex: 1
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 96,
     gap: 16

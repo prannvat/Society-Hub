@@ -247,7 +247,7 @@ export const UnionSettingsScreen = () => {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.textTertiary} />
           }
         >
-          <TopNavBar title="Settings" subtitle={selectedUniversity?.universityName} />
+          <TopNavBar gutter={false} title="Settings" subtitle={selectedUniversity?.universityName} />
 
           {isLoading ? (
             <LoadingState />
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     flex: 1
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 24
   },

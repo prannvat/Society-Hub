@@ -108,6 +108,7 @@ export const UnionDashboardScreen = () => {
         }
       >
         <ScreenHeader
+          gutter={false}
           title="Union Dashboard"
           subtitle={selectedUniversity?.universityName ?? 'University'}
           accessory={<RoleSwitcher compact showModeText={false} />}
@@ -180,7 +181,7 @@ const styles = StyleSheet.create({
     flex: 1
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 96,
     gap: 24

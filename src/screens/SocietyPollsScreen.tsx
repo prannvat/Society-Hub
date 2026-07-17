@@ -101,6 +101,7 @@ export const SocietyPollsScreen = () => {
     <ScreenLayout>
       <View style={styles.page}>
         <TopNavBar
+          gutter={false}
           title="Polls"
           subtitle={`${activePolls.length} active poll${activePolls.length === 1 ? '' : 's'} • ${activeSocietyRole} access`}
         />
@@ -278,7 +279,7 @@ export const SocietyPollsScreen = () => {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 40,
     gap: 16

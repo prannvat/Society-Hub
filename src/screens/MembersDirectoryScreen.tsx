@@ -109,6 +109,7 @@ export const MembersDirectoryScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <TopNavBar
+          gutter={false}
           title="Members"
           subtitle={`${activeSocietyRole} access`}
           actionLabel={viewMode === 'grid' ? 'List view' : 'Grid view'}

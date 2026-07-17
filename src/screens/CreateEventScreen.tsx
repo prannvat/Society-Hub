@@ -244,7 +244,7 @@ export const CreateEventScreen = () => {
   return (
     <ScreenLayout>
       <View style={styles.formWrap}>
-        <TopNavBar title="Create Event" onBack={() => navigation.goBack()} />
+        <TopNavBar gutter={false} title="Create Event" onBack={() => navigation.goBack()} />
 
         {/* Details */}
         <View style={styles.formSection}>

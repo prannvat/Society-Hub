@@ -82,6 +82,7 @@ export const AnnouncementsFeedScreen = () => {
     <ScreenLayout>
       <View style={styles.page}>
         <TopNavBar
+          gutter={false}
           title="Announcements"
           actionLabel={isSearchOpen ? 'Close' : 'Search'}
           onPressAction={() => {

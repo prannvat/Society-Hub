@@ -7,12 +7,15 @@ import { Avatar } from '@/components/Avatar';
 import { BadgeChip } from '@/components/BadgeChip';
 import { Card } from '@/components/Card';
 import { ListRow } from '@/components/ListRow';
-import { RoleSwitcher } from '@/components/RoleSwitcher';
+import { SectionHeader } from '@/components/SectionHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { TopNavBar } from '@/components/TopNavBar';
 import { RootStackParamList } from '@/navigation/types';
+import { MemberRole } from '@/types';
+import { spacing } from '@/config/theme';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
@@ -24,8 +27,22 @@ type SocialLink = {
 export const ProfileScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { mySocietyIds, profile, activeSocietyRole, rsvpedEventIds, exploreEvents } = useLocalAppState();
-  const { canSwitchToAdmin } = useUserRoles();
+  const {
+    mySocietyIds,
+    pendingMembershipSocietyIds,
+    allSocieties,
+    profile,
+    rsvpedEventIds,
+    exploreEvents,
+  } = useLocalAppState();
+  const {
+    adminSocieties,
+    hasUnionAdminAccess,
+    unionAdminRelationships,
+    selectedUniversityId,
+    setSelectedUniversityId,
+    setCurrentMode,
+  } = useUserRoles();
   const { user, signOut } = useAuth();
 
   // Events the user has RSVPed across all loaded events (deduplicated by id).
@@ -37,6 +54,21 @@ export const ProfileScreen = () => {
   const memberSinceYear = user?.createdAt ? String(new Date(user.createdAt).getFullYear()) : '—';
 
   const identityCaption = [profile.university, profile.course, profile.year].filter(Boolean).join(' • ');
+
+  // The committee/president role the user holds in a given society, if any.
+  const roleForSociety = (societyId: string): MemberRole | undefined =>
+    adminSocieties.find((relationship) => relationship.societyId === societyId)?.role;
+
+  // Societies the user has actually joined, resolved against the loaded catalogue.
+  const joinedSocieties = mySocietyIds
+    .map((id) => allSocieties.find((society) => society.id === id))
+    .filter((society): society is NonNullable<typeof society> => society !== undefined);
+
+  const pendingSocieties = pendingMembershipSocietyIds
+    .map((id) => allSocieties.find((society) => society.id === id))
+    .filter((society): society is NonNullable<typeof society> => society !== undefined);
+
+  const hasSocieties = joinedSocieties.length > 0 || pendingSocieties.length > 0;
 
   const socialLinkEntries: (SocialLink | null)[] = [
     profile.linkedinLink ? { icon: 'linkedin', url: profile.linkedinLink } : null,
@@ -52,6 +84,18 @@ export const ProfileScreen = () => {
     await Share.share({
       message: `${profile.fullName} is on SocietyHub — member of ${societyCount} ${societyCount === 1 ? 'society' : 'societies'}. Join your university community on SocietyHub!`,
     });
+  };
+
+  const handleEnterUnionConsole = async () => {
+    if (unionAdminRelationships.length === 0) {
+      return;
+    }
+    // Reuse the existing mode-switch mechanism: ensure a university is selected,
+    // then flip into the Union Admin navigator.
+    if (!selectedUniversityId) {
+      setSelectedUniversityId(unionAdminRelationships[0].universityId);
+    }
+    await setCurrentMode('UnionAdmin');
   };
 
   const handleSignOut = () => {
@@ -70,13 +114,13 @@ export const ProfileScreen = () => {
 
   return (
     <ScreenLayout scroll={false}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TopNavBar
-          title="Profile"
-          actionLabel="Settings"
-          onPressAction={() => { navigation.navigate('Settings'); }}
-        />
+      <TopNavBar
+        title="Profile"
+        actionLabel="Settings"
+        onPressAction={() => { navigation.navigate('Settings'); }}
+      />
 
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Identity block */}
         <View style={styles.identity}>
           <Avatar name={profile.fullName} size={96} url={profile.avatarUrl} />
@@ -88,10 +132,11 @@ export const ProfileScreen = () => {
               {identityCaption}
             </Text>
           ) : null}
-          <View style={styles.chipRow}>
-            <BadgeChip label={activeSocietyRole} variant="primary" />
-            {profile.isVerifiedStudent ? <BadgeChip label="Verified Student" variant="success" /> : null}
-          </View>
+          {profile.isVerifiedStudent ? (
+            <View style={styles.chipRow}>
+              <BadgeChip label="Verified Student" variant="success" />
+            </View>
+          ) : null}
           {profile.bio ? (
             <Text style={[theme.typography.body, styles.bio, { color: theme.colors.textPrimary }]}>
               {profile.bio}
@@ -136,47 +181,127 @@ export const ProfileScreen = () => {
           </View>
         </Card>
 
-        {/* Grouped actions */}
-        <Card padding={0}>
-          <ListRow
-            title="Edit profile"
-            subtitle="Name, bio, academics, and links"
-            leading={<MaterialIcons name="edit" size={22} color={theme.colors.primary} />}
-            chevron
-            onPress={() => navigation.navigate('EditProfile')}
-          />
-          <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />
-          <ListRow
-            title="Share profile"
-            subtitle="Invite friends to SocietyHub"
-            leading={<MaterialIcons name="ios-share" size={22} color={theme.colors.primary} />}
-            chevron
-            onPress={handleShareProfile}
-          />
-          <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />
-          <ListRow
-            title="Settings"
-            subtitle="Notifications, appearance, account"
-            leading={<MaterialIcons name="settings" size={22} color={theme.colors.primary} />}
-            chevron
-            onPress={() => navigation.navigate('Settings')}
-          />
-        </Card>
+        {/* Your societies */}
+        <View style={styles.section}>
+          <SectionHeader title="Your societies" />
+          {hasSocieties ? (
+            <Card padding={0}>
+              {joinedSocieties.map((society, index) => {
+                const role = roleForSociety(society.id);
+                return (
+                  <React.Fragment key={society.id}>
+                    {index > 0 ? <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} /> : null}
+                    <ListRow
+                      title={society.name}
+                      subtitle={society.shortName || society.university || undefined}
+                      leading={<Avatar name={society.name} size={40} url={society.logoUrl ?? undefined} />}
+                      trailing={role && role !== 'Member' ? <BadgeChip label={role} variant="primary" /> : undefined}
+                      chevron
+                      onPress={() => navigation.navigate('SocietyProfile', { societyId: society.id })}
+                    />
+                  </React.Fragment>
+                );
+              })}
+              {pendingSocieties.map((society, index) => (
+                <React.Fragment key={society.id}>
+                  {joinedSocieties.length > 0 || index > 0 ? (
+                    <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />
+                  ) : null}
+                  <ListRow
+                    title={society.name}
+                    subtitle={society.shortName || society.university || undefined}
+                    leading={<Avatar name={society.name} size={40} url={society.logoUrl ?? undefined} />}
+                    trailing={<BadgeChip label="Pending" variant="warning" />}
+                    chevron
+                    onPress={() => navigation.navigate('SocietyProfile', { societyId: society.id })}
+                  />
+                </React.Fragment>
+              ))}
+            </Card>
+          ) : (
+            <Card>
+              <EmptyState
+                icon="groups"
+                title="No societies yet"
+                subtitle="Discover and join societies at your university to see them here."
+                actionLabel="Explore societies"
+                onAction={() => navigation.navigate('MainTabs', { screen: 'Explore' })}
+              />
+            </Card>
+          )}
+        </View>
 
-        {/* App mode switcher */}
-        {canSwitchToAdmin && (
-          <Card>
-            <View style={styles.roleSwitcherWrap}>
-              <View style={{ alignItems: 'center', gap: 2 }}>
-                <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>App Mode</Text>
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-                  Switch between student and admin views
-                </Text>
-              </View>
-              <RoleSwitcher showModeText={true} />
-            </View>
+        {/* Manage — committee members only */}
+        {adminSocieties.length > 0 ? (
+          <View style={styles.section}>
+            <SectionHeader title="Manage" />
+            <Card padding={0}>
+              {adminSocieties.map((relationship, index) => (
+                <React.Fragment key={relationship.societyId}>
+                  {index > 0 ? <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} /> : null}
+                  <ListRow
+                    title={relationship.societyName}
+                    subtitle="Events, posts, polls, and members"
+                    leading={<Avatar name={relationship.societyName} size={40} />}
+                    trailing={<BadgeChip label={relationship.role} variant="primary" />}
+                    chevron
+                    onPress={() => navigation.navigate('SocietyManage', { societyId: relationship.societyId })}
+                  />
+                </React.Fragment>
+              ))}
+            </Card>
+          </View>
+        ) : null}
+
+        {/* Union console — union admins only */}
+        {hasUnionAdminAccess ? (
+          <View style={styles.section}>
+            <SectionHeader title="Union" />
+            <Card padding={0}>
+              <ListRow
+                title="Union Admin console"
+                subtitle="Approvals, societies, and university settings"
+                leading={
+                  <View style={[styles.consoleIcon, { backgroundColor: theme.colors.warningSoft }]}>
+                    <MaterialIcons name="account-balance" size={22} color={theme.colors.warning} />
+                  </View>
+                }
+                chevron
+                onPress={handleEnterUnionConsole}
+              />
+            </Card>
+          </View>
+        ) : null}
+
+        {/* Account actions */}
+        <View style={styles.section}>
+          <SectionHeader title="Account" />
+          <Card padding={0}>
+            <ListRow
+              title="Edit profile"
+              subtitle="Name, bio, academics, and links"
+              leading={<MaterialIcons name="edit" size={22} color={theme.colors.primary} />}
+              chevron
+              onPress={() => navigation.navigate('EditProfile')}
+            />
+            <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />
+            <ListRow
+              title="Share profile"
+              subtitle="Invite friends to SocietyHub"
+              leading={<MaterialIcons name="ios-share" size={22} color={theme.colors.primary} />}
+              chevron
+              onPress={handleShareProfile}
+            />
+            <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />
+            <ListRow
+              title="Settings"
+              subtitle="Notifications, appearance, account"
+              leading={<MaterialIcons name="settings" size={22} color={theme.colors.primary} />}
+              chevron
+              onPress={() => navigation.navigate('Settings')}
+            />
           </Card>
-        )}
+        </View>
 
         {/* Sign out */}
         <Pressable
@@ -199,8 +324,8 @@ export const ProfileScreen = () => {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
     paddingBottom: 96,
     gap: 18
   },
@@ -248,13 +373,19 @@ const styles = StyleSheet.create({
     width: StyleSheet.hairlineWidth,
     alignSelf: 'stretch'
   },
+  section: {
+    gap: 12
+  },
   rowDivider: {
     height: StyleSheet.hairlineWidth,
     marginLeft: 50
   },
-  roleSwitcherWrap: {
+  consoleIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
-    gap: 12
+    justifyContent: 'center'
   },
   signOut: {
     flexDirection: 'row',

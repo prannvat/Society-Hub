@@ -72,7 +72,7 @@ export const CreateSocietyScreen = () => {
 
   return (
     <ScreenLayout scroll={false}>
-      <View style={{ flex: 1, paddingHorizontal: 16 }}>
+      <View style={{ flex: 1 }}>
         <TopNavBar title="Request New Society" onBack={() => navigation.goBack()} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -144,6 +144,7 @@ export const CreateSocietyScreen = () => {
 
 const styles = StyleSheet.create({
   scrollContent: {
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 100,
     gap: 16

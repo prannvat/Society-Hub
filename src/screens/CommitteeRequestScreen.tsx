@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   page: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 100,
     gap: 24

@@ -143,7 +143,7 @@ export const UnionSocietiesScreen = () => {
         }
         keyboardShouldPersistTaps="handled"
       >
-        <TopNavBar title="Societies" subtitle={selectedUniversity?.universityName} />
+        <TopNavBar gutter={false} title="Societies" subtitle={selectedUniversity?.universityName} />
 
         {/* Status filter */}
         <FilterChips
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     flex: 1
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 96,
     gap: 16
