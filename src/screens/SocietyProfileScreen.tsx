@@ -2,11 +2,15 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { ActivityIndicator, Alert, Text, View, Pressable, ScrollView, Linking, Image, StyleSheet } from 'react-native';
+import { ActivityIndicator, Text, View, Pressable, ScrollView, Linking, Image, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, FontAwesome } from '@expo/vector-icons';
 import { BadgeChip } from '@/components/BadgeChip';
-import { OutlineButton } from '@/components/OutlineButton';
+import { Card } from '@/components/Card';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { OutlineButton } from '@/components/OutlineButton';
+import { SectionHeader } from '@/components/SectionHeader';
+import { useToast } from '@/components/Toast';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
@@ -22,7 +26,8 @@ export const SocietyProfileScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'SocietyProfile'>>();
-  const { allSocieties, favouritedSocietyIds, toggleFavouriteSociety, mySocietyIds, pendingMembershipSocietyIds, joinSociety } = useLocalAppState();
+  const toast = useToast();
+  const { allSocieties, favouritedSocietyIds, toggleFavouriteSociety, mySocietyIds, pendingMembershipSocietyIds, joinSociety, polls } = useLocalAppState();
 
   const [localSociety, setLocalSociety] = useState<any>(null);
   const [societyEvents, setSocietyEvents] = useState<EventItem[]>([]);
@@ -45,15 +50,12 @@ export const SocietyProfileScreen = () => {
     try {
       const result = await joinSociety(society.id);
       if (result === 'PENDING') {
-        Alert.alert(
-          'Membership Requested',
-          `${society.name} requires approval to join. Your request is pending review by the committee.`,
-        );
+        toast.show(`Request sent — ${society.name} requires approval`, 'info');
       } else {
-        Alert.alert('Joined!', `You are now a member of ${society.name}.`);
+        toast.show(`Welcome to ${society.name}!`, 'success');
       }
     } catch (error) {
-      Alert.alert('Join failed', joinErrorMessage(error));
+      toast.show(joinErrorMessage(error), 'error');
     } finally {
       setIsJoining(false);
     }
@@ -93,12 +95,12 @@ export const SocietyProfileScreen = () => {
   if (!society) {
     return (
       <ScreenLayout>
-        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 60, paddingBottom: 40, gap: 16 }}>
+        <View style={styles.notFoundWrap}>
           {isLoading ? (
             <ActivityIndicator color={theme.colors.primary} />
           ) : (
             <>
-              <Text style={{ color: theme.colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Society not found</Text>
+              <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>Society not found</Text>
               <OutlineButton label="Back" onPress={() => navigation.goBack()} />
             </>
           )}
@@ -107,134 +109,348 @@ export const SocietyProfileScreen = () => {
     );
   }
 
+  const brandPrimary = society.primaryColor || theme.colors.primary;
+  const brandSecondary = society.secondaryColor || brandPrimary;
+  const societyPolls = polls.filter((poll) => poll.societyId === society.id);
+
   const handleOpenLink = async (url?: string | null) => {
     if (url && (await Linking.canOpenURL(url))) {
       Linking.openURL(url);
     }
   };
 
+  const overlayButtonStyle = ({ pressed }: { pressed: boolean }) => [
+    styles.overlayButton,
+    theme.elevation.e1,
+    {
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      opacity: pressed ? 0.7 : 1
+    }
+  ];
+
   return (
-    <ScreenLayout>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 60, paddingBottom: 100, gap: 24 }}>
-        <View style={{ borderRadius: 14, padding: 16, backgroundColor: society.primaryColor, gap: 12 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
-              {society.logoUrl ? (
-                <Image source={{ uri: society.logoUrl }} style={styles.logo} />
-              ) : (
-                <View style={[styles.fallbackLogo, { backgroundColor: society.secondaryColor }]}>
-                  <Text style={styles.fallbackLogoText}>{society.shortName}</Text>
-                </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '800' }} numberOfLines={2}>{society.name}</Text>
-                <Text style={{ color: '#FFFFFF', marginTop: 4 }}>{society.university}</Text>
-              </View>
-            </View>
-            <Pressable 
-              onPress={() => toggleFavouriteSociety(society.id)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={{ padding: 4 }}
-            >
-              <MaterialIcons 
-                name={isFavourited ? "favorite" : "favorite-border"} 
-                size={28} 
-                color="#FFFFFF" 
+    <ScreenLayout scroll={false}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Branded gradient band */}
+        <View>
+          <LinearGradient
+            colors={[brandPrimary, brandSecondary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradientBand}
+          />
+          <View style={styles.bandActions}>
+            <Pressable onPress={() => navigation.goBack()} hitSlop={6} style={overlayButtonStyle}>
+              <MaterialIcons name="arrow-back" size={22} color={theme.colors.textPrimary} />
+            </Pressable>
+            <Pressable onPress={() => toggleFavouriteSociety(society.id)} hitSlop={6} style={overlayButtonStyle}>
+              <MaterialIcons
+                name={isFavourited ? 'favorite' : 'favorite-border'}
+                size={22}
+                color={isFavourited ? theme.colors.danger : theme.colors.textPrimary}
               />
             </Pressable>
           </View>
-          
-          <View style={styles.socialRow}>
-            {society.instagramLink && (
-              <Pressable onPress={() => handleOpenLink(society.instagramLink)} style={styles.socialIcon}>
-                <FontAwesome name="instagram" size={24} color="#FFFFFF" />
-              </Pressable>
-            )}
-            {society.whatsappLink && (
-              <Pressable onPress={() => handleOpenLink(society.whatsappLink)} style={styles.socialIcon}>
-                <FontAwesome name="whatsapp" size={24} color="#FFFFFF" />
-              </Pressable>
-            )}
-          </View>
-        </View>
 
-        <View style={{ gap: 8 }}>
-          <Text style={{ color: theme.colors.textPrimary, fontSize: 18, fontWeight: '700' }}>About</Text>
-          <Text style={{ color: theme.colors.textSecondary, lineHeight: 22 }}>
-            {society.description || 'A student-run community focused on belonging, events, and peer support.'}
-          </Text>
-        </View>
-
-        {!isMember ? (
-          <PrimaryButton
-            label={isPendingMembership ? 'Membership Pending Approval' : isJoining ? 'Joining...' : 'Join Society'}
-            onPress={handleJoin}
-            disabled={isPendingMembership || isJoining}
-          />
-        ) : null}
-
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <PrimaryButton label="All Events" onPress={() => navigation.navigate('MainTabs', { screen: 'Events' })} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <OutlineButton label="Open Polls" onPress={() => navigation.navigate('MainTabs', { screen: 'Polls' })} />
-          </View>
-        </View>
-        
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {society.affiliatedUniversities && society.affiliatedUniversities.length > 1 && (
-            <BadgeChip label="Joint Society" variant="filled" />
-          )}
-          {society.joinPolicy === 'VERIFIED_STUDENTS_ONLY' && (
-             <BadgeChip label="Verified Students Only" variant="outlined" />
-          )}
-          {society.joinPolicy === 'OPEN' && (
-             <BadgeChip label="Open to All" variant="outlined" />
-          )}
-          {society.joinPolicy === 'APPROVAL_REQUIRED' && (
-             <BadgeChip label="Approval Required" variant="outlined" />
-          )}
-          <BadgeChip label="Announcements" variant="outlined" />
-          <BadgeChip label="Member Directory" variant="outlined" />
-          <BadgeChip label="Committee Polls" variant="outlined" />
-        </View>
-
-
-        {(upcomingEvents.length > 0 || pastEvents.length > 0) && <View style={styles.divider} />}
-
-        {upcomingEvents.length > 0 && (
-          <View style={{ gap: 16 }}>
-            <Text style={{ color: theme.colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Upcoming Events</Text>
-            {upcomingEvents.map(event => (
-              <EventCard key={event.id} event={event} onPressRSVP={() => navigation.navigate('EventDetail', { eventId: event.id })} />
-            ))}
-          </View>
-        )}
-
-        {pastEvents.length > 0 && (
-           <View style={{ gap: 16 }}>
-            <Text style={{ color: theme.colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Past Events</Text>
-            <View style={{ opacity: 0.6 }}>
-              {pastEvents.map(event => (
-                <View key={event.id} style={{ marginBottom: 12 }}>
-                  <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>{event.title}</Text>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{event.date}</Text>
+          {/* Overlapping logo */}
+          <View style={styles.identityWrap}>
+            <View style={[styles.logoRing, { backgroundColor: theme.colors.background }]}>
+              {society.logoUrl ? (
+                <Image
+                  source={{ uri: society.logoUrl }}
+                  style={[styles.logo, { backgroundColor: theme.colors.surfaceSunken }]}
+                />
+              ) : (
+                <View style={[styles.logo, { backgroundColor: `${brandPrimary}22`, alignItems: 'center', justifyContent: 'center' }]}>
+                  <Text style={[theme.typography.h3, { color: brandPrimary }]} numberOfLines={1}>
+                    {society.shortName}
+                  </Text>
                 </View>
-              ))}
+              )}
+            </View>
+            <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, marginTop: 10 }]} numberOfLines={2}>
+              {society.name}
+            </Text>
+            {society.university ? (
+              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 2 }]} numberOfLines={1}>
+                {society.university}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={styles.body}>
+          {/* Stat row */}
+          <Card padding={14}>
+            <View style={styles.statRow}>
+              <View style={styles.statCell}>
+                <Text style={[theme.typography.h2, { color: theme.colors.textPrimary }]}>
+                  {society._count?.memberships ?? '—'}
+                </Text>
+                <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>Members</Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
+              <View style={styles.statCell}>
+                <Text style={[theme.typography.h2, { color: theme.colors.textPrimary }]}>{societyEvents.length}</Text>
+                <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>Events</Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
+              <View style={styles.statCell}>
+                <Text style={[theme.typography.h2, { color: theme.colors.textPrimary }]}>{societyPolls.length}</Text>
+                <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>Polls</Text>
+              </View>
+            </View>
+          </Card>
+
+          {/* Membership action */}
+          {isPendingMembership ? (
+            <View style={styles.membershipRow}>
+              <BadgeChip label="Membership pending approval" variant="warning" />
+            </View>
+          ) : isMember ? (
+            <View style={styles.membershipRow}>
+              <BadgeChip label="You're a member" variant="success" />
+            </View>
+          ) : (
+            <PrimaryButton
+              label="Join Society"
+              icon="person-add"
+              loading={isJoining}
+              onPress={handleJoin}
+            />
+          )}
+
+          <View style={styles.actionRow}>
+            <View style={{ flex: 1 }}>
+              <PrimaryButton
+                label="All Events"
+                variant="secondary"
+                size="md"
+                icon="event"
+                onPress={() => navigation.navigate('MainTabs', { screen: 'Events' })}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <PrimaryButton
+                label="Open Polls"
+                variant="secondary"
+                size="md"
+                icon="poll"
+                onPress={() => navigation.navigate('MainTabs', { screen: 'Polls' })}
+              />
             </View>
           </View>
-        )}
+
+          {/* Policy chips */}
+          <View style={styles.chipRow}>
+            {society.affiliatedUniversities && society.affiliatedUniversities.length > 1 && (
+              <BadgeChip label="Joint Society" variant="primary" />
+            )}
+            {society.joinPolicy === 'VERIFIED_STUDENTS_ONLY' && (
+              <BadgeChip label="Verified Students Only" variant="warning" />
+            )}
+            {society.joinPolicy === 'OPEN' && (
+              <BadgeChip label="Open to All" variant="success" />
+            )}
+            {society.joinPolicy === 'APPROVAL_REQUIRED' && (
+              <BadgeChip label="Approval Required" variant="warning" />
+            )}
+          </View>
+
+          {/* About */}
+          <View style={styles.section}>
+            <SectionHeader title="About" />
+            <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
+              {society.description || 'A student-run community focused on belonging, events, and peer support.'}
+            </Text>
+          </View>
+
+          {/* Links */}
+          {(society.instagramLink || society.whatsappLink) ? (
+            <View style={styles.section}>
+              <SectionHeader title="Links" />
+              <View style={styles.linkRow}>
+                {society.instagramLink ? (
+                  <Pressable
+                    onPress={() => handleOpenLink(society.instagramLink)}
+                    style={({ pressed }) => [
+                      styles.linkChip,
+                      {
+                        borderRadius: theme.radius.pill,
+                        backgroundColor: theme.colors.surfaceSunken,
+                        opacity: pressed ? 0.7 : 1
+                      }
+                    ]}
+                  >
+                    <FontAwesome name="instagram" size={18} color={theme.colors.textPrimary} />
+                    <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary }]}>Instagram</Text>
+                  </Pressable>
+                ) : null}
+                {society.whatsappLink ? (
+                  <Pressable
+                    onPress={() => handleOpenLink(society.whatsappLink)}
+                    style={({ pressed }) => [
+                      styles.linkChip,
+                      {
+                        borderRadius: theme.radius.pill,
+                        backgroundColor: theme.colors.surfaceSunken,
+                        opacity: pressed ? 0.7 : 1
+                      }
+                    ]}
+                  >
+                    <FontAwesome name="whatsapp" size={18} color={theme.colors.textPrimary} />
+                    <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary }]}>WhatsApp</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
+
+          {/* Upcoming events */}
+          {upcomingEvents.length > 0 && (
+            <View style={styles.section}>
+              <SectionHeader title="Upcoming Events" />
+              <View style={{ gap: theme.spacing.lg }}>
+                {upcomingEvents.map(event => (
+                  <EventCard key={event.id} event={event} onPressRSVP={() => navigation.navigate('EventDetail', { eventId: event.id })} />
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Past events */}
+          {pastEvents.length > 0 && (
+            <View style={styles.section}>
+              <SectionHeader title="Past Events" />
+              <Card padding={0}>
+                {pastEvents.map((event, index) => (
+                  <View key={event.id}>
+                    {index > 0 ? <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} /> : null}
+                    <View style={styles.pastEventRow}>
+                      <MaterialIcons name="history" size={18} color={theme.colors.textTertiary} />
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={[theme.typography.bodyMedium, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                          {event.title}
+                        </Text>
+                        <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>{event.date}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </Card>
+            </View>
+          )}
+        </View>
       </ScrollView>
     </ScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  logo: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF' },
-  fallbackLogo: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
-  fallbackLogoText: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
-  socialRow: { flexDirection: 'row', gap: 16, marginTop: 4 },
-  socialIcon: { padding: 4 },
-  divider: { height: 1, backgroundColor: '#E0E0E0', marginVertical: 8 }
+  notFoundWrap: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 40,
+    gap: 16
+  },
+  scrollContent: {
+    paddingBottom: 100
+  },
+  gradientBand: {
+    height: 132,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24
+  },
+  bandActions: {
+    position: 'absolute',
+    top: 12,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  overlayButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  identityWrap: {
+    paddingHorizontal: 20,
+    marginTop: -36
+  },
+  logoRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  logo: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    overflow: 'hidden'
+  },
+  body: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    gap: 18
+  },
+  statRow: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  statCell: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2
+  },
+  statDivider: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch'
+  },
+  membershipRow: {
+    alignItems: 'center'
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  section: {
+    gap: 10
+  },
+  linkRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  linkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 16
+  },
+  rowDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 46
+  },
+  pastEventRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 56
+  }
 });

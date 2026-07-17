@@ -1,6 +1,8 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { AnnouncementItem } from '@/types';
+import { BadgeChip, BadgeChipVariant } from './BadgeChip';
 import { Card } from './Card';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
@@ -9,43 +11,95 @@ type AnnouncementCardProps = {
   onPress?: (item: AnnouncementItem) => void;
 };
 
+export const categoryChipVariant = (category: string): BadgeChipVariant => {
+  switch (category.toUpperCase()) {
+    case 'IMPORTANT':
+      return 'danger';
+    case 'EVENTS':
+      return 'primary';
+    case 'COMMITTEE':
+      return 'warning';
+    default:
+      return 'neutral';
+  }
+};
+
+export const formatRelativeTime = (value: string): string => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  const now = new Date();
+  const diffMs = now.getTime() - parsed.getTime();
+  if (diffMs < 0) {
+    return value;
+  }
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) {
+    return 'Just now';
+  }
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfDay = new Date(parsed);
+  startOfDay.setHours(0, 0, 0, 0);
+  const dayDiff = Math.round((startOfToday.getTime() - startOfDay.getTime()) / 86400000);
+  if (dayDiff === 0) {
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ago`;
+  }
+  if (dayDiff === 1) {
+    return 'Yesterday';
+  }
+  if (dayDiff < 7) {
+    return `${dayDiff}d ago`;
+  }
+  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
 export const AnnouncementCard = ({ item, onPress }: AnnouncementCardProps) => {
   const theme = useAppTheme();
 
   return (
-    <Pressable onPress={() => onPress?.(item)}>
-      <Card>
-        <View style={{ gap: 6 }}>
-          <View style={styles.row}>
-            <Text
-              style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, flex: 1, paddingRight: 8 }}
-              numberOfLines={1}
-            >
-              {item.category}
-            </Text>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 13, fontWeight: '500' }} numberOfLines={1}>{item.timestamp}</Text>
-          </View>
-          <Text style={[styles.title, { color: theme.colors.textPrimary }]} numberOfLines={2}>{item.title}</Text>
-          <Text numberOfLines={2} style={{ color: theme.colors.textSecondary, lineHeight: 20 }}>{item.preview}</Text>
-          <Text style={{ marginTop: 8, color: theme.colors.textSecondary, fontSize: 13, fontWeight: '500' }}>
-            {item.authorName}
-          </Text>
-        </View>
-      </Card>
-    </Pressable>
+    <Card onPress={onPress ? () => onPress(item) : undefined}>
+      <View style={styles.headerRow}>
+        <BadgeChip label={item.category} variant={categoryChipVariant(item.category)} />
+        <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]} numberOfLines={1}>
+          {formatRelativeTime(item.timestamp)}
+        </Text>
+      </View>
+      <Text style={[theme.typography.h3, styles.title, { color: theme.colors.textPrimary }]} numberOfLines={2}>
+        {item.title}
+      </Text>
+      <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]} numberOfLines={2}>
+        {item.preview}
+      </Text>
+      <View style={styles.authorRow}>
+        <MaterialIcons name="person-outline" size={14} color={theme.colors.textTertiary} />
+        <Text style={[theme.typography.caption, { color: theme.colors.textTertiary, flexShrink: 1 }]} numberOfLines={1}>
+          {item.authorName}
+        </Text>
+      </View>
+    </Card>
   );
 };
 
 const styles = StyleSheet.create({
-  row: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
     gap: 8
   },
   title: {
-    fontSize: 18,
-    fontWeight: '800'
+    marginTop: 10
+  },
+  authorRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
   }
 });

@@ -1,7 +1,9 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { BadgeChip } from '@/components/BadgeChip';
+import { categoryChipVariant, formatRelativeTime } from '@/components/AnnouncementCard';
 import { Card } from '@/components/Card';
 import { TopNavBar } from '@/components/TopNavBar';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
@@ -41,40 +43,87 @@ export const AnnouncementDetailScreen = () => {
 
   if (!announcement) {
     return (
-      <ScreenLayout>
-        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40, gap: 16 }}>
-          <TopNavBar title="Announcement" onBack={() => navigation.goBack()} />
-          <Text style={{ color: theme.colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Announcement not found</Text>
+      <ScreenLayout scroll={false}>
+        <TopNavBar title="Announcement" onBack={() => navigation.goBack()} />
+        <View style={styles.notFoundWrap}>
+          <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>Announcement not found</Text>
         </View>
       </ScreenLayout>
     );
   }
 
+  const body = remoteBody ?? announcement.body ?? announcement.preview;
+  const hasFullBody = Boolean(remoteBody || announcement.body);
+
   return (
-    <ScreenLayout>
-      <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40, gap: 16 }}>
+    <ScreenLayout scroll={false}>
       <TopNavBar title="Announcement" onBack={() => navigation.goBack()} />
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <BadgeChip label={announcement.category} variant="outlined" />
-        <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{announcement.timestamp}</Text>
-      </View>
-      <Text style={{ fontSize: 24, fontWeight: '800', color: theme.colors.textPrimary }}>{announcement.title}</Text>
-
-      <Card>
-        <Text style={{ color: theme.colors.textPrimary, lineHeight: 22 }}>{remoteBody ?? announcement.body ?? announcement.preview}</Text>
-        {remoteBody || announcement.body ? null : (
-          <Text style={{ color: theme.colors.textSecondary, marginTop: 12 }}>
-            Full announcement details are not available for this entry yet.
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Category + metadata */}
+        <View style={styles.metaRow}>
+          <BadgeChip label={announcement.category} variant={categoryChipVariant(announcement.category)} />
+          <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>
+            {formatRelativeTime(announcement.timestamp)}
           </Text>
-        )}
-      </Card>
+        </View>
 
-      <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 12, padding: 12 }}>
-        <Text style={{ color: theme.colors.textSecondary }}>Posted by</Text>
-        <Text style={{ color: theme.colors.textPrimary, fontWeight: '700', marginTop: 4 }}>{remoteAuthor ?? announcement.authorName}</Text>
-        <Text style={{ color: theme.colors.textSecondary, marginTop: 8 }}>{announcement.readCount} reads</Text>
-      </View>
-      </View>
+        <Text style={[theme.typography.h1, { color: theme.colors.textPrimary }]}>{announcement.title}</Text>
+
+        <View style={styles.bylineRow}>
+          <MaterialIcons name="person-outline" size={15} color={theme.colors.textTertiary} />
+          <Text style={[theme.typography.captionMedium, { color: theme.colors.textSecondary, flexShrink: 1 }]} numberOfLines={1}>
+            {remoteAuthor ?? announcement.authorName}
+          </Text>
+          <View style={[styles.bylineDot, { backgroundColor: theme.colors.textTertiary }]} />
+          <MaterialIcons name="visibility" size={15} color={theme.colors.textTertiary} />
+          <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>
+            {announcement.readCount} reads
+          </Text>
+        </View>
+
+        <Card>
+          <Text style={[theme.typography.body, styles.bodyText, { color: theme.colors.textPrimary }]}>{body}</Text>
+          {!hasFullBody && (
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 12 }]}>
+              Full announcement details are not available for this entry yet.
+            </Text>
+          )}
+        </Card>
+      </ScrollView>
     </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  notFoundWrap: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 24
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 40,
+    gap: 14
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8
+  },
+  bylineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5
+  },
+  bylineDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    marginHorizontal: 3
+  },
+  bodyText: {
+    lineHeight: 24
+  }
+});

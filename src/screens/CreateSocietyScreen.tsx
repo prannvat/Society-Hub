@@ -1,29 +1,51 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, Alert, KeyboardAvoidingView, Platform, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenLayout } from './ScreenLayout';
 import { TopNavBar } from '@/components/TopNavBar';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { InputField } from '@/components/InputField';
+import { Card } from '@/components/Card';
+import { useToast } from '@/components/Toast';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { RootStackParamList } from '@/navigation/types';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'CreateSociety'>;
 
+type FieldErrors = {
+  name?: string;
+  description?: string;
+  universityLink?: string;
+};
+
 export const CreateSocietyScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NavigationProp>();
+  const toast = useToast();
   const { createSociety } = useLocalAppState();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [universityLink, setUniversityLink] = useState('');
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!name.trim() || !description.trim() || !universityLink.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in all fields to submit your society request.');
+    const nextErrors: FieldErrors = {};
+    if (!name.trim()) {
+      nextErrors.name = 'Society name is required';
+    }
+    if (!description.trim()) {
+      nextErrors.description = 'Description is required';
+    }
+    if (!universityLink.trim()) {
+      nextErrors.universityLink = 'A Student Union link is required';
+    }
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
       return;
     }
 
@@ -40,86 +62,102 @@ export const CreateSocietyScreen = () => {
       });
 
       setIsSubmitting(false);
-      Alert.alert(
-        'Request Approved!',
-        'Your society has been created and you are now the President. You can assign committee roles from member profiles.',
-        [{ text: 'Great', onPress: () => navigation.goBack() }]
-      );
+      toast.show('Society created — you are now the President', 'success');
+      navigation.goBack();
     } catch {
       setIsSubmitting(false);
-      Alert.alert('Request Failed', 'Unable to create society right now. Please try again.');
+      toast.show('Unable to create society right now. Please try again.', 'error');
     }
   };
 
   return (
-    <ScreenLayout>
+    <ScreenLayout scroll={false}>
       <View style={{ flex: 1, paddingHorizontal: 16 }}>
         <TopNavBar title="Request New Society" onBack={() => navigation.goBack()} />
-        <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        style={{ flex: 1 }}
-      >
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
-          
-          <View style={{ marginBottom: 24, padding: 16, backgroundColor: theme.colors.surface, borderRadius: 12 }}>
-            <Text style={{ color: theme.colors.textPrimary, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
-              Official University Group
-            </Text>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 14, lineHeight: 20 }}>
-              To ensure platform safety, all new societies must be verified. Please provide a link to your society's official page on your Student Union website as proof of recognition.
-            </Text>
-          </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+        >
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Card>
+              <View style={styles.infoRow}>
+                <View style={[styles.infoIcon, { backgroundColor: theme.colors.primarySoft }]}>
+                  <MaterialIcons name="verified-user" size={20} color={theme.colors.primary} />
+                </View>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>
+                    Official University Group
+                  </Text>
+                  <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                    To ensure platform safety, all new societies must be verified. Please provide a link to your society's official page on your Student Union website as proof of recognition.
+                  </Text>
+                </View>
+              </View>
+            </Card>
 
-          <Text style={{ color: theme.colors.textPrimary, fontWeight: '600', marginBottom: 8, marginLeft: 4 }}>Society Name</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="e.g. Computer Science Society"
-            placeholderTextColor={theme.colors.textSecondary}
-            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.textPrimary, borderColor: theme.colors.border }]}
-          />
-
-          <Text style={{ color: theme.colors.textPrimary, fontWeight: '600', marginBottom: 8, marginLeft: 4, marginTop: 16 }}>Description</Text>
-          <TextInput
-            value={description}
-            onChangeText={setDescription}
-            placeholder="What is this society about?"
-            placeholderTextColor={theme.colors.textSecondary}
-            multiline
-            numberOfLines={4}
-            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.textPrimary, borderColor: theme.colors.border, height: 100, paddingTop: 16 }]}
-          />
-
-          <Text style={{ color: theme.colors.textPrimary, fontWeight: '600', marginBottom: 8, marginLeft: 4, marginTop: 16 }}>Proof of SU Recognition (URL)</Text>
-          <TextInput
-            value={universityLink}
-            onChangeText={setUniversityLink}
-            placeholder="https://su.university.edu/societies/..."
-            placeholderTextColor={theme.colors.textSecondary}
-            autoCapitalize="none"
-            keyboardType="url"
-            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.textPrimary, borderColor: theme.colors.border }]}
-          />
-
-          <View style={{ marginTop: 32, opacity: isSubmitting ? 0.7 : 1 }}>
-            <PrimaryButton 
-              label={isSubmitting ? "Submitting..." : "Submit Society Request"} 
-              onPress={isSubmitting ? undefined : handleSubmit} 
+            <InputField
+              label="Society name"
+              placeholder="e.g. Computer Science Society"
+              value={name}
+              onChangeText={setName}
+              icon="groups"
+              error={errors.name}
             />
-          </View>
 
-        </ScrollView>
-      </KeyboardAvoidingView>
+            <InputField
+              label="Description"
+              placeholder="What is this society about?"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              error={errors.description}
+            />
+
+            <InputField
+              label="Proof of SU recognition (URL)"
+              placeholder="https://su.university.edu/societies/..."
+              value={universityLink}
+              onChangeText={setUniversityLink}
+              icon="link"
+              autoCapitalize="none"
+              error={errors.universityLink}
+            />
+
+            <View style={{ marginTop: 16 }}>
+              <PrimaryButton
+                label="Submit Society Request"
+                icon="send"
+                loading={isSubmitting}
+                onPress={handleSubmit}
+              />
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     </ScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+  scrollContent: {
+    paddingTop: 12,
+    paddingBottom: 100,
+    gap: 16
+  },
+  infoRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start'
+  },
+  infoIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 });

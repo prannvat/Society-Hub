@@ -1,11 +1,15 @@
 import React from 'react';
-import { Alert, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import { MaterialIcons } from '@expo/vector-icons';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Avatar } from '@/components/Avatar';
 import { BadgeChip } from '@/components/BadgeChip';
+import { Card } from '@/components/Card';
+import { ListRow } from '@/components/ListRow';
+import { useToast } from '@/components/Toast';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { RootStackParamList } from '@/navigation/types';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -14,6 +18,7 @@ export const EventDetailScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'EventDetail'>>();
+  const toast = useToast();
   const { rsvpedEventIds, toggleRSVP, events, exploreEvents, allSocieties } = useLocalAppState();
   const [saved, setSaved] = React.useState(false);
   const event =
@@ -23,9 +28,9 @@ export const EventDetailScreen = () => {
   if (!event) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 12 }}>
-          <Text style={{ color: theme.colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Event not found</Text>
-          <Text style={{ color: theme.colors.textSecondary, textAlign: 'center' }}>
+        <View style={styles.notFoundWrap}>
+          <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>Event not found</Text>
+          <Text style={[theme.typography.body, { color: theme.colors.textSecondary, textAlign: 'center' }]}>
             This event may have been removed or has not loaded yet.
           </Text>
           <PrimaryButton label="Go Back" onPress={() => navigation.goBack()} />
@@ -36,20 +41,24 @@ export const EventDetailScreen = () => {
 
   const hostSociety = allSocieties.find((society) => society.id === event.societyId);
   const hostName = hostSociety?.name ?? event.societyName ?? 'Society';
+  const brand = hostSociety?.primaryColor || theme.colors.primary;
   const isRsvped = rsvpedEventIds.includes(event.id);
   const hasPoster = typeof event.posterImageUrl === 'string' && /^https?:\/\//i.test(event.posterImageUrl);
   const hasCoords = typeof event.locationLatitude === 'number' && typeof event.locationLongitude === 'number';
+
+  const eventDate = event.startAtIso ? new Date(event.startAtIso) : new Date(event.date);
+  const hasParsedDate = !Number.isNaN(eventDate.getTime());
 
   const handleRSVP = async () => {
     try {
       await toggleRSVP(event.id);
       if (!isRsvped) {
-        Alert.alert('RSVP Confirmed', `You're now attending ${event.title}!`);
+        toast.show(`You're attending ${event.title}!`, 'success');
       } else {
-        Alert.alert('RSVP Cancelled', `You're no longer attending ${event.title}.`);
+        toast.show('RSVP cancelled', 'info');
       }
     } catch {
-      Alert.alert('RSVP Failed', 'Unable to update RSVP right now. Please try again.');
+      toast.show('Unable to update RSVP right now. Please try again.', 'error');
     }
   };
 
@@ -66,17 +75,44 @@ export const EventDetailScreen = () => {
       ios: `${scheme}${label}@${latLng}`,
       android: `${scheme}${latLng}(${label})`
     });
-    
+
     if (url) {
       Linking.openURL(url);
     }
   };
 
+  const iconButtonStyle = ({ pressed }: { pressed: boolean }) => [
+    styles.iconButton,
+    theme.elevation.e1,
+    {
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      opacity: pressed ? 0.7 : 1
+    }
+  ];
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.heroCard, { backgroundColor: theme.colors.surface }]}> 
-          {hasPoster ? <Image source={{ uri: event.posterImageUrl }} style={styles.heroMedia} resizeMode="cover" /> : null}
+        {/* Top actions */}
+        <View style={styles.topBar}>
+          <Pressable onPress={() => navigation.goBack()} hitSlop={6} style={iconButtonStyle}>
+            <MaterialIcons name="arrow-back" size={22} color={theme.colors.textPrimary} />
+          </Pressable>
+          <Pressable onPress={() => setSaved((prev) => !prev)} hitSlop={6} style={iconButtonStyle}>
+            <MaterialIcons
+              name={saved ? 'bookmark' : 'bookmark-border'}
+              size={22}
+              color={saved ? theme.colors.primary : theme.colors.textPrimary}
+            />
+          </Pressable>
+        </View>
+
+        {/* Brand-tinted hero */}
+        <View style={[styles.heroCard, { backgroundColor: `${brand}1A`, borderColor: theme.colors.border }]}>
+          {hasPoster ? (
+            <Image source={{ uri: event.posterImageUrl }} style={styles.heroMedia} resizeMode="cover" />
+          ) : null}
           {!hasPoster && hasCoords ? (
             <MapView
               provider={PROVIDER_DEFAULT}
@@ -95,81 +131,93 @@ export const EventDetailScreen = () => {
               <Marker coordinate={{ latitude: mapLat, longitude: mapLng }} />
             </MapView>
           ) : null}
-          <View style={styles.heroTopRow}>
-            <Pressable onPress={() => navigation.goBack()}>
-              <BadgeChip label="Back" variant="outlined" />
-            </Pressable>
-            <View style={styles.heroActions}>
-              <Pressable>
-                <BadgeChip label="Share" variant="outlined" />
-              </Pressable>
-              <Pressable onPress={() => setSaved((prev) => !prev)}>
-                <BadgeChip label={saved ? 'Saved' : 'Save'} variant="outlined" />
-              </Pressable>
+
+          <View style={styles.heroBody}>
+            <View style={[styles.dateBlock, theme.elevation.e1, { backgroundColor: theme.colors.surface }]}>
+              {hasParsedDate ? (
+                <>
+                  <Text style={[theme.typography.h2, { color: brand }]}>{eventDate.getDate()}</Text>
+                  <Text style={[theme.typography.micro, { color: brand }]}>
+                    {eventDate.toLocaleDateString('en-US', { month: 'short' })}
+                  </Text>
+                </>
+              ) : (
+                <MaterialIcons name="event" size={24} color={brand} />
+              )}
+            </View>
+            <View style={styles.heroTitleWrap}>
+              <Text style={[theme.typography.h1, { color: theme.colors.textPrimary }]}>{event.title}</Text>
+              <View style={styles.tagRow}>
+                <BadgeChip label={event.isFree ? 'Free Event' : 'Paid Event'} variant={event.isFree ? 'success' : 'neutral'} />
+                <BadgeChip label={event.membersOnly ? 'Members Only' : 'Open to All'} variant={event.membersOnly ? 'primary' : 'neutral'} />
+              </View>
             </View>
           </View>
-          <Text style={[styles.heroText, { color: theme.colors.textSecondary }]}>
-            {hasPoster ? 'Poster' : hasCoords ? 'Location map preview' : 'No poster or location map available'}
-          </Text>
         </View>
 
-        <Text style={[styles.eventTitle, { color: theme.colors.textPrimary }]}>{event.title}</Text>
-
-        <View style={styles.tagRow}>
-          <BadgeChip label={event.isFree ? 'Free Event' : 'Paid Event'} />
-          <BadgeChip label={event.membersOnly ? 'Members Only' : 'Open to All'} variant="outlined" />
-        </View>
-
-        <View style={styles.hostRow}>
-          <View style={styles.hostInfo}>
-            <Avatar name={hostName} size={36} />
-            <Text style={[styles.hostText, { color: theme.colors.textSecondary }]}>Hosted by {hostName}</Text>
+        {/* Host */}
+        <Card padding={12}>
+          <View style={styles.hostRow}>
+            <Avatar name={hostName} size={40} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>Hosted by</Text>
+              <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                {hostName}
+              </Text>
+            </View>
+            {hostSociety ? (
+              <Pressable
+                onPress={() => navigation.navigate('SocietyProfile', { societyId: hostSociety.id })}
+                hitSlop={8}
+              >
+                {({ pressed }) => (
+                  <MaterialIcons name="chevron-right" size={24} color={theme.colors.textTertiary} style={{ opacity: pressed ? 0.5 : 1 }} />
+                )}
+              </Pressable>
+            ) : null}
           </View>
-          <BadgeChip label="Follow" variant="outlined" />
-        </View>
+        </Card>
 
-        <View style={styles.tagRow}>
-          <BadgeChip label={event.date} />
-          <BadgeChip label={event.time} variant="outlined" />
-          <BadgeChip label={event.location} variant="outlined" />
-        </View>
+        {/* Key info */}
+        <Card padding={0}>
+          <ListRow
+            title={event.date}
+            subtitle={event.time}
+            leading={<MaterialIcons name="schedule" size={22} color={theme.colors.primary} />}
+          />
+          <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />
+          <ListRow
+            title={event.location}
+            subtitle="Tap the map below for directions"
+            leading={<MaterialIcons name="place" size={22} color={theme.colors.primary} />}
+          />
+          <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />
+          <ListRow
+            title={`${event.attendingCount} going`}
+            subtitle={event.membersOnly ? 'Reserved for society members' : 'Open to everyone — invite friends'}
+            leading={<MaterialIcons name="people-outline" size={22} color={theme.colors.primary} />}
+          />
+        </Card>
 
-        <View style={[styles.accessCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}> 
-          <Text style={[styles.accessTitle, { color: theme.colors.textPrimary }]}>Access</Text>
-          <Text style={[styles.accessText, { color: theme.colors.textSecondary }]}>
-            {event.membersOnly
-              ? 'This event is reserved for society members. RSVP confirms your member attendance slot.'
-              : 'This event is open to everyone. Invite friends and RSVP to help the committee plan capacity.'}
-          </Text>
-        </View>
-
+        {/* About */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>About this event</Text>
-          <Text style={[styles.sectionText, { color: theme.colors.textSecondary }]}>
+          <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>About this event</Text>
+          <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
             {event.description?.trim() || 'Details for this event will be announced soon.'}
           </Text>
         </View>
 
+        {/* Location map */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Attendees</Text>
-          <View style={styles.attendeesRow}>
-            <Text style={[styles.attendeeCount, { color: theme.colors.textSecondary }]}>{event.attendingCount} going</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Gallery</Text>
-          <View style={styles.galleryRow}>
-            <View style={[styles.galleryTile, { backgroundColor: theme.colors.surface }]} />
-            <View style={[styles.galleryTile, { backgroundColor: theme.colors.surface }]} />
-            <View style={[styles.galleryTile, { backgroundColor: theme.colors.surface }]} />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Location</Text>
-          <Text style={[styles.sectionText, { color: theme.colors.textSecondary, marginBottom: 14 }]}>{event.location}</Text>
-          <Pressable onPress={openMap} style={[styles.mapCard, { backgroundColor: theme.colors.surface }]}> 
+          <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>Location</Text>
+          <Pressable
+            onPress={openMap}
+            style={({ pressed }) => [
+              styles.mapCard,
+              theme.elevation.e1,
+              { backgroundColor: theme.colors.surface, opacity: pressed ? 0.9 : 1 }
+            ]}
+          >
             <MapView
               provider={PROVIDER_DEFAULT}
               style={styles.map}
@@ -186,17 +234,33 @@ export const EventDetailScreen = () => {
             >
               <Marker coordinate={{ latitude: mapLat, longitude: mapLng }} />
             </MapView>
-            <View style={[styles.mapButton, { backgroundColor: theme.colors.primary }]}> 
-              <Text style={[styles.mapButtonText, { color: theme.colors.background }]}>Open in Maps</Text>
+            <View style={[styles.mapButton, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.pill }]}>
+              <MaterialIcons name="directions" size={14} color={theme.colors.textOnPrimary} />
+              <Text style={[theme.typography.captionMedium, { color: theme.colors.textOnPrimary, fontSize: 12 }]}>
+                Open in Maps
+              </Text>
             </View>
           </Pressable>
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { borderTopColor: theme.colors.border, backgroundColor: theme.colors.background }]}> 
-        <Text style={[styles.priceTag, { color: theme.colors.textPrimary }]}>{event.isFree ? 'Free' : 'Paid'}</Text>
+      {/* Sticky RSVP footer */}
+      <View style={[styles.footer, { borderTopColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+        <View style={styles.footerMeta}>
+          <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]}>
+            {event.isFree ? 'Free' : 'Paid'}
+          </Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+            {event.attendingCount} going
+          </Text>
+        </View>
         <View style={styles.footerButton}>
-          <PrimaryButton label={isRsvped ? 'Attending' : 'RSVP Now'} onPress={handleRSVP} />
+          <PrimaryButton
+            label={isRsvped ? 'Cancel RSVP' : 'RSVP Now'}
+            variant={isRsvped ? 'secondary' : 'primary'}
+            icon={isRsvped ? undefined : 'event-available'}
+            onPress={handleRSVP}
+          />
         </View>
       </View>
     </View>
@@ -207,105 +271,75 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  notFoundWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 12
+  },
   scrollContent: {
-    paddingTop: 28,
+    paddingTop: 56,
     paddingHorizontal: 20,
     paddingBottom: 140,
-    gap: 22
+    gap: 18
   },
-  heroCard: {
-    height: 268,
-    borderRadius: 24,
-    justifyContent: 'space-between',
-    padding: 24,
-    marginTop: 8,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  heroMedia: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  heroTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  heroActions: {
-    flexDirection: 'row',
-    gap: 10
-  },
-  heroText: {
-    fontSize: 14,
-    lineHeight: 20,
-    letterSpacing: 0.2
-  },
-  eventTitle: {
-    fontSize: 28,
-    fontWeight: '900',
-    lineHeight: 36
-  },
-  hostRow: {
+  topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center'
   },
-  hostInfo: {
-    flexDirection: 'row',
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
     alignItems: 'center',
-    gap: 12,
-    flex: 1
+    justifyContent: 'center'
   },
-  hostText: {
-    fontSize: 14,
-    lineHeight: 20,
-    flexShrink: 1
+  heroCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    overflow: 'hidden'
+  },
+  heroMedia: {
+    width: '100%',
+    height: 180
+  },
+  heroBody: {
+    flexDirection: 'row',
+    gap: 14,
+    padding: 18,
+    alignItems: 'flex-start'
+  },
+  dateBlock: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  },
+  heroTitleWrap: {
+    flex: 1,
+    gap: 10
   },
   tagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10
+    gap: 8
   },
-  section: {
-    gap: 12
-  },
-  accessCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-    gap: 6
-  },
-  accessTitle: {
-    fontSize: 14,
-    fontWeight: '800'
-  },
-  accessText: {
-    fontSize: 13,
-    lineHeight: 19
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800'
-  },
-  sectionText: {
-    fontSize: 15,
-    lineHeight: 22
-  },
-  attendeesRow: {
+  hostRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12
+  },
+  rowDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 50
+  },
+  section: {
     gap: 10
-  },
-  attendeeCount: {
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  galleryRow: {
-    flexDirection: 'row',
-    gap: 10
-  },
-  galleryTile: {
-    flex: 1,
-    height: 78,
-    borderRadius: 16
   },
   mapCard: {
     height: 168,
@@ -320,13 +354,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 14,
     right: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18
-  },
-  mapButtonText: {
-    fontSize: 12,
-    fontWeight: '700'
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8
   },
   footer: {
     position: 'absolute',
@@ -334,15 +366,15 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderTopWidth: 1,
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 20,
+    paddingBottom: 28,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14
   },
-  priceTag: {
-    fontSize: 15,
-    fontWeight: '800'
+  footerMeta: {
+    gap: 2
   },
   footerButton: {
     flex: 1

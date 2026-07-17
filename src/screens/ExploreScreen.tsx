@@ -1,13 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenLayout } from './ScreenLayout';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { EventCard } from '@/components/EventCard';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { Card } from '@/components/Card';
+import { EmptyState } from '@/components/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
 import { RootStackParamList } from '@/navigation/types';
 import { MaterialIcons } from '@expo/vector-icons';
+import { EventItem } from '@/types';
 
 type FilterMode = 'ALL' | 'WEEK' | number;
 
@@ -29,13 +34,68 @@ const generateDays = () => {
   return days;
 };
 
+type EventGroup = {
+  key: string;
+  title: string;
+  caption?: string;
+  events: EventItem[];
+};
+
+const groupEventsByDay = (events: EventItem[]): EventGroup[] => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const groups = new Map<string, EventGroup>();
+  const undated: EventItem[] = [];
+
+  events.forEach((event) => {
+    if (!event.startAtIso) {
+      undated.push(event);
+      return;
+    }
+    const eventDate = new Date(event.startAtIso);
+    if (Number.isNaN(eventDate.getTime())) {
+      undated.push(event);
+      return;
+    }
+    const day = new Date(eventDate);
+    day.setHours(0, 0, 0, 0);
+    const key = day.toISOString();
+    const existing = groups.get(key);
+    if (existing) {
+      existing.events.push(event);
+      return;
+    }
+    const title =
+      day.getTime() === today.getTime()
+        ? 'Today'
+        : day.getTime() === tomorrow.getTime()
+          ? 'Tomorrow'
+          : day.toLocaleDateString('en-US', { weekday: 'long' });
+    groups.set(key, {
+      key,
+      title,
+      caption: day.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+      events: [event]
+    });
+  });
+
+  const sorted = [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+  if (undated.length > 0) {
+    sorted.push({ key: 'undated', title: 'Date to be announced', events: undated });
+  }
+  return sorted;
+};
+
 export const ExploreScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { exploreEvents, loadExploreEvents, isLoadingExplore, favouritedSocietyIds, toggleFavouriteSociety } = useLocalAppState();
   const [filterMode, setFilterMode] = useState<FilterMode>('ALL');
   const [showOnlyFavourites, setShowOnlyFavourites] = useState(false);
-  
+
   const days = useMemo(() => generateDays(), []);
 
   useEffect(() => {
@@ -44,19 +104,19 @@ export const ExploreScreen = () => {
 
   const filteredEvents = useMemo(() => {
     let sourceEvents = exploreEvents;
-    
+
     if (showOnlyFavourites) {
       sourceEvents = exploreEvents.filter(ev => favouritedSocietyIds.includes(ev.societyId));
     }
 
     if (filterMode === 'ALL') return sourceEvents;
-    
+
     if (filterMode === 'WEEK') {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const nextWeek = new Date(today);
       nextWeek.setDate(nextWeek.getDate() + 7);
-      
+
       return sourceEvents.filter(ev => {
         if (!ev.startAtIso) return false;
         const evDate = new Date(ev.startAtIso);
@@ -73,149 +133,174 @@ export const ExploreScreen = () => {
     });
   }, [exploreEvents, showOnlyFavourites, favouritedSocietyIds, filterMode, days]);
 
+  const groupedEvents = useMemo(() => groupEventsByDay(filteredEvents), [filteredEvents]);
+
+  const renderDayChip = (
+    selected: boolean,
+    onPress: () => void,
+    label: string,
+    value: string,
+    key: string | number
+  ) => (
+    <Pressable
+      key={key}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.dayCard,
+        {
+          borderRadius: theme.radius.lg,
+          backgroundColor: selected ? theme.colors.primary : theme.colors.surface,
+          borderColor: selected ? theme.colors.primary : theme.colors.border,
+          transform: [{ scale: pressed ? 0.97 : 1 }]
+        }
+      ]}
+    >
+      <Text
+        style={[
+          theme.typography.caption,
+          { fontWeight: '700', color: selected ? theme.colors.textOnPrimary : theme.colors.textSecondary }
+        ]}
+      >
+        {label}
+      </Text>
+      <Text
+        style={[
+          theme.typography.h3,
+          { color: selected ? theme.colors.textOnPrimary : theme.colors.textPrimary }
+        ]}
+      >
+        {value}
+      </Text>
+    </Pressable>
+  );
+
   return (
-    <ScreenLayout>
+    <ScreenLayout scroll={false}>
       <View style={styles.header}>
-        <View style={styles.headerTopRow}>
-          <View style={styles.headerTitles}>
-            <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Explore</Text>
-            <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary }]}>
-              Discover events across all societies
-            </Text>
-          </View>
-          <Pressable 
-            onPress={() => setShowOnlyFavourites(!showOnlyFavourites)}
-            style={[
-              styles.favFilterButton,
-              { 
-                backgroundColor: showOnlyFavourites ? `${theme.colors.primary}1A` : 'transparent',
-                borderColor: showOnlyFavourites ? theme.colors.primary : theme.colors.border
-              }
-            ]}
-          >
-            <MaterialIcons 
-              name={showOnlyFavourites ? "favorite" : "favorite-border"} 
-              size={20} 
-              color={showOnlyFavourites ? theme.colors.primary : theme.colors.textSecondary} 
-            />
-            <Text style={[
-              styles.favFilterText, 
-              { color: showOnlyFavourites ? theme.colors.primary : theme.colors.textSecondary }
-            ]}>
-              {showOnlyFavourites ? 'Favourites' : 'All'}
-            </Text>
-          </Pressable>
-        </View>
+        <ScreenHeader
+          title="Explore"
+          subtitle="Discover events across all societies"
+          accessory={
+            <Pressable
+              onPress={() => setShowOnlyFavourites(!showOnlyFavourites)}
+              hitSlop={6}
+              style={({ pressed }) => [
+                styles.favFilterButton,
+                {
+                  borderRadius: theme.radius.pill,
+                  backgroundColor: showOnlyFavourites ? theme.colors.primarySoft : 'transparent',
+                  borderColor: showOnlyFavourites ? theme.colors.primary : theme.colors.border,
+                  opacity: pressed ? 0.7 : 1
+                }
+              ]}
+            >
+              <MaterialIcons
+                name={showOnlyFavourites ? 'favorite' : 'favorite-border'}
+                size={18}
+                color={showOnlyFavourites ? theme.colors.primary : theme.colors.textSecondary}
+              />
+              <Text
+                style={[
+                  theme.typography.captionMedium,
+                  { color: showOnlyFavourites ? theme.colors.primary : theme.colors.textSecondary }
+                ]}
+              >
+                {showOnlyFavourites ? 'Favourites' : 'All'}
+              </Text>
+            </Pressable>
+          }
+        />
       </View>
 
       <View style={styles.calendarWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.calendarScroll}>
-          <Pressable
-            onPress={() => setFilterMode('ALL')}
-            style={[
-              styles.dayCard,
-              {
-                backgroundColor: filterMode === 'ALL' ? theme.colors.primary : theme.colors.surface,
-                borderColor: filterMode === 'ALL' ? theme.colors.primary : theme.colors.border,
-              }
-            ]}
-          >
-            <Text style={[styles.dayLabel, { color: filterMode === 'ALL' ? theme.colors.background : theme.colors.textSecondary }]}>Show</Text>
-            <Text style={[styles.dayNumber, { color: filterMode === 'ALL' ? theme.colors.background : theme.colors.textPrimary }]}>All</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setFilterMode('WEEK')}
-            style={[
-              styles.dayCard,
-              {
-                backgroundColor: filterMode === 'WEEK' ? theme.colors.primary : theme.colors.surface,
-                borderColor: filterMode === 'WEEK' ? theme.colors.primary : theme.colors.border,
-              }
-            ]}
-          >
-            <Text style={[styles.dayLabel, { color: filterMode === 'WEEK' ? theme.colors.background : theme.colors.textSecondary }]}>This</Text>
-            <Text style={[styles.dayNumber, { fontSize: 16, color: filterMode === 'WEEK' ? theme.colors.background : theme.colors.textPrimary }]}>Week</Text>
-          </Pressable>
-
-          {days.map((day, idx) => {
-            const isSelected = filterMode === idx;
-            return (
-              <Pressable
-                key={idx}
-                onPress={() => setFilterMode(idx)}
-                style={[
-                  styles.dayCard,
-                  {
-                    backgroundColor: isSelected ? theme.colors.primary : theme.colors.surface,
-                    borderColor: isSelected ? theme.colors.primary : theme.colors.border,
-                  }
-                ]}
-              >
-                <Text style={[
-                  styles.dayLabel,
-                  { color: isSelected ? theme.colors.background : theme.colors.textSecondary }
-                ]}>
-                  {day.label}
-                </Text>
-                <Text style={[
-                  styles.dayNumber,
-                  { color: isSelected ? theme.colors.background : theme.colors.textPrimary }
-                ]}>
-                  {day.number}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {renderDayChip(filterMode === 'ALL', () => setFilterMode('ALL'), 'Show', 'All', 'all')}
+          {renderDayChip(filterMode === 'WEEK', () => setFilterMode('WEEK'), 'This', 'Week', 'week')}
+          {days.map((day, idx) =>
+            renderDayChip(filterMode === idx, () => setFilterMode(idx), day.label, day.number, idx)
+          )}
         </ScrollView>
       </View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.feed}
         refreshControl={
           <RefreshControl refreshing={isLoadingExplore} onRefresh={loadExploreEvents} tintColor={theme.colors.primary} />
         }
       >
         {isLoadingExplore && exploreEvents.length === 0 ? (
-          <ActivityIndicator color={theme.colors.primary} style={{ marginTop: 40 }} />
-        ) : filteredEvents.length > 0 ? (
-          filteredEvents.map(event => {
-            const isFavourited = favouritedSocietyIds.includes(event.societyId);
-            return (
-              <View key={event.id} style={styles.eventWrap}>
-                <View style={styles.societyBadgeRow}>
-                  <View style={styles.societyBadge}>
-                    <MaterialIcons name="school" size={16} color={theme.colors.primary} />
-                    <Text style={[styles.societyName, { color: theme.colors.primary }]}>
-                      {event.societyName ?? 'University Society'}
-                    </Text>
+          <View style={{ gap: 12 }}>
+            {[0, 1, 2].map((index) => (
+              <Card key={index}>
+                <View style={{ flexDirection: 'row', gap: 14 }}>
+                  <Skeleton width={56} height={56} radius={theme.radius.card} />
+                  <View style={{ flex: 1, gap: 8 }}>
+                    <Skeleton width="75%" height={16} />
+                    <Skeleton width="50%" height={12} />
+                    <Skeleton width="40%" height={12} />
                   </View>
-                  <Pressable 
-                    onPress={() => toggleFavouriteSociety(event.societyId)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <MaterialIcons 
-                      name={isFavourited ? "favorite" : "favorite-border"} 
-                      size={20} 
-                      color={isFavourited ? theme.colors.primary : theme.colors.textSecondary} 
-                    />
-                  </Pressable>
                 </View>
-                <EventCard
-                  event={event}
-                  onPressRSVP={(ev) => navigation.navigate('EventDetail', { eventId: ev.id })}
-                />
-              </View>
-            );
-          })
-        ) : (
-          <View style={styles.emptyState}>
-            <MaterialIcons name="event-busy" size={48} color={theme.colors.border} />
-            <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary }]}>No events found</Text>
-            <Text style={[styles.emptySub, { color: theme.colors.textSecondary }]}>
-              There are no events on this date. Try selecting another day or "All".
-            </Text>
+              </Card>
+            ))}
           </View>
+        ) : groupedEvents.length > 0 ? (
+          groupedEvents.map((group) => (
+            <View key={group.key} style={styles.groupWrap}>
+              <View style={styles.groupHeader}>
+                <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>{group.title}</Text>
+                {group.caption ? (
+                  <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>{group.caption}</Text>
+                ) : null}
+              </View>
+              {group.events.map((event) => {
+                const isFavourited = favouritedSocietyIds.includes(event.societyId);
+                return (
+                  <View key={event.id} style={styles.eventWrap}>
+                    <View style={styles.societyBadgeRow}>
+                      <View style={styles.societyBadge}>
+                        <MaterialIcons name="school" size={14} color={theme.colors.primary} />
+                        <Text
+                          style={[theme.typography.captionMedium, styles.societyName, { color: theme.colors.primary }]}
+                          numberOfLines={1}
+                        >
+                          {event.societyName ?? 'University Society'}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => toggleFavouriteSociety(event.societyId)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <MaterialIcons
+                          name={isFavourited ? 'favorite' : 'favorite-border'}
+                          size={20}
+                          color={isFavourited ? theme.colors.danger : theme.colors.textTertiary}
+                        />
+                      </Pressable>
+                    </View>
+                    <EventCard
+                      event={event}
+                      onPressRSVP={(ev) => navigation.navigate('EventDetail', { eventId: ev.id })}
+                    />
+                  </View>
+                );
+              })}
+            </View>
+          ))
+        ) : (
+          <EmptyState
+            icon="event-busy"
+            title="No events found"
+            subtitle={
+              showOnlyFavourites
+                ? 'No upcoming events from your favourite societies. Try showing all events.'
+                : 'There are no events on this date. Try selecting another day or "All".'
+            }
+            actionLabel={filterMode !== 'ALL' || showOnlyFavourites ? 'Show all events' : undefined}
+            onAction={() => {
+              setFilterMode('ALL');
+              setShowOnlyFavourites(false);
+            }}
+          />
         )}
       </ScrollView>
     </ScreenLayout>
@@ -226,100 +311,63 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 24,
-  },  headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  headerTitles: {
-    flex: 1,
+    paddingBottom: 20
   },
   favFilterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    minHeight: 36,
     borderWidth: 1,
-    gap: 6,
-  },
-  favFilterText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },  headerTitle: {
-    fontSize: 32,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    marginTop: 4,
+    gap: 6
   },
   calendarWrap: {
-    marginBottom: 16,
+    marginBottom: 16
   },
   calendarScroll: {
     paddingHorizontal: 20,
-    gap: 12,
+    gap: 12
   },
   dayCard: {
     width: 64,
     height: 72,
-    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-  },
-  dayLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  dayNumber: {
-    fontSize: 20,
-    fontWeight: '800',
+    gap: 2
   },
   feed: {
     paddingHorizontal: 20,
     paddingBottom: 100,
-    gap: 24,
+    gap: 24
+  },
+  groupWrap: {
+    gap: 14
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8
   },
   eventWrap: {
-    gap: 8,
+    gap: 8
   },
   societyBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between'
   },
   societyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 4,
+    flexShrink: 1
   },
   societyName: {
-    fontSize: 13,
-    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 30,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 16,
-  },
-  emptySub: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 20,
+    fontSize: 12,
+    flexShrink: 1
   }
 });

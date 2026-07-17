@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TextInput, StyleSheet, Alert, Image, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Alert, Image, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import { FontAwesome } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons';
 import { TopNavBar } from '@/components/TopNavBar';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { InputField } from '@/components/InputField';
+import { Card } from '@/components/Card';
+import { useToast } from '@/components/Toast';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
@@ -13,14 +15,16 @@ import { useLocalAppState } from '@/hooks/useLocalAppState';
 export const EditProfileScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation();
+  const toast = useToast();
   const { profile, updateProfile } = useLocalAppState();
-  
+
   const [fullName, setFullName] = useState(profile.fullName || '');
   const [bio, setBio] = useState(profile.bio || '');
   const [university, setUniversity] = useState(profile.university || '');
   const [course, setCourse] = useState(profile.course || '');
   const [year, setYear] = useState(profile.year || '');
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl || '');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Social Links
   const [instagramLink, setInstagramLink] = useState(profile.instagramLink || '');
@@ -43,12 +47,16 @@ export const EditProfileScreen = () => {
       base64: true,
     });
     if (!result.canceled && result.assets[0].base64) {
-      const dataUri = `data:image/jpeg;base64,\${result.assets[0].base64}`;
+      const dataUri = `data:image/jpeg;base64,${result.assets[0].base64}`;
       setAvatarUrl(dataUri);
     }
   };
 
   const handleSave = async () => {
+    if (isSaving) {
+      return;
+    }
+    setIsSaving(true);
     try {
       await updateProfile({
         ...profile,
@@ -64,175 +72,154 @@ export const EditProfileScreen = () => {
         twitterLink,
         websiteLink
       });
+      toast.show('Profile updated', 'success');
       navigation.goBack();
     } catch {
-      Alert.alert('Failed', 'Failed to update profile.');
+      toast.show('Failed to update profile. Please try again.', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   return (
-    <ScreenLayout>
+    <ScreenLayout scroll={false}>
       <TopNavBar title="Edit Profile" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={styles.container}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {/* Avatar Section */}
         <View style={styles.imagePickerWrap}>
-           <TouchableOpacity onPress={pickAvatar} style={[styles.avatarPreview, { borderColor: theme.colors.border }]}>
-             {avatarUrl ? (
-               <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
-             ) : (
-               <View style={[styles.placeholderAvatar, { backgroundColor: theme.colors.surface }]}>
-                 <MaterialIcons name="add-a-photo" size={28} color={theme.colors.textSecondary} />
-                 <Text style={{ color: theme.colors.textSecondary, marginTop: 6, fontSize: 12 }}>Edit Picture</Text>
-               </View>
-             )}
-           </TouchableOpacity>
-           <Text style={{ color: theme.colors.primary, marginTop: 12, fontWeight: '600' }} onPress={pickAvatar}>
-              Change profile photo
-           </Text>
+          <Pressable
+            onPress={pickAvatar}
+            style={({ pressed }) => [
+              styles.avatarPreview,
+              { borderColor: theme.colors.border, opacity: pressed ? 0.8 : 1 }
+            ]}
+          >
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.placeholderAvatar, { backgroundColor: theme.colors.surfaceSunken }]}>
+                <MaterialIcons name="add-a-photo" size={28} color={theme.colors.textSecondary} />
+              </View>
+            )}
+          </Pressable>
+          <Pressable onPress={pickAvatar} hitSlop={8}>
+            {({ pressed }) => (
+              <Text style={[theme.typography.captionMedium, { color: theme.colors.primary, marginTop: 12, opacity: pressed ? 0.6 : 1 }]}>
+                Change profile photo
+              </Text>
+            )}
+          </Pressable>
         </View>
 
         {/* Public Information */}
-        <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Public Information</Text>
-          
-          <View style={[styles.inputGroup, { borderBottomColor: theme.colors.border }]}>
-            <Text style={[styles.inputLabel, { color: theme.colors.textPrimary }]}>Name</Text>
-            <TextInput
-              style={[styles.input, { color: theme.colors.textPrimary }]}
+        <Card>
+          <Text style={[theme.typography.h3, styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+            Public information
+          </Text>
+          <View style={styles.fieldGroup}>
+            <InputField
+              label="Name"
+              placeholder="Your name"
               value={fullName}
               onChangeText={setFullName}
-              placeholder="Your Name"
-              placeholderTextColor={theme.colors.textSecondary}
+              icon="badge"
             />
-          </View>
-
-          <View style={[styles.inputGroup, { borderBottomColor: theme.colors.border }]}>
-            <Text style={[styles.inputLabel, { color: theme.colors.textPrimary }]}>Bio</Text>
-            <TextInput
-              style={[styles.input, styles.multiLine, { color: theme.colors.textPrimary }]}
-              multiline
-              numberOfLines={3}
+            <InputField
+              label="Bio"
+              placeholder="A little bit about yourself..."
               value={bio}
               onChangeText={setBio}
-              placeholder="A little bit about yourself..."
-              placeholderTextColor={theme.colors.textSecondary}
+              multiline
             />
           </View>
-        </View>
+        </Card>
 
         {/* Academics */}
-        <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Academics</Text>
-          
-          <View style={[styles.inputGroup, { borderBottomColor: theme.colors.border }]}>
-            <Text style={[styles.inputLabel, { color: theme.colors.textPrimary }]}>University</Text>
-            <TextInput
-              style={[styles.input, { color: theme.colors.textPrimary }]}
+        <Card>
+          <Text style={[theme.typography.h3, styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+            Academics
+          </Text>
+          <View style={styles.fieldGroup}>
+            <InputField
+              label="University"
+              placeholder="University name"
               value={university}
               onChangeText={setUniversity}
-              placeholder="University Name"
-              placeholderTextColor={theme.colors.textSecondary}
+              icon="school"
             />
-          </View>
-
-          <View style={[styles.inputGroup, { borderBottomColor: theme.colors.border }]}>
-            <Text style={[styles.inputLabel, { color: theme.colors.textPrimary }]}>Course</Text>
-            <TextInput
-              style={[styles.input, { color: theme.colors.textPrimary }]}
+            <InputField
+              label="Course"
+              placeholder="e.g. Computer Science"
               value={course}
               onChangeText={setCourse}
-              placeholder="e.g. Computer Science"
-              placeholderTextColor={theme.colors.textSecondary}
+              icon="menu-book"
             />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.colors.textPrimary }]}>Year</Text>
-            <TextInput
-              style={[styles.input, { color: theme.colors.textPrimary }]}
+            <InputField
+              label="Year"
+              placeholder="e.g. Year 2"
               value={year}
               onChangeText={setYear}
-              placeholder="e.g. Year 2"
-              placeholderTextColor={theme.colors.textSecondary}
+              icon="calendar-today"
             />
           </View>
-        </View>
+        </Card>
 
-        {/* Links (Instagram-like) */}
-        <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Links</Text>
-          <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 12 }}>Add your social and professional links to your profile.</Text>
-
-          <View style={styles.linkRow}>
-            <FontAwesome name="instagram" size={24} color="#E1306C" style={styles.iconWidth} />
-            <TextInput
-              style={[styles.linkInput, { color: theme.colors.textPrimary, borderBottomColor: theme.colors.border }]}
+        {/* Links */}
+        <Card>
+          <Text style={[theme.typography.h3, styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+            Links
+          </Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginBottom: 14 }]}>
+            Add your social and professional links to your profile.
+          </Text>
+          <View style={styles.fieldGroup}>
+            <InputField
+              label="Instagram"
+              placeholder="Instagram profile URL"
               value={instagramLink}
               onChangeText={setInstagramLink}
-              placeholder="Instagram Profile URL"
-              keyboardType="url"
+              icon="link"
               autoCapitalize="none"
-              placeholderTextColor={theme.colors.textSecondary}
             />
-          </View>
-
-          <View style={styles.linkRow}>
-            <FontAwesome name="linkedin-square" size={24} color="#0077b5" style={styles.iconWidth} />
-            <TextInput
-              style={[styles.linkInput, { color: theme.colors.textPrimary, borderBottomColor: theme.colors.border }]}
+            <InputField
+              label="LinkedIn"
+              placeholder="LinkedIn profile URL"
               value={linkedinLink}
               onChangeText={setLinkedinLink}
-              placeholder="LinkedIn Profile URL"
-              keyboardType="url"
+              icon="link"
               autoCapitalize="none"
-              placeholderTextColor={theme.colors.textSecondary}
             />
-          </View>
-
-          <View style={styles.linkRow}>
-            <FontAwesome name="github" size={24} color={theme.colors.textPrimary} style={styles.iconWidth} />
-            <TextInput
-              style={[styles.linkInput, { color: theme.colors.textPrimary, borderBottomColor: theme.colors.border }]}
+            <InputField
+              label="GitHub"
+              placeholder="GitHub profile URL"
               value={githubLink}
               onChangeText={setGithubLink}
-              placeholder="GitHub Profile URL"
-              keyboardType="url"
+              icon="link"
               autoCapitalize="none"
-              placeholderTextColor={theme.colors.textSecondary}
             />
-          </View>
-
-          <View style={styles.linkRow}>
-            <FontAwesome name="twitter" size={24} color="#1DA1F2" style={styles.iconWidth} />
-            <TextInput
-              style={[styles.linkInput, { color: theme.colors.textPrimary, borderBottomColor: theme.colors.border }]}
+            <InputField
+              label="X (Twitter)"
+              placeholder="X (Twitter) profile URL"
               value={twitterLink}
               onChangeText={setTwitterLink}
-              placeholder="X (Twitter) Profile URL"
-              keyboardType="url"
+              icon="link"
               autoCapitalize="none"
-              placeholderTextColor={theme.colors.textSecondary}
             />
-          </View>
-
-          <View style={[styles.linkRow, { borderBottomWidth: 0 }]}>
-            <FontAwesome name="globe" size={24} color={theme.colors.textSecondary} style={styles.iconWidth} />
-            <TextInput
-              style={[styles.linkInput, { color: theme.colors.textPrimary, borderBottomWidth: 0 }]}
+            <InputField
+              label="Website"
+              placeholder="Website / portfolio URL"
               value={websiteLink}
               onChangeText={setWebsiteLink}
-              placeholder="Website / Portfolio URL"
-              keyboardType="url"
+              icon="language"
               autoCapitalize="none"
-              placeholderTextColor={theme.colors.textSecondary}
             />
           </View>
-        </View>
+        </Card>
 
-        <View style={{ marginTop: 12 }}>
-          <PrimaryButton label="Save Changes" onPress={handleSave} />
-        </View>
+        <PrimaryButton label="Save Changes" onPress={handleSave} loading={isSaving} icon="check" />
       </ScrollView>
+      </KeyboardAvoidingView>
     </ScreenLayout>
   );
 };
@@ -242,75 +229,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 100,
+    gap: 16
   },
   imagePickerWrap: {
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 8
   },
   avatarPreview: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     borderWidth: 1,
     overflow: 'hidden',
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   placeholderAvatar: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   avatarImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
-  },
-  section: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
+    resizeMode: 'cover'
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 16,
+    marginBottom: 14
   },
-  inputGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    paddingVertical: 12,
-  },
-  inputLabel: {
-    width: 90,
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-  },
-  multiLine: {
-    height: 60,
-    textAlignVertical: 'top',
-  },
-  linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  iconWidth: {
-    width: 32,
-    textAlign: 'center',
-  },
-  linkInput: {
-    flex: 1,
-    fontSize: 15,
-    borderBottomWidth: 1,
-    paddingBottom: 8,
-    marginLeft: 12,
-  },
+  fieldGroup: {
+    gap: 14
+  }
 });
