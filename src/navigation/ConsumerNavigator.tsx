@@ -3,14 +3,14 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { getTabNavigatorOptions } from './tabOptions';
-import { HomeScreen } from '@/screens/HomeScreen';
-import { MySocietiesScreen } from '@/screens/MySocietiesScreen';
+import { FeedScreen } from '@/screens/FeedScreen';
+import { ExploreSocietiesScreen } from '@/screens/ExploreSocietiesScreen';
 import { ExploreScreen } from '@/screens/ExploreScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
 
 export type ConsumerTabParamList = {
-  Discover: undefined;
-  MySocieties: undefined;
+  Home: undefined;
+  Explore: undefined;
   Events: undefined;
   Profile: undefined;
 };
@@ -26,8 +26,8 @@ export const ConsumerNavigator = () => {
         ...getTabNavigatorOptions(theme),
         tabBarIcon: ({ color, size }) => {
           const iconNameMap: Record<keyof ConsumerTabParamList, keyof typeof MaterialIcons.glyphMap> = {
-            Discover: 'explore',
-            MySocieties: 'favorite',
+            Home: 'home',
+            Explore: 'explore',
             Events: 'event',
             Profile: 'person'
           };
@@ -37,14 +37,14 @@ export const ConsumerNavigator = () => {
       })}
     >
       <Tab.Screen
-        name="Discover"
-        component={HomeScreen}
-        options={{ tabBarLabel: 'Discover' }}
+        name="Home"
+        component={FeedScreen}
+        options={{ tabBarLabel: 'Home' }}
       />
       <Tab.Screen
-        name="MySocieties"
-        component={MySocietiesScreen}
-        options={{ tabBarLabel: 'My Societies' }}
+        name="Explore"
+        component={ExploreSocietiesScreen}
+        options={{ tabBarLabel: 'Explore' }}
       />
       <Tab.Screen
         name="Events"

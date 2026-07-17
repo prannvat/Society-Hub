@@ -29,6 +29,12 @@ import { EditSocietyProfileScreen } from '@/screens/EditSocietyProfileScreen';
 import { EditProfileScreen } from '@/screens/EditProfileScreen';
 import { ExploreSocietiesScreen } from '@/screens/ExploreSocietiesScreen';
 import { CommitteeRequestScreen } from '@/screens/CommitteeRequestScreen';
+import { SocietyManageScreen } from '@/screens/SocietyManageScreen';
+import { CreateHubScreen } from '@/screens/CreateHubScreen';
+import { CreatePostScreen } from '@/screens/CreatePostScreen';
+import { CreatePollScreen } from '@/screens/CreatePollScreen';
+import { MembersDirectoryScreen } from '@/screens/MembersDirectoryScreen';
+import { SocietyPollsScreen } from '@/screens/SocietyPollsScreen';
 
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -112,6 +118,12 @@ export const AppNavigator = () => {
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         <Stack.Screen name="ExploreSocieties" component={ExploreSocietiesScreen} />
         <Stack.Screen name="CommitteeRequest" component={CommitteeRequestScreen} />
+        <Stack.Screen name="SocietyManage" component={SocietyManageScreen} />
+        <Stack.Screen name="CreateHub" component={CreateHubScreen} options={{ presentation: 'modal' }} />
+        <Stack.Screen name="CreatePost" component={CreatePostScreen} options={{ presentation: 'modal' }} />
+        <Stack.Screen name="CreatePoll" component={CreatePollScreen} options={{ presentation: 'modal' }} />
+        <Stack.Screen name="MembersDirectory" component={MembersDirectoryScreen} />
+        <Stack.Screen name="SocietyPolls" component={SocietyPollsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

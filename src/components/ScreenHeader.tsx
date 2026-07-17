@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 type ScreenHeaderProps = {
@@ -7,13 +8,15 @@ type ScreenHeaderProps = {
   subtitle?: string;
   accessory?: ReactNode;
   size?: 'display' | 'h1';
+  /** Self-applies the standard screen gutter. Turn off when a parent already pads horizontally. */
+  gutter?: boolean;
 };
 
-export const ScreenHeader = ({ title, subtitle, accessory, size = 'h1' }: ScreenHeaderProps) => {
+export const ScreenHeader = ({ title, subtitle, accessory, size = 'h1', gutter = true }: ScreenHeaderProps) => {
   const theme = useAppTheme();
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, gutter ? { paddingHorizontal: spacing.lg } : null]}>
       <View style={styles.textWrap}>
         <Text
           style={[size === 'display' ? theme.typography.display : theme.typography.h1, { color: theme.colors.textPrimary }]}

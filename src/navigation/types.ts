@@ -23,10 +23,17 @@ export type RootStackParamList = {
   AnnouncementDetail: { announcementId?: string } | undefined;
   AdminDashboard: undefined;
   Settings: undefined;
-  CreateEvent: undefined;
+  CreateEvent: { societyId?: string } | undefined;
   CreateSociety: undefined;
   EditSocietyProfile: undefined;
   EditProfile: undefined;
   ExploreSocieties: undefined;
   CommitteeRequest: { societyId: string; currentRole: string } | undefined;
+  // Committee/creator surface — contextual, reached without a mode switch.
+  SocietyManage: { societyId: string };
+  CreateHub: { societyId?: string } | undefined;
+  CreatePost: { societyId?: string } | undefined;
+  CreatePoll: { societyId?: string } | undefined;
+  MembersDirectory: { societyId?: string } | undefined;
+  SocietyPolls: { societyId?: string } | undefined;
 };

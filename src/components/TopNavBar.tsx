@@ -1,6 +1,7 @@
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 
@@ -10,14 +11,16 @@ type TopNavBarProps = {
   actionLabel?: string;
   onPressAction?: () => void;
   onBack?: () => void;
+  /** Self-applies the standard screen gutter. Turn off when a parent already pads horizontally. */
+  gutter?: boolean;
 };
 
-export const TopNavBar = ({ title, subtitle, actionLabel, onPressAction, onBack }: TopNavBarProps) => {
+export const TopNavBar = ({ title, subtitle, actionLabel, onPressAction, onBack, gutter = true }: TopNavBarProps) => {
   const theme = useAppTheme();
   const { isAdminMode } = useLocalAppState();
 
   return (
-    <View style={[styles.row, { borderBottomColor: theme.colors.border }]}>
+    <View style={[styles.row, gutter ? { paddingHorizontal: spacing.lg } : null, { borderBottomColor: theme.colors.border }]}>
       <View style={styles.leftWrap}>
         {onBack && (
           <Pressable onPress={onBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.back}>

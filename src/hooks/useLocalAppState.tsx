@@ -32,6 +32,7 @@ import {
 } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { mapApiEvent } from '@/utils/mapApiEvent';
+import { mapAnnouncementCategory, mapAnnouncementCategoryToApi } from '@/utils/mapAnnouncementCategory';
 import { AnnouncementCategory, AnnouncementItem, EventItem, MemberItem, MemberRole, PollItem, SocietyItem } from '@/types';
 
 type ThemePreference = 'Auto' | 'Light' | 'Dark';
@@ -169,20 +170,6 @@ const mapApiPolls = (polls: ApiPollItem[], currentUserId: string): PollItem[] =>
       responses,
     };
   });
-
-const mapAnnouncementCategory = (category: ApiAnnouncementCategory): AnnouncementCategory => {
-  if (category === 'EVENTS') return 'Events';
-  if (category === 'IMPORTANT') return 'Important';
-  if (category === 'COMMITTEE') return 'Committee';
-  return 'General';
-};
-
-const mapAnnouncementCategoryToApi = (category: AnnouncementCategory): ApiAnnouncementCategory => {
-  if (category === 'Events') return 'EVENTS';
-  if (category === 'Important') return 'IMPORTANT';
-  if (category === 'Committee') return 'COMMITTEE';
-  return 'GENERAL';
-};
 
 const mapApiAnnouncement = (announcement: ApiAnnouncement): AnnouncementItem => ({
   id: announcement.id,
