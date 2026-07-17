@@ -113,17 +113,19 @@ export const FeedScreen = () => {
   return (
     <ScreenLayout scroll={false}>
       <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <Text style={[theme.typography.display, { color: theme.colors.textPrimary }]}>SocietyHub</Text>
+        <View style={styles.brand}>
+          <View style={[styles.logomark, { backgroundColor: theme.colors.primary }]}>
+            <MaterialIcons name="groups" size={18} color={theme.colors.textOnPrimary} />
+          </View>
+          <Text style={[styles.wordmark, theme.typography.h2, { color: theme.colors.textPrimary }]}>SocietyHub</Text>
+        </View>
         {canCreate ? (
           <Pressable
             onPress={() => navigation.navigate('CreateHub', undefined)}
             hitSlop={10}
-            style={({ pressed }) => [
-              styles.iconBtn,
-              { backgroundColor: theme.colors.primary, opacity: pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.96 : 1 }] }
-            ]}
+            style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.5 : 1 }]}
           >
-            <MaterialIcons name="add" size={24} color={theme.colors.textOnPrimary} />
+            <MaterialIcons name="add-box" size={26} color={theme.colors.textPrimary} />
           </Pressable>
         ) : null}
       </View>
@@ -184,8 +186,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
     paddingTop: spacing.xs,
+    minHeight: 48,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  logomark: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  wordmark: { letterSpacing: -0.3 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
   skeletonWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.lg },
