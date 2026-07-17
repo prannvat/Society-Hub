@@ -19,7 +19,6 @@ import {
   createSociety as createSocietyRequest,
   fetchAnnouncements,
   fetchEvents,
-  fetchMe,
   fetchMemberships,
   fetchPolls,
   fetchSocieties,
@@ -259,13 +258,23 @@ const parseTimeTo24Hour = (timeLabel: string) => {
   return { hour, minute };
 };
 
+const emptyProfile: LocalProfile = {
+  fullName: '',
+  email: '',
+  university: '',
+  course: '',
+  year: '',
+  bio: '',
+};
+
 export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => {
-  const { accessToken } = useAuth();
-  const [actorUserId, setActorUserId] = useState('m3');
+  const { accessToken, isAuthenticated, user } = useAuth();
+  // The current user's id always comes from the authenticated /me profile.
+  const actorUserId = user?.id ?? '';
 
   const [allSocieties, setAllSocieties] = useState<SocietyItem[]>(societies);
-  const [mySocietyIds, setMySocietyIds] = useState<string[]>(['manc-sikh', 'manc-tech']);
-  const [favouritedSocietyIds, setFavouritedSocietyIds] = useState<string[]>(['manc-sikh']);
+  const [mySocietyIds, setMySocietyIds] = useState<string[]>([]);
+  const [favouritedSocietyIds, setFavouritedSocietyIds] = useState<string[]>([]);
   const [activeSocietyId, setActiveSocietyIdState] = useState<string>('manc-sikh');
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [rsvpedEventIds, setRsvpedEventIds] = useState<string[]>([]);
@@ -277,14 +286,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
   const [memberRolesBySocietyId, setMemberRolesBySocietyId] = useState<Record<string, Record<string, MemberRole>>>({});
   const [membershipsBySocietyId, setMembershipsBySocietyId] = useState<Record<string, Membership[]>>({});
   const [polls, setPolls] = useState<PollItem[]>([]);
-  const [profile, setProfile] = useState<LocalProfile>({
-    fullName: 'Harleen Kaur',
-    email: 'harleen@manchester.ac.uk',
-    university: 'University of Manchester',
-    course: 'Computer Science',
-    year: '3rd Year',
-    bio: 'Passionate about community events, student wellbeing, and mentoring freshers.',
-  });
+  const [profile, setProfile] = useState<LocalProfile>(emptyProfile);
   const [selectedInterests, setSelectedInterests] = useState<string[]>(['Events', 'Volunteering']);
   const [pushEnabled, setPushEnabled] = useState(true);
   const [announcementsEnabled, setAnnouncementsEnabled] = useState(true);
@@ -355,30 +357,61 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
     } catch {}
   }, [actorUserId]);
 
+  // Seed the local profile from the authenticated user; clear all per-user state on logout.
   useEffect(() => {
-    (async () => {
-      try {
-        const me = await fetchMe();
-        setProfile((prev) => ({
-          ...prev,
-          fullName: me.fullName || prev.fullName,
-          email: me.email || prev.email,
-        }));
-        setActorUserId(me.id || 'm3');
-      } catch {}
-    })();
-  }, []);
+    if (!user) {
+      return;
+    }
+    setProfile((prev) => ({
+      ...prev,
+      fullName: user.fullName || prev.fullName,
+      email: user.email || prev.email,
+      university: user.university || prev.university,
+      course: user.course || prev.course,
+      year: user.year || prev.year,
+      bio: user.bio || prev.bio,
+      instagramLink: user.instagramLink ?? prev.instagramLink,
+      linkedinLink: user.linkedinLink ?? prev.linkedinLink,
+      avatarUrl: user.avatarUrl ?? prev.avatarUrl,
+      isVerifiedStudent: user.isVerifiedStudent ?? prev.isVerifiedStudent,
+    }));
+  }, [user]);
 
   useEffect(() => {
+    if (isAuthenticated) {
+      return;
+    }
+    setMySocietyIds([]);
+    setFavouritedSocietyIds([]);
+    setRsvpedEventIds([]);
+    setEvents([]);
+    setExploreEvents([]);
+    setAnnouncements([]);
+    setPolls([]);
+    setMembershipsBySocietyId({});
+    setMemberRolesBySocietyId({});
+    setProfile(emptyProfile);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
     loadSocieties();
-  }, [loadSocieties]);
+  }, [isAuthenticated, loadSocieties]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
     loadSocietyData(activeSocietyId);
-  }, [activeSocietyId, loadSocietyData]);
+  }, [isAuthenticated, activeSocietyId, loadSocietyData]);
 
   useEffect(() => {
-    const socket = io(`${WS_BASE_URL}/polls`, { transports: ['websocket'], auth: accessToken ? { token: accessToken } : {} });
+    if (!accessToken) {
+      return;
+    }
+    const socket = io(`${WS_BASE_URL}/polls`, { transports: ['websocket'], auth: { token: accessToken } });
     socket.on('connect', () => socket.emit('polls.subscribe', { societyId: activeSocietyId }));
     socket.on('polls.updated', (payload: ApiPollItem[]) => setPolls(mapApiPolls(payload, actorUserId)));
     return () => {

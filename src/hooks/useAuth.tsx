@@ -1,17 +1,18 @@
-import React, { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { setApiAccessToken } from '@/services/api';
-
-WebBrowser.maybeCompleteAuthSession();
+import { ApiError, setApiAccessToken } from '@/services/api/client';
+import { ApiMeProfile, fetchMe } from '@/services/api/me';
+import { AuthResponse, loginRequest, SignInInput, signUpRequest, SignUpInput } from '@/services/api/auth';
 
 type AuthContextValue = {
-  isLoading: boolean;
+  /** True while the stored session is being restored on app start. */
+  isRestoring: boolean;
   isAuthenticated: boolean;
   accessToken: string | null;
-  loginWithAuth0: () => Promise<boolean>;
-  logout: () => Promise<void>;
+  user: ApiMeProfile | null;
+  signIn: (input: SignInInput) => Promise<void>;
+  signUp: (input: SignUpInput) => Promise<void>;
+  signOut: () => Promise<void>;
 };
 
 const ACCESS_TOKEN_KEY = 'societyhub_access_token';
@@ -23,110 +24,92 @@ type AuthProviderProps = {
 };
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isRestoring, setIsRestoring] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [user, setUser] = useState<ApiMeProfile | null>(null);
 
-  const issuer = process.env.EXPO_PUBLIC_AUTH0_ISSUER;
-  const clientId = process.env.EXPO_PUBLIC_AUTH0_CLIENT_ID;
-  const audience = process.env.EXPO_PUBLIC_AUTH0_AUDIENCE;
-  const authScheme = process.env.EXPO_PUBLIC_AUTH_SCHEME ?? 'societyhub';
-
-  const discovery = issuer
-    ? {
-        authorizationEndpoint: `${issuer}/authorize`,
-        tokenEndpoint: `${issuer}/oauth/token`,
-        revocationEndpoint: `${issuer}/oauth/revoke`,
-      }
-    : null;
-
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: authScheme,
-  });
-
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: clientId ?? '',
-      redirectUri,
-      responseType: AuthSession.ResponseType.Code,
-      scopes: ['openid', 'profile', 'email'],
-      usePKCE: true,
-      extraParams: audience ? { audience } : undefined,
-    },
-    discovery,
-  );
-
+  // Restore a stored session on app start and validate it against /me.
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       try {
         const token = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-        setAccessToken(token);
+        if (!token) {
+          return;
+        }
+
         setApiAccessToken(token);
+        try {
+          const me = await fetchMe();
+          if (cancelled) {
+            return;
+          }
+          setAccessToken(token);
+          setUser(me);
+        } catch (error) {
+          if (error instanceof ApiError && error.statusCode === 401) {
+            // Token is no longer valid — clear it.
+            setApiAccessToken(null);
+            await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+          } else if (!cancelled) {
+            // Network or server error: keep the session; the profile loads later.
+            setAccessToken(token);
+          }
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsRestoring(false);
+        }
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  useEffect(() => {
-    if (!response || response.type !== 'success') {
-      return;
-    }
+  const applySession = useCallback(async (session: AuthResponse) => {
+    setApiAccessToken(session.accessToken);
+    await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, session.accessToken);
+    setAccessToken(session.accessToken);
+    setUser(session.user);
+  }, []);
 
-    (async () => {
-      if (!discovery?.tokenEndpoint || !request?.codeVerifier || !clientId) {
-        return;
-      }
+  const signIn = useCallback(
+    async (input: SignInInput) => {
+      const session = await loginRequest(input);
+      await applySession(session);
+    },
+    [applySession],
+  );
 
-      const code = response.params.code;
-      if (!code) {
-        return;
-      }
+  const signUp = useCallback(
+    async (input: SignUpInput) => {
+      const session = await signUpRequest(input);
+      await applySession(session);
+    },
+    [applySession],
+  );
 
-      const tokenResult = await AuthSession.exchangeCodeAsync(
-        {
-          clientId,
-          code,
-          redirectUri,
-          extraParams: {
-            code_verifier: request.codeVerifier,
-          },
-        },
-        {
-          tokenEndpoint: discovery.tokenEndpoint,
-        },
-      );
-
-      const token = tokenResult.accessToken;
-      setAccessToken(token);
-      setApiAccessToken(token);
-      await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, token);
-    })();
-  }, [clientId, discovery, redirectUri, request, response]);
-
-  const loginWithAuth0 = async () => {
-    if (!request || !discovery || !clientId) {
-      return true;
-    }
-
-    const result = await promptAsync();
-    return result.type === 'success';
-  };
-
-  const logout = async () => {
-    setAccessToken(null);
+  const signOut = useCallback(async () => {
     setApiAccessToken(null);
+    setAccessToken(null);
+    setUser(null);
     await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
-  };
+  }, []);
 
   const value = useMemo(
     () => ({
-      isLoading,
+      isRestoring,
       isAuthenticated: Boolean(accessToken),
       accessToken,
-      loginWithAuth0,
-      logout,
+      user,
+      signIn,
+      signUp,
+      signOut,
     }),
-    [accessToken, isLoading],
+    [accessToken, isRestoring, user, signIn, signUp, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

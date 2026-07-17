@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialIcons, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
+import { useAuth } from '@/hooks/useAuth';
 import { ListItem } from '@/components/ListItem';
 import { TopNavBar } from '@/components/TopNavBar';
 import { RootStackParamList } from '@/navigation/types';
@@ -32,6 +33,8 @@ export const SettingsScreen = () => {
     textSizePreference,
     setTextSizePreference
   } = useLocalAppState();
+
+  const { signOut } = useAuth();
 
   const [showSecurity, setShowSecurity] = useState(false);
 
@@ -76,11 +79,12 @@ export const SettingsScreen = () => {
   const logOut = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      { 
-        text: 'Log Out', 
+      {
+        text: 'Log Out',
         style: 'destructive',
-        onPress: () => {
-          navigation.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+        onPress: async () => {
+          await signOut();
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
         }
       }
     ]);
@@ -89,12 +93,13 @@ export const SettingsScreen = () => {
   const deleteAccount = () => {
     Alert.alert('Delete Account', 'This will permanently delete your account and remove you from all societies.', [
       { text: 'Cancel', style: 'cancel' },
-      { 
-        text: 'Delete', 
+      {
+        text: 'Delete',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
           setPushEnabled(false);
-          navigation.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+          await signOut();
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
         }
       }
     ]);

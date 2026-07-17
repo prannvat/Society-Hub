@@ -6,18 +6,19 @@ import { societyConfig } from '@/config/societyConfig';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useAuth } from '@/hooks/useAuth';
 
 export const SplashScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { isRestoring, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.replace('Onboarding');
-    }, 900);
-
-    return () => clearTimeout(timer);
-  }, [navigation]);
+    if (isRestoring) {
+      return;
+    }
+    navigation.replace(isAuthenticated ? 'MainTabs' : 'Onboarding');
+  }, [isRestoring, isAuthenticated, navigation]);
 
   return (
     <ScreenLayout scroll={false}>

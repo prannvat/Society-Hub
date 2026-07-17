@@ -1,5 +1,7 @@
 export * from './announcements';
+export * from './auth';
 export * from './client';
+export * from './universities';
 export * from './events';
 export * from './me';
 export * from './memberships';
