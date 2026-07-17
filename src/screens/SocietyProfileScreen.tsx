@@ -12,6 +12,7 @@ import { OutlineButton } from '@/components/OutlineButton';
 import { SectionHeader } from '@/components/SectionHeader';
 import { useToast } from '@/components/Toast';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -28,6 +29,7 @@ export const SocietyProfileScreen = () => {
   const route = useRoute<RouteProp<RootStackParamList, 'SocietyProfile'>>();
   const toast = useToast();
   const { allSocieties, favouritedSocietyIds, toggleFavouriteSociety, mySocietyIds, pendingMembershipSocietyIds, joinSociety, polls } = useLocalAppState();
+  const { adminSocieties } = useUserRoles();
 
   const [localSociety, setLocalSociety] = useState<any>(null);
   const [societyEvents, setSocietyEvents] = useState<EventItem[]>([]);
@@ -41,6 +43,7 @@ export const SocietyProfileScreen = () => {
   const isFavourited = society ? favouritedSocietyIds.includes(society.id) : false;
   const isMember = society ? mySocietyIds.includes(society.id) : false;
   const isPendingMembership = society ? pendingMembershipSocietyIds.includes(society.id) : false;
+  const canManage = society ? adminSocieties.some((entry) => entry.societyId === society.id) : false;
 
   const handleJoin = async () => {
     if (!society || isJoining) {
@@ -220,6 +223,16 @@ export const SocietyProfileScreen = () => {
               onPress={handleJoin}
             />
           )}
+
+          {/* Committee-only management seam — additive, only for admins of this society. */}
+          {canManage ? (
+            <PrimaryButton
+              label="Manage society"
+              variant="secondary"
+              icon="tune"
+              onPress={() => navigation.navigate('SocietyManage', { societyId: society.id })}
+            />
+          ) : null}
 
           <View style={styles.actionRow}>
             <View style={{ flex: 1 }}>

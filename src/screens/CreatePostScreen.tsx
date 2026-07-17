@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Avatar } from '@/components/Avatar';
 import { InputField } from '@/components/InputField';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { TopNavBar } from '@/components/TopNavBar';
@@ -22,7 +23,9 @@ export const CreatePostScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<Nav>();
   const toast = useToast();
-  const { addAnnouncement } = useLocalAppState();
+  const { addAnnouncement, allSocieties, activeSocietyId } = useLocalAppState();
+
+  const activeSociety = allSocieties.find((s) => s.id === activeSocietyId);
 
   const [title, setTitle] = useState('');
   const [preview, setPreview] = useState('');
@@ -53,6 +56,18 @@ export const CreatePostScreen = () => {
     <ScreenLayout>
       <TopNavBar title="New post" onBack={() => navigation.goBack()} />
       <View style={styles.body}>
+        {activeSociety ? (
+          <View style={[styles.context, { backgroundColor: theme.colors.surfaceSunken, borderRadius: theme.radius.card }]}>
+            <Avatar name={activeSociety.name} url={activeSociety.logoUrl ?? undefined} size={28} />
+            <View style={{ flex: 1 }}>
+              <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>POSTING TO</Text>
+              <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                {activeSociety.name}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
         <InputField
           label="Title"
           placeholder="What's the headline?"
@@ -103,7 +118,7 @@ export const CreatePostScreen = () => {
           })}
         </View>
 
-        <View style={{ marginTop: spacing.xl }}>
+        <View style={styles.publish}>
           <PrimaryButton label="Publish post" onPress={submit} loading={submitting} icon="send" />
         </View>
       </View>
@@ -113,6 +128,8 @@ export const CreatePostScreen = () => {
 
 const styles = StyleSheet.create({
   body: { paddingHorizontal: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
+  context: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, marginTop: spacing.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8, overflow: 'hidden' },
+  publish: { marginTop: spacing.xl },
 });
