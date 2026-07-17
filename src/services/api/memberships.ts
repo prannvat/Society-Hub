@@ -49,7 +49,7 @@ export async function updateMembershipRole(membershipId: string, role: SocietyRo
 export type MembershipRequest = {
   id: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  createdAt: string;
+  requestedAt: string;
   user: {
     id: string;
     fullName: string;

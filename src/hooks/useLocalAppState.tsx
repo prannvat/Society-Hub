@@ -450,8 +450,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
     const created = await createSocietyRequest({
       name: society.name,
       shortName: society.shortName,
-      university: society.university || "",
-      affiliatedUniversities: society.affiliatedUniversities,
+      university: society.university || undefined,
       joinPolicy: society.joinPolicy,
       description: society.description ?? '',
     });

@@ -120,7 +120,7 @@ export const MembersDirectoryScreen = () => {
                         {request.user.fullName}
                       </Text>
                       <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }} numberOfLines={1}>
-                        {request.user.email} • {new Date(request.createdAt).toLocaleDateString()}
+                        {request.user.email} • {new Date(request.requestedAt).toLocaleDateString()}
                       </Text>
                     </View>
                   </View>
