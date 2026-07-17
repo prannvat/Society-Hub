@@ -71,5 +71,10 @@ export type Membership = {
   user?: {
     id: string;
     fullName: string;
+    email?: string;
+    course?: string;
+    year?: string;
+    avatarUrl?: string | null;
+    isVerifiedStudent?: boolean;
   };
 };

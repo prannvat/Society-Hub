@@ -5,6 +5,40 @@ export async function fetchMemberships(societyId: string) {
   return apiRequest<Membership[]>(`/memberships?societyId=${encodeURIComponent(societyId)}`);
 }
 
+export type MyMembership = Membership & {
+  society: {
+    id: string;
+    name: string;
+    shortName: string;
+    logoUrl: string | null;
+    primaryColor: string;
+    secondaryColor: string;
+    registrationStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+    joinPolicy: 'OPEN' | 'APPROVAL_REQUIRED' | 'VERIFIED_STUDENTS_ONLY';
+  };
+};
+
+export type MyMembershipRequest = {
+  id: string;
+  societyId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  requestedAt: string;
+  society: {
+    id: string;
+    name: string;
+    shortName: string;
+    logoUrl: string | null;
+  };
+};
+
+export async function fetchMyMemberships() {
+  return apiRequest<MyMembership[]>('/memberships/me');
+}
+
+export async function fetchMyMembershipRequests() {
+  return apiRequest<MyMembershipRequest[]>('/memberships/requests/me');
+}
+
 export async function updateMembershipRole(membershipId: string, role: SocietyRole) {
   return apiRequest<Membership>(`/memberships/${membershipId}/role`, {
     method: 'PATCH',

@@ -16,6 +16,8 @@ import {
   fetchAnnouncements,
   fetchEvents,
   fetchMemberships,
+  fetchMyMembershipRequests,
+  fetchMyMemberships,
   fetchPolls,
   fetchSocieties,
   isPendingJoin,
@@ -262,9 +264,9 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       (membershipsBySocietyId[activeSocietyId] ?? []).map((membership) => ({
         id: membership.userId,
         name: membership.user?.fullName ?? 'Member',
-        year: '',
+        year: membership.user?.year ?? '',
         role: mapRole(membership.role),
-        universityBadge: '',
+        universityBadge: membership.user?.isVerifiedStudent ? 'Verified' : '',
       })),
     [activeSocietyId, membershipsBySocietyId],
   );
@@ -375,6 +377,34 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
     }
     loadSocieties();
   }, [isAuthenticated, loadSocieties]);
+
+  // Hydrate the user's memberships and pending join requests so they survive app restarts.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [myMemberships, myRequests] = await Promise.all([
+          fetchMyMemberships(),
+          fetchMyMembershipRequests(),
+        ]);
+        if (cancelled) return;
+        const societyIds = myMemberships.map((membership) => membership.societyId);
+        setMySocietyIds(societyIds);
+        setPendingMembershipSocietyIds(
+          myRequests.filter((request) => request.status === 'PENDING').map((request) => request.societyId),
+        );
+        setActiveSocietyIdState((prev) => (prev && societyIds.includes(prev) ? prev : societyIds[0] ?? ''));
+      } catch {
+        // Screens fall back to their empty states; joins made this session still update state directly.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) {
