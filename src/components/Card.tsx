@@ -1,12 +1,13 @@
 import React, { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 type CardProps = {
   children: ReactNode;
+  style?: StyleProp<ViewStyle>;
 };
 
-export const Card = ({ children }: CardProps) => {
+export const Card = ({ children, style }: CardProps) => {
   const theme = useAppTheme();
 
   return (
@@ -22,7 +23,8 @@ export const Card = ({ children }: CardProps) => {
           shadowOpacity: 0.05,
           shadowRadius: 12,
           elevation: 2
-        }
+        },
+        style
       ]}
     >
       {children}

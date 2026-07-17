@@ -1,6 +1,6 @@
 import { apiRequest } from './client';
 import { SocietyRole } from './types';
-import { UnionRole } from '../types/union-admin';
+import { UnionRole } from '@/types/union-admin';
 
 export type ApiMeProfile = {
   id: string;

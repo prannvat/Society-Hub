@@ -7,7 +7,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useCommitteeRequests } from '@/hooks/useCommitteeRequests';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { RootStackParamList } from '@/navigation/types';
-import { MemberRole } from '@/types/union-admin';
+import { MemberRole } from '@/types';
 import { TopNavBar } from '@/components/TopNavBar';
 import { SectionHeader } from '@/components/SectionHeader';
 import { BadgeChip } from '@/components/BadgeChip';
@@ -145,11 +145,10 @@ export const CommitteeRequestScreen = () => {
     <ScreenLayout>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
-        <TopNavBar 
+        <TopNavBar
           title="Request Committee Role"
           subtitle={society.name}
-          showBackButton={true}
-          onPressBack={() => navigation.goBack()}
+          onBack={() => navigation.goBack()}
         />
 
         {/* Current Status */}

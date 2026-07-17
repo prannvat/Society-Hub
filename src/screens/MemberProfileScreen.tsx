@@ -19,13 +19,13 @@ export const MemberProfileScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'MemberProfile'>>();
-  const { activeSocietyMembers, activeSocietyRole, activeSocietyId, assignMemberRole, profile } = useLocalAppState();
+  const { activeSocietyMembers, activeSocietyRole, activeSocietyId, assignMemberRole, profile, currentUserId } = useLocalAppState();
   const { myRequests } = useCommitteeRequests();
   const member = activeSocietyMembers.find((entry) => entry.id === route.params?.memberId) ?? activeSocietyMembers[0];
   const canManageRoles = activeSocietyRole === 'President' && member.role !== 'President';
-  
+
   // Check if this is the current user's profile
-  const isOwnProfile = member.id === profile.id || member.name === profile.fullName;
+  const isOwnProfile = member.id === currentUserId || member.name === profile.fullName;
   
   // Check if there's already a pending request for this society
   const existingRequest = myRequests.find(req => 

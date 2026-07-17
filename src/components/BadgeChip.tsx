@@ -1,13 +1,14 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 type BadgeChipProps = {
   label: string;
   variant?: 'filled' | 'outlined';
+  style?: StyleProp<ViewStyle>;
 };
 
-export const BadgeChip = ({ label, variant = 'filled' }: BadgeChipProps) => {
+export const BadgeChip = ({ label, variant = 'filled', style }: BadgeChipProps) => {
   const theme = useAppTheme();
   const isFilled = variant === 'filled';
 
@@ -18,7 +19,8 @@ export const BadgeChip = ({ label, variant = 'filled' }: BadgeChipProps) => {
         {
           borderColor: theme.colors.primary,
           backgroundColor: isFilled ? theme.colors.primary : 'transparent'
-        }
+        },
+        style
       ]}
     >
       <Text

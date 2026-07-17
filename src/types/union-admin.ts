@@ -138,13 +138,13 @@ export type SocietyRegistrationRequest = {
   };
 };
 
-// Enhanced User Role Data for Union Admins
+// Enhanced User Role Data for Union Admins.
+// Note: `userRole` lives on UserRoleData (types/index.ts) — the single source of truth.
 export type EnhancedUserRoleData = {
-  userRole: 'Student' | 'UnionAdmin';
   unionAdminRelationships: UnionAdminRelationship[];
   hasUnionAdminAccess: boolean;
   canSwitchToUnionAdmin: boolean;
-  selectedUniversityId?: string;
+  selectedUniversityId: string | null;
 };
 
 // Notification Types

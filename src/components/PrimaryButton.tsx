@@ -5,9 +5,10 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 type PrimaryButtonProps = {
   label: string;
   onPress?: () => void;
+  disabled?: boolean;
 };
 
-export const PrimaryButton = ({ label, onPress }: PrimaryButtonProps) => {
+export const PrimaryButton = ({ label, onPress, disabled = false }: PrimaryButtonProps) => {
   const theme = useAppTheme();
 
   return (
@@ -18,11 +19,12 @@ export const PrimaryButton = ({ label, onPress }: PrimaryButtonProps) => {
         {
           backgroundColor: theme.colors.primary,
           borderRadius: 100,
-          opacity: pressed && Platform.OS === 'ios' ? 0.9 : 1,
-          transform: [{ scale: pressed ? 0.995 : 1 }]
+          opacity: disabled ? 0.5 : pressed && Platform.OS === 'ios' ? 0.9 : 1,
+          transform: [{ scale: pressed && !disabled ? 0.995 : 1 }]
         }
       ]}
       onPress={onPress}
+      disabled={disabled}
     >
       <Text style={[styles.text, { color: theme.colors.background }]} numberOfLines={1}>{label}</Text>
     </Pressable>

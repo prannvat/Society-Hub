@@ -112,10 +112,7 @@ export const MySocietiesScreen = () => {
 
   return (
     <ScreenLayout>
-      <TopNavBar 
-        title="My Societies" 
-        showBackButton={false}
-      />
+      <TopNavBar title="My Societies" />
       
       <ScrollView 
         style={{ flex: 1 }}

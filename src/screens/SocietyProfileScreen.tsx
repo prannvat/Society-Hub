@@ -158,7 +158,7 @@ export const SocietyProfileScreen = () => {
 
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1 }}>
-            <PrimaryButton label="All Events" onPress={() => navigation.navigate('MainTabs', { screen: 'Explore' })} />
+            <PrimaryButton label="All Events" onPress={() => navigation.navigate('MainTabs', { screen: 'Events' })} />
           </View>
           <View style={{ flex: 1 }}>
             <OutlineButton label="Open Polls" onPress={() => navigation.navigate('MainTabs', { screen: 'Polls' })} />

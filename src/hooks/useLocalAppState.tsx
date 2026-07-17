@@ -59,6 +59,7 @@ type LocalProfile = {
 type ActiveSocietyMember = (typeof initialMembers)[number] & { role: MemberRole };
 
 type LocalAppStateContextValue = {
+  currentUserId: string;
   allSocieties: SocietyItem[];
   mySocietyIds: string[];
   favouritedSocietyIds: string[];
@@ -597,6 +598,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
 
   const value = useMemo(
     () => ({
+      currentUserId: actorUserId,
       allSocieties,
       mySocietyIds,
       favouritedSocietyIds,
@@ -620,6 +622,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       isLoadingExplore,
       loadSocieties,
       loadExploreEvents,
+      isLoadingRoleSwitch,
       addEvent,
       announcements,
       addAnnouncement,
@@ -644,6 +647,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       setTextSizePreference,
     }),
     [
+      actorUserId,
       allSocieties,
       mySocietyIds,
       favouritedSocietyIds,
@@ -670,7 +674,6 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       setActiveSocietyId,
       loadSocieties,
       loadExploreEvents,
-      isLoadingRoleSwitch,
     ],
   );
 

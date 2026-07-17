@@ -1,10 +1,10 @@
 import { apiRequest } from './client';
-import { 
-  CommitteeRequest, 
-  CommitteeRequestStatus, 
+import {
+  CommitteeRequest,
+  CommitteeRequestStatus,
   CreateCommitteeRequestInput,
-  MemberRole 
-} from '@/types/union-admin';
+  MemberRole,
+} from '@/types';
 
 // Committee Request Management APIs
 

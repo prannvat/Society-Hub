@@ -216,7 +216,7 @@ export const ExploreSocietiesScreen = () => {
               {/* Featured Events */}
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Trending Events 🌟</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Explore' })}>
+                <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Events' })}>
                    <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>See all</Text>
                 </TouchableOpacity>
               </View>

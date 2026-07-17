@@ -1,5 +1,5 @@
 import { apiRequest } from '../client';
-import { ApiAnnouncementCategory } from '../types';
+import { ApiAnnouncementCategory } from '../announcements';
 
 export type ContentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED';
 

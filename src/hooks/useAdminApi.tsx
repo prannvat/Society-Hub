@@ -9,7 +9,7 @@ export const useAdminApi = () => {
   const { selectedAdminSocietyId, currentMode } = useUserRoles();
 
   const adminApiRequest = useCallback(
-    <T>(path: string, options: Omit<RequestOptions, 'requiresAdmin' | 'societyId'> = {}) => {
+    <T,>(path: string, options: Omit<RequestOptions, 'requiresAdmin' | 'societyId'> = {}) => {
       if (currentMode !== 'Admin' || !selectedAdminSocietyId) {
         throw new Error('Admin API calls require admin mode and selected society');
       }
