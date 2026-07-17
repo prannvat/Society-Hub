@@ -1,4 +1,7 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
+import { ConsumerTabParamList } from './ConsumerNavigator';
+import { AdminTabParamList } from './AdminNavigator';
+import { UnionAdminTabParamList } from './UnionAdminNavigator';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -7,7 +10,7 @@ export type RootStackParamList = {
   SignUp: undefined;
   ProfileSetup: undefined;
   InterestSelection: undefined;
-  MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;
+  MainTabs: NavigatorScreenParams<ConsumerTabParamList | AdminTabParamList | UnionAdminTabParamList> | undefined;
   AnnouncementsFeed: undefined;
   MemberProfile: { memberId?: string } | undefined;
   SocietyProfile: { societyId?: string } | undefined;
@@ -17,12 +20,16 @@ export type RootStackParamList = {
   Settings: undefined;
   CreateEvent: undefined;
   CreateSociety: undefined;
+  EditSocietyProfile: undefined;
+  EditProfile: undefined;
   ExploreSocieties: undefined;
+  CommitteeRequest: { societyId: string; currentRole: string } | undefined;
 };
 
+// Legacy - keeping for backward compatibility
 export type MainTabParamList = {
   Home: undefined;
-  Events: undefined;
+  Explore: undefined;
   Members: undefined;
   Polls: undefined;
   Profile: undefined;

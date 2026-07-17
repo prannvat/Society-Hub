@@ -1,11 +1,16 @@
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View, Text } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { RootStackParamList, MainTabParamList } from './types';
+import { ConsumerNavigator } from './ConsumerNavigator';
+// Lazy load admin components for better performance
+const AdminNavigator = React.lazy(() => import('./AdminNavigator').then(module => ({ default: module.AdminNavigator })));
+const UnionAdminNavigator = React.lazy(() => import('./UnionAdminNavigator').then(module => ({ default: module.UnionAdminNavigator })));
 import { SplashScreen } from '@/screens/SplashScreen';
 import { OnboardingScreen } from '@/screens/OnboardingScreen';
 import { LoginScreen } from '@/screens/LoginScreen';
@@ -26,59 +31,47 @@ import { CreateEventScreen } from '@/screens/CreateEventScreen';
 import { MemberProfileScreen } from '@/screens/MemberProfileScreen';
 import { SocietyProfileScreen } from '@/screens/SocietyProfileScreen';
 import { CreateSocietyScreen } from '@/screens/CreateSocietyScreen';
+import { EditSocietyProfileScreen } from '@/screens/EditSocietyProfileScreen';
+import { EditProfileScreen } from '@/screens/EditProfileScreen';
 import { ExploreSocietiesScreen } from '../screens/ExploreSocietiesScreen';
+import { ExploreScreen } from '@/screens/ExploreScreen';
+import { CommitteeRequestScreen } from '@/screens/CommitteeRequestScreen';
 
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const MainTabs = () => {
-  const theme = useAppTheme();
+  const { currentMode } = useUserRoles();
 
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarShowLabel: true,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.textSecondary,
-        tabBarStyle: {
-          height: Platform.OS === 'ios' ? 82 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 18 : 10,
-          paddingTop: Platform.OS === 'ios' ? 8 : 6,
-          borderTopColor: theme.colors.border,
-          backgroundColor: theme.colors.background,
-          borderTopWidth: Platform.OS === 'ios' ? 0.5 : 1,
-          elevation: Platform.OS === 'android' ? 8 : 0,
-          shadowColor: Platform.OS === 'ios' ? '#000000' : undefined,
-          shadowOffset: Platform.OS === 'ios' ? { width: 0, height: -2 } : undefined,
-          shadowOpacity: Platform.OS === 'ios' ? 0.08 : undefined,
-          shadowRadius: Platform.OS === 'ios' ? 8 : undefined
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '700'
-        },
-        tabBarIcon: ({ color, size }) => {
-          const iconNameMap: Record<string, keyof typeof MaterialIcons.glyphMap> = {
-            Home: 'home-filled',
-            Events: 'event',
-            Members: 'groups',
-            Polls: 'poll',
-            Profile: 'person'
-          };
+  // Render different navigators based on current mode
+  if (currentMode === 'Admin') {
+    return (
+      <React.Suspense fallback={
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <MaterialIcons name="admin-panel-settings" size={48} color="#666" />
+          <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>Loading Admin Dashboard...</Text>
+        </View>
+      }>
+        <AdminNavigator />
+      </React.Suspense>
+    );
+  }
 
-          return <MaterialIcons name={iconNameMap[route.name]} size={size ?? 22} color={color} />;
-        }
-      })}
-    >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Events" component={EventsListScreen} />
-      <Tab.Screen name="Members" component={MembersDirectoryScreen} />
-      <Tab.Screen name="Polls" component={SocietyPollsScreen} options={{ tabBarLabel: 'Polls' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
-  );
+  if (currentMode === 'UnionAdmin') {
+    return (
+      <React.Suspense fallback={
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <MaterialIcons name="school" size={48} color="#666" />
+          <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>Loading Union Admin Dashboard...</Text>
+        </View>
+      }>
+        <UnionAdminNavigator />
+      </React.Suspense>
+    );
+  }
+  
+  return <ConsumerNavigator />;
 };
 
 export const AppNavigator = () => {
@@ -115,7 +108,10 @@ export const AppNavigator = () => {
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
         <Stack.Screen name="CreateSociety" component={CreateSocietyScreen} />
+        <Stack.Screen name="EditSocietyProfile" component={EditSocietyProfileScreen} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         <Stack.Screen name="ExploreSocieties" component={ExploreSocietiesScreen} />
+        <Stack.Screen name="CommitteeRequest" component={CommitteeRequestScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

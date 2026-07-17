@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, StyleSheet, Dimensions, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, StyleSheet, Dimensions, FlatList, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TopNavBar } from '@/components/TopNavBar';
@@ -17,54 +17,96 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExploreSoci
 export const ExploreSocietiesScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NavigationProp>();
-  const { allSocieties, mySocietyIds, joinSociety, events, announcements } = useLocalAppState();
+  const { allSocieties, mySocietyIds, joinSociety, exploreEvents, loadExploreEvents, loadSocieties, announcements, profile } = useLocalAppState();
+
+  useEffect(() => {
+    loadSocieties().then(() => loadExploreEvents());
+  }, [loadExploreEvents]);
   
   const [searchQuery, setSearchQuery] = useState('');
 
-  const discoverableSocieties = allSocieties.filter(s => !mySocietyIds.includes(s.id));
+
+  const discoverableSocieties = [...allSocieties]
+    .filter(s => !mySocietyIds.includes(s.id))
+    .sort((a, b) => {
+      const u = profile.university?.toLowerCase() || '';
+      const aUnis = [a.university?.toLowerCase(), ...(a.affiliatedUniversities || []).map(x => x.toLowerCase())].filter(Boolean);
+      const bUnis = [b.university?.toLowerCase(), ...(b.affiliatedUniversities || []).map(x => x.toLowerCase())].filter(Boolean);
+      
+      const aMatchesUni = u && aUnis.includes(u);
+      const bMatchesUni = u && bUnis.includes(u);
+      
+      if (aMatchesUni && !bMatchesUni) return -1;
+      if (!aMatchesUni && bMatchesUni) return 1;
+      
+      return 0; // fallback to default order
+    });
+
   
-  const filteredSocieties = discoverableSocieties.filter(s => 
+  const filteredSocieties = (searchQuery.trim().length > 0 ? allSocieties : discoverableSocieties).filter(s => 
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     (s.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredEvents = events.filter(e => 
+  const filteredEvents = exploreEvents.filter(e => 
     e.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     e.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleJoin = (societyId: string, societyName: string) => {
-    joinSociety(societyId);
-    Alert.alert('Joined!', `You are now a member of ${societyName}.`, [
-      { text: 'Awesome' }
-    ]);
+  const handleJoin = async (societyId: string, societyName: string) => {
+    try {
+      await joinSociety(societyId);
+      Alert.alert('Joined!', `You are now a member of ${societyName}.`, [
+        { text: 'Awesome' }
+      ]);
+    } catch {
+      Alert.alert('Join failed', 'Unable to join this society right now. Please try again.');
+    }
   };
 
-  const renderSocietyCard = ({ item }: { item: SocietyItem }) => (
-    <TouchableOpacity 
-      activeOpacity={0.8}
-      onPress={() => navigation.navigate('SocietyProfile', { societyId: item.id })}
-      style={[styles.societyCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-    >
-      <View style={[styles.societyCardTop, { backgroundColor: item.primaryColor || theme.colors.primary }]} />
-      <View style={styles.societyCardContent}>
-        <View style={[styles.societyLogo, { backgroundColor: item.primaryColor, borderColor: theme.colors.background }]}>
-          <Text style={styles.societyLogoText}>{item.shortName}</Text>
+  const renderSocietyCard = ({ item }: { item: SocietyItem }) => {
+    const isMember = mySocietyIds.includes(item.id);
+    return (
+      <TouchableOpacity 
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate('SocietyProfile', { societyId: item.id })}
+        style={[styles.societyCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+      >
+        <View style={[styles.societyCardTop, { backgroundColor: item.primaryColor || theme.colors.primary }]} />
+        <View style={styles.societyCardContent}>
+          {item.logoUrl ? (
+            <View style={[styles.societyLogo, { backgroundColor: '#FFF', borderColor: theme.colors.background, overflow: 'hidden' }]}>
+              <Image source={{ uri: item.logoUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            </View>
+          ) : (
+            <View style={[styles.societyLogo, { backgroundColor: item.primaryColor, borderColor: theme.colors.background }]}>
+              <Text style={styles.societyLogoText}>{item.shortName}</Text>
+            </View>
+          )}
+          <Text style={[styles.societyTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.societySubtitle, { color: theme.colors.textSecondary }]} numberOfLines={2}>
+            {item.description || "Official University Society."}
+          </Text>
+          <View style={{ flex: 1 }} />
+          {!isMember ? (
+            <TouchableOpacity
+              onPress={() => handleJoin(item.id, item.name)}
+              style={[styles.joinBtn, { backgroundColor: theme.colors.primary + '15' }]}
+            >
+              <Text style={[styles.joinBtnText, { color: theme.colors.primary }]}>Join Now</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('SocietyProfile', { societyId: item.id })}
+              style={[styles.joinBtn, { backgroundColor: theme.colors.border }]}
+            >
+              <Text style={[styles.joinBtnText, { color: theme.colors.textPrimary }]}>View Page</Text>
+            </TouchableOpacity>
+          )}
         </View>
-        <Text style={[styles.societyTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-        <Text style={[styles.societySubtitle, { color: theme.colors.textSecondary }]} numberOfLines={2}>
-          {item.description || "Official University Society."}
-        </Text>
-        <View style={{ flex: 1 }} />
-        <TouchableOpacity
-          onPress={() => handleJoin(item.id, item.name)}
-          style={[styles.joinBtn, { backgroundColor: theme.colors.primary + '15' }]}
-        >
-          <Text style={[styles.joinBtnText, { color: theme.colors.primary }]}>Join Now</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const renderEventCard = ({ item }: { item: EventItem }) => (
     <TouchableOpacity 
@@ -174,12 +216,12 @@ export const ExploreSocietiesScreen = () => {
               {/* Featured Events */}
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Trending Events 🌟</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Events' })}>
+                <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Explore' })}>
                    <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>See all</Text>
                 </TouchableOpacity>
               </View>
               <FlatList 
-                 data={events.slice(0, 5)}
+                 data={exploreEvents.slice(0, 5)}
                  keyExtractor={item => item.id}
                  renderItem={renderEventCard}
                  horizontal

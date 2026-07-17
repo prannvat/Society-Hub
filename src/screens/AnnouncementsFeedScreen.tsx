@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -49,20 +50,24 @@ export const AnnouncementsFeedScreen = () => {
     );
   });
 
-  const publishAnnouncement = () => {
+  const publishAnnouncement = async () => {
     if (!draftTitle.trim() || !draftPreview.trim()) {
       return;
     }
 
-    addAnnouncement({
-      title: draftTitle.trim(),
-      preview: draftPreview.trim(),
-      category: draftCategory
-    });
-    setDraftTitle('');
-    setDraftPreview('');
-    setDraftCategory('General');
-    setIsComposerOpen(false);
+    try {
+      await addAnnouncement({
+        title: draftTitle.trim(),
+        preview: draftPreview.trim(),
+        category: draftCategory
+      });
+      setDraftTitle('');
+      setDraftPreview('');
+      setDraftCategory('General');
+      setIsComposerOpen(false);
+    } catch {
+      Alert.alert('Publish failed', 'Unable to publish announcement right now. Please try again.');
+    }
   };
 
   return (

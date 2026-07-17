@@ -2,6 +2,7 @@
   "expo": {
     "name": "SocietyHub",
     "slug": "societyhub",
+    "scheme": "societyhub",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -15,7 +16,9 @@
     "plugins": [
       "expo-asset",
       "@react-native-community/datetimepicker",
-      "expo-font"
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser"
     ]
   }
 }

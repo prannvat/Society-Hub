@@ -28,27 +28,31 @@ export const SocietyPollsScreen = () => {
         ? 'Each option must be unique.'
         : '';
 
-  const publishPoll = () => {
+  const publishPoll = async () => {
     if (pollValidationError) {
       Alert.alert('Cannot Publish Poll', pollValidationError);
       return;
     }
 
-    const newPollId = createPoll({
-      societyId: activeSocietyId,
-      question: draftQuestion,
-      options: draftOptions
-    });
+    try {
+      const newPollId = await createPoll({
+        societyId: activeSocietyId,
+        question: draftQuestion,
+        options: draftOptions
+      });
 
-    if (newPollId) {
-      setDraftQuestion('');
-      setDraftOptions(['', '', '']);
-      setShowComposer(false);
-      Alert.alert('Poll Published', 'Your poll is now live for all members.');
-      return;
+      if (newPollId) {
+        setDraftQuestion('');
+        setDraftOptions(['', '', '']);
+        setShowComposer(false);
+        Alert.alert('Poll Published', 'Your poll is now live for all members.');
+        return;
+      }
+
+      Alert.alert('Unable to Publish', 'Please review your question and options, then try again.');
+    } catch {
+      Alert.alert('Unable to Publish', 'We could not publish this poll right now.');
     }
-
-    Alert.alert('Unable to Publish', 'Please review your question and options, then try again.');
   };
 
   return (
@@ -136,7 +140,13 @@ export const SocietyPollsScreen = () => {
                       const selected = myVote === option.id;
 
                       return (
-                        <Pressable key={option.id} onPress={() => voteOnPoll(poll.id, option.id)} style={{ gap: 8 }}>
+                        <Pressable key={option.id} onPress={async () => {
+                          try {
+                            await voteOnPoll(poll.id, option.id);
+                          } catch {
+                            Alert.alert('Vote Failed', 'Unable to submit vote right now.');
+                          }
+                        }} style={{ gap: 8 }}>
                           <View
                             style={{
                               borderWidth: 1,

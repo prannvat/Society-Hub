@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { EventItem } from '@/types';
 import { BadgeChip } from './BadgeChip';
 import { Card } from './Card';
@@ -13,10 +14,32 @@ type EventCardProps = {
 
 export const EventCard = ({ event, onPressRSVP }: EventCardProps) => {
   const theme = useAppTheme();
+  const hasPoster = typeof event.posterImageUrl === 'string' && /^https?:\/\//i.test(event.posterImageUrl);
+  const hasCoords = typeof event.locationLatitude === 'number' && typeof event.locationLongitude === 'number';
 
   return (
     <Card>
-      <View style={[styles.hero, { backgroundColor: theme.colors.border }]}>
+      <View style={[styles.hero, { backgroundColor: theme.colors.border }]}> 
+        {hasPoster ? (
+          <Image source={{ uri: event.posterImageUrl }} style={styles.heroMedia} resizeMode="cover" />
+        ) : hasCoords ? (
+          <MapView
+            provider={PROVIDER_DEFAULT}
+            style={styles.heroMedia}
+            initialRegion={{
+              latitude: event.locationLatitude!,
+              longitude: event.locationLongitude!,
+              latitudeDelta: 0.015,
+              longitudeDelta: 0.015,
+            }}
+            scrollEnabled={false}
+            zoomEnabled={false}
+            pitchEnabled={false}
+            rotateEnabled={false}
+          >
+            <Marker coordinate={{ latitude: event.locationLatitude!, longitude: event.locationLongitude! }} />
+          </MapView>
+        ) : null}
         <View style={styles.heroTopRow}>
           <BadgeChip label={event.isFree ? 'Free' : 'Paid'} variant={event.isFree ? 'filled' : 'outlined'} />
           {event.membersOnly ? <BadgeChip label="Members" variant="outlined" /> : null}
@@ -26,7 +49,7 @@ export const EventCard = ({ event, onPressRSVP }: EventCardProps) => {
             {event.title}
           </Text>
           <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
-            Hero image placeholder
+            {hasPoster ? 'Event poster' : hasCoords ? 'Map preview' : 'Location preview unavailable'}
           </Text>
         </View>
       </View>
@@ -50,7 +73,12 @@ const styles = StyleSheet.create({
     height: 170,
     borderRadius: 16,
     padding: 12,
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  heroMedia: {
+    ...StyleSheet.absoluteFillObject,
   },
   heroTopRow: {
     flexDirection: 'row',

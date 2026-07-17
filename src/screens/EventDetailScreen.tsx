@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, Platform, Linking, Alert } from 'react-native';
+import { Alert, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -18,23 +18,30 @@ export const EventDetailScreen = () => {
   const [saved, setSaved] = React.useState(false);
   const event = events.find((entry) => entry.id === route.params?.eventId) ?? events[0];
   const isRsvped = rsvpedEventIds.includes(event.id);
+  const hasPoster = typeof event.posterImageUrl === 'string' && /^https?:\/\//i.test(event.posterImageUrl);
+  const hasCoords = typeof event.locationLatitude === 'number' && typeof event.locationLongitude === 'number';
 
-  const handleRSVP = () => {
-    toggleRSVP(event.id);
-    if (!isRsvped) {
-      Alert.alert('RSVP Confirmed', `You're now attending ${event.title}!`);
-    } else {
-      Alert.alert('RSVP Cancelled', `You're no longer attending ${event.title}.`);
+  const handleRSVP = async () => {
+    try {
+      await toggleRSVP(event.id);
+      if (!isRsvped) {
+        Alert.alert('RSVP Confirmed', `You're now attending ${event.title}!`);
+      } else {
+        Alert.alert('RSVP Cancelled', `You're no longer attending ${event.title}.`);
+      }
+    } catch {
+      Alert.alert('RSVP Failed', 'Unable to update RSVP right now. Please try again.');
     }
   };
 
-  // Fallback coords for map
-  const DUMMY_LAT = 53.4722;
-  const DUMMY_LNG = -2.2382;
+  const fallbackLat = 53.4722;
+  const fallbackLng = -2.2382;
+  const mapLat = hasCoords ? event.locationLatitude! : fallbackLat;
+  const mapLng = hasCoords ? event.locationLongitude! : fallbackLng;
 
   const openMap = () => {
     const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
-    const latLng = `${DUMMY_LAT},${DUMMY_LNG}`;
+    const latLng = `${mapLat},${mapLng}`;
     const label = encodeURIComponent(event.location);
     const url = Platform.select({
       ios: `${scheme}${label}@${latLng}`,
@@ -50,6 +57,25 @@ export const EventDetailScreen = () => {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.heroCard, { backgroundColor: theme.colors.surface }]}> 
+          {hasPoster ? <Image source={{ uri: event.posterImageUrl }} style={styles.heroMedia} resizeMode="cover" /> : null}
+          {!hasPoster && hasCoords ? (
+            <MapView
+              provider={PROVIDER_DEFAULT}
+              style={styles.heroMedia}
+              initialRegion={{
+                latitude: mapLat,
+                longitude: mapLng,
+                latitudeDelta: 0.012,
+                longitudeDelta: 0.012,
+              }}
+              scrollEnabled={false}
+              zoomEnabled={false}
+              pitchEnabled={false}
+              rotateEnabled={false}
+            >
+              <Marker coordinate={{ latitude: mapLat, longitude: mapLng }} />
+            </MapView>
+          ) : null}
           <View style={styles.heroTopRow}>
             <Pressable onPress={() => navigation.goBack()}>
               <BadgeChip label="Back" variant="outlined" />
@@ -63,7 +89,9 @@ export const EventDetailScreen = () => {
               </Pressable>
             </View>
           </View>
-          <Text style={[styles.heroText, { color: theme.colors.textSecondary }]}>Hero image placeholder</Text>
+          <Text style={[styles.heroText, { color: theme.colors.textSecondary }]}>
+            {hasPoster ? 'Poster' : hasCoords ? 'Location map preview' : 'No poster or location map available'}
+          </Text>
         </View>
 
         <Text style={[styles.eventTitle, { color: theme.colors.textPrimary }]}>{event.title}</Text>
@@ -98,7 +126,9 @@ export const EventDetailScreen = () => {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>About this event</Text>
-          <Text style={[styles.sectionText, { color: theme.colors.textSecondary }]}>A community gathering with kirtan, langar, and student networking. Open to members and friends.</Text>
+          <Text style={[styles.sectionText, { color: theme.colors.textSecondary }]}>
+            {event.description?.trim() || 'Details for this event will be announced soon.'}
+          </Text>
         </View>
 
         <View style={styles.section}>
@@ -128,8 +158,8 @@ export const EventDetailScreen = () => {
               provider={PROVIDER_DEFAULT}
               style={styles.map}
               initialRegion={{
-                latitude: DUMMY_LAT,
-                longitude: DUMMY_LNG,
+                latitude: mapLat,
+                longitude: mapLng,
                 latitudeDelta: 0.01,
                 longitudeDelta: 0.01,
               }}
@@ -138,7 +168,7 @@ export const EventDetailScreen = () => {
               pitchEnabled={false}
               rotateEnabled={false}
             >
-              <Marker coordinate={{ latitude: DUMMY_LAT, longitude: DUMMY_LNG }} />
+              <Marker coordinate={{ latitude: mapLat, longitude: mapLng }} />
             </MapView>
             <View style={[styles.mapButton, { backgroundColor: theme.colors.primary }]}> 
               <Text style={[styles.mapButtonText, { color: theme.colors.background }]}>Open in Maps</Text>
@@ -172,7 +202,12 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'space-between',
     padding: 24,
-    marginTop: 8
+    marginTop: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  heroMedia: {
+    ...StyleSheet.absoluteFillObject,
   },
   heroTopRow: {
     flexDirection: 'row',

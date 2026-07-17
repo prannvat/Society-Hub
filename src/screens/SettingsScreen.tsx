@@ -1,11 +1,11 @@
-import React from 'react';
-import { Alert, Switch, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, StyleSheet, Switch, Text, View, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MaterialIcons, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { ListItem } from '@/components/ListItem';
 import { TopNavBar } from '@/components/TopNavBar';
-import { GlassCard } from '@/components/GlassCard';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -32,232 +32,257 @@ export const SettingsScreen = () => {
     textSizePreference,
     setTextSizePreference
   } = useLocalAppState();
-  const [showSecurity, setShowSecurity] = React.useState(false);
-  const [showFaqs, setShowFaqs] = React.useState(false);
-  const [showContact, setShowContact] = React.useState(false);
+
+  const [showSecurity, setShowSecurity] = useState(false);
 
   const cycleThemePreference = () => {
-    if (themePreference === 'Auto') {
-      setThemePreference('Light');
-      return;
-    }
-
-    if (themePreference === 'Light') {
-      setThemePreference('Dark');
-      return;
-    }
-
-    setThemePreference('Auto');
+    if (themePreference === 'Auto') setThemePreference('Light');
+    else if (themePreference === 'Light') setThemePreference('Dark');
+    else setThemePreference('Auto');
   };
 
   const cycleTextSize = () => {
-    if (textSizePreference === 'Small') {
-      setTextSizePreference('Medium');
-      return;
-    }
-
-    if (textSizePreference === 'Medium') {
-      setTextSizePreference('Large');
-      return;
-    }
-
-    setTextSizePreference('Small');
+    if (textSizePreference === 'Small') setTextSizePreference('Medium');
+    else if (textSizePreference === 'Medium') setTextSizePreference('Large');
+    else setTextSizePreference('Small');
   };
 
-  const leaveActiveSociety = () => {
+  const leaveActiveSociety = async (societyId: string) => {
     if (mySocietyIds.length <= 1) {
-      Alert.alert('Cannot Leave', 'You need at least one society to continue using the app. Join another society first.');
+      Alert.alert('Cannot Leave', 'You need at least one society to continue using the app.');
       return;
     }
-
-    const currentSociety = allSocieties.find((society) => society.id === activeSocietyId);
-    leaveSociety(activeSocietyId);
-    Alert.alert('Left Society', `You have left ${currentSociety?.name ?? 'the active society'}.`);
+    const currentSociety = allSocieties.find((society) => society.id === societyId);
+    Alert.alert(
+      'Leave Society?',
+      `Are you sure you want to leave ${currentSociety?.name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Leave', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              await leaveSociety(societyId);
+            } catch {
+              Alert.alert('Error', 'Unable to leave right now.');
+            }
+          }
+        }
+      ]
+    );
   };
 
-  const deleteLocalAccount = () => {
-    setPushEnabled(false);
-    setAnnouncementsEnabled(false);
-    setPollUpdatesEnabled(false);
-    setRemindersEnabled(false);
-    setThemePreference('Auto');
-    setTextSizePreference('Medium');
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Onboarding' }]
-    });
+  const logOut = () => {
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { 
+        text: 'Log Out', 
+        style: 'destructive',
+        onPress: () => {
+          navigation.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+        }
+      }
+    ]);
   };
+
+  const deleteAccount = () => {
+    Alert.alert('Delete Account', 'This will permanently delete your account and remove you from all societies.', [
+      { text: 'Cancel', style: 'cancel' },
+      { 
+        text: 'Delete', 
+        style: 'destructive',
+        onPress: () => {
+          setPushEnabled(false);
+          navigation.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+        }
+      }
+    ]);
+  };
+
+  const renderSectionHeader = (title: string) => (
+    <Text style={[styles.sectionHeader, { color: theme.colors.textSecondary }]}>{title}</Text>
+  );
+
+  const Chevron = () => <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSecondary} />;
 
   return (
     <ScreenLayout>
-      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 96, gap: 18 }}>
-        <TopNavBar title="Settings" actionLabel="Help" onPressAction={() => setShowFaqs((prev) => !prev)} />
-
-        <GlassCard
-          style={{
-            shadowColor: theme.shadow.shadowColor,
-            shadowOffset: theme.shadow.shadowOffset,
-            shadowOpacity: theme.shadow.shadowOpacity,
-            shadowRadius: theme.shadow.shadowRadius,
-            elevation: theme.shadow.elevation
-          }}
-        >
-          <View style={{ gap: 10 }}>
-            <Text style={{ color: theme.colors.textPrimary, fontSize: 20, fontWeight: '800' }}>Settings</Text>
-            <Text style={{ color: theme.colors.textSecondary, lineHeight: 20 }}>Refine your SocietyHub experience with crisp controls for notifications, appearance, and membership settings.</Text>
-          </View>
-        </GlassCard>
-
-        <View style={{ gap: 16 }}>
-          <GlassCard
-            style={{
-              shadowColor: theme.shadow.shadowColor,
-              shadowOffset: theme.shadow.shadowOffset,
-              shadowOpacity: theme.shadow.shadowOpacity,
-              shadowRadius: theme.shadow.shadowRadius,
-              elevation: theme.shadow.elevation
-            }}
-          >
-            <View style={{ overflow: 'hidden' }}>
-              <Text style={{ color: theme.colors.textSecondary, fontWeight: '700', paddingBottom: 14 }}>Account</Text>
-              <ListItem label="Profile" right={<Text style={{ color: theme.colors.textSecondary }}>{'>'}</Text>} onPress={() => navigation.navigate('MainTabs', { screen: 'Profile' })} />
-              <ListItem label="Email & Password" right={<Text style={{ color: theme.colors.textSecondary }}>{showSecurity ? 'Hide' : 'Manage'}</Text>} onPress={() => setShowSecurity((prev) => !prev)} />
-
-              {showSecurity ? (
-                <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 14, marginTop: 14, gap: 8 }}>
-                  <Text style={{ color: theme.colors.textPrimary }}>Email: harleen@manchester.ac.uk</Text>
-                  <Text style={{ color: theme.colors.textSecondary }}>Password: ••••••••••</Text>
-                  <Text style={{ color: theme.colors.primary, fontWeight: '700' }} onPress={() => setShowSecurity(false)}>
-                    Save Local Security Preferences
-                  </Text>
-                </View>
-              ) : null}
+      <TopNavBar title="Settings and activity" onBack={() => navigation.goBack()} />
+      
+      <ScrollView contentContainerStyle={styles.container}>
+        
+        {/* Account Section */}
+        {renderSectionHeader('Your account')}
+        <View style={styles.sectionWrap}>
+          <ListItem 
+            label="Edit Profile"
+            left={<Ionicons name="person-circle-outline" size={24} color={theme.colors.textPrimary} />}
+            right={<Chevron />}
+            onPress={() => navigation.navigate('EditProfile')}
+          />
+          <ListItem 
+            label="Password & Security"
+            left={<MaterialIcons name="security" size={24} color={theme.colors.textPrimary} />}
+            right={<Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>{showSecurity ? 'Hide' : 'Manage'}</Text>}
+            onPress={() => setShowSecurity((prev) => !prev)}
+          />
+          {showSecurity ? (
+            <View style={[styles.securityDetails, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}>
+              <Text style={{ color: theme.colors.textPrimary, fontSize: 13, marginBottom: 4 }}>Email: harleen@manchester.ac.uk</Text>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>Password: ••••••••••</Text>
+              <Text style={{ color: theme.colors.primary, fontWeight: '700', marginTop: 12, fontSize: 14 }} onPress={() => setShowSecurity(false)}>
+                Secure Account
+              </Text>
             </View>
-          </GlassCard>
-
-          <GlassCard
-            style={{
-              shadowColor: theme.shadow.shadowColor,
-              shadowOffset: theme.shadow.shadowOffset,
-              shadowOpacity: theme.shadow.shadowOpacity,
-              shadowRadius: theme.shadow.shadowRadius,
-              elevation: theme.shadow.elevation
-            }}
-          >
-            <View style={{ overflow: 'hidden' }}>
-              <Text style={{ color: theme.colors.textSecondary, fontWeight: '700', paddingBottom: 14 }}>My Societies</Text>
-              {mySocietyIds.map((id) => {
-                const society = allSocieties.find((s) => s.id === id);
-                if (!society) return null;
-                return (
-                  <ListItem
-                    key={society.id}
-                    label={society.name}
-                    right={<Text style={{ color: society.id === activeSocietyId ? theme.colors.primary : theme.colors.textSecondary }}>{society.id === activeSocietyId ? 'Active' : 'Switch'}</Text>}
-                    onPress={() => setActiveSocietyId(society.id)}
-                  />
-                );
-              })}
-            </View>
-          </GlassCard>
-
-          <GlassCard
-            style={{
-              shadowColor: theme.shadow.shadowColor,
-              shadowOffset: theme.shadow.shadowOffset,
-              shadowOpacity: theme.shadow.shadowOpacity,
-              shadowRadius: theme.shadow.shadowRadius,
-              elevation: theme.shadow.elevation
-            }}
-          >
-            <View style={{ overflow: 'hidden' }}>
-              <Text style={{ color: theme.colors.textSecondary, fontWeight: '700', paddingBottom: 14 }}>Notifications</Text>
-              <ListItem
-                label="Push Notifications"
-                right={<Switch value={pushEnabled} onValueChange={setPushEnabled} trackColor={{ false: '#9CA3AF', true: theme.colors.primary }} />}
-                onPress={() => setPushEnabled(!pushEnabled)}
-              />
-              <ListItem
-                label="Event Reminders"
-                right={<Switch value={remindersEnabled} onValueChange={setRemindersEnabled} trackColor={{ false: '#9CA3AF', true: theme.colors.primary }} />}
-                onPress={() => setRemindersEnabled(!remindersEnabled)}
-              />
-              <ListItem
-                label="Announcements"
-                right={<Switch value={announcementsEnabled} onValueChange={setAnnouncementsEnabled} trackColor={{ false: '#9CA3AF', true: theme.colors.primary }} />}
-                onPress={() => setAnnouncementsEnabled(!announcementsEnabled)}
-              />
-              <ListItem
-                label="Poll Updates"
-                right={<Switch value={pollUpdatesEnabled} onValueChange={setPollUpdatesEnabled} trackColor={{ false: '#9CA3AF', true: theme.colors.primary }} />}
-                onPress={() => setPollUpdatesEnabled(!pollUpdatesEnabled)}
-              />
-            </View>
-          </GlassCard>
-
-          <GlassCard
-            style={{
-              shadowColor: theme.shadow.shadowColor,
-              shadowOffset: theme.shadow.shadowOffset,
-              shadowOpacity: theme.shadow.shadowOpacity,
-              shadowRadius: theme.shadow.shadowRadius,
-              elevation: theme.shadow.elevation
-            }}
-          >
-            <View style={{ overflow: 'hidden' }}>
-              <Text style={{ color: theme.colors.textSecondary, fontWeight: '700', paddingBottom: 14 }}>Appearance</Text>
-              <ListItem label="Theme" right={<Text style={{ color: theme.colors.textSecondary }}>{themePreference}</Text>} onPress={cycleThemePreference} />
-              <ListItem label="Text Size" right={<Text style={{ color: theme.colors.textSecondary }}>{textSizePreference}</Text>} onPress={cycleTextSize} />
-            </View>
-          </GlassCard>
-
-          <GlassCard
-            style={{
-              shadowColor: theme.shadow.shadowColor,
-              shadowOffset: theme.shadow.shadowOffset,
-              shadowOpacity: theme.shadow.shadowOpacity,
-              shadowRadius: theme.shadow.shadowRadius,
-              elevation: theme.shadow.elevation
-            }}
-          >
-            <View style={{ overflow: 'hidden' }}>
-              <Text style={{ color: theme.colors.textSecondary, fontWeight: '700', paddingBottom: 14 }}>Support</Text>
-              <ListItem label="FAQs" right={<Text style={{ color: theme.colors.textSecondary }}>{showFaqs ? 'Hide' : 'Open'}</Text>} onPress={() => setShowFaqs((prev) => !prev)} />
-              {showFaqs ? (
-                <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 14, marginTop: 14, gap: 8 }}>
-                  <Text style={{ color: theme.colors.textPrimary }}>How do I join events? Open an event and tap RSVP.</Text>
-                  <Text style={{ color: theme.colors.textPrimary }}>How do I switch societies? Use the Society section above.</Text>
-                  <Text style={{ color: theme.colors.textPrimary }}>Can I mute notifications? Yes, toggle Push Notifications.</Text>
-                </View>
-              ) : null}
-              <ListItem label="Contact Us" right={<Text style={{ color: theme.colors.textSecondary }}>{showContact ? 'Hide' : 'Open'}</Text>} onPress={() => setShowContact((prev) => !prev)} />
-              {showContact ? (
-                <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 14, marginTop: 14, gap: 4 }}>
-                  <Text style={{ color: theme.colors.textPrimary }}>Email: support@societyhub.app</Text>
-                  <Text style={{ color: theme.colors.textSecondary }}>Response time: under 24 hours</Text>
-                </View>
-              ) : null}
-            </View>
-          </GlassCard>
-
-          <GlassCard
-            style={{
-              borderColor: theme.colors.error,
-              shadowColor: theme.shadow.shadowColor,
-              shadowOffset: theme.shadow.shadowOffset,
-              shadowOpacity: theme.shadow.shadowOpacity,
-              shadowRadius: theme.shadow.shadowRadius,
-              elevation: theme.shadow.elevation
-            }}
-          >
-            <View style={{ overflow: 'hidden' }}>
-              <Text style={{ color: theme.colors.error, fontWeight: '700', paddingBottom: 14 }}>Danger Zone</Text>
-              <ListItem label="Leave Society" right={<Text style={{ color: theme.colors.error }}>Confirm</Text>} onPress={leaveActiveSociety} />
-              <ListItem label="Delete Account" right={<Text style={{ color: theme.colors.error }}>Reset</Text>} onPress={deleteLocalAccount} />
-            </View>
-          </GlassCard>
+          ) : null}
+          <ListItem 
+            label="Personal details"
+            left={<Ionicons name="documents-outline" size={24} color={theme.colors.textPrimary} />}
+            right={<Chevron />}
+          />
         </View>
-      </View>
+
+        {/* My Societies */}
+        {renderSectionHeader('My Societies')}
+        <View style={styles.sectionWrap}>
+          {mySocietyIds.map((id) => {
+            const society = allSocieties.find((s) => s.id === id);
+            if (!society) return null;
+            const isActive = society.id === activeSocietyId;
+            return (
+              <ListItem
+                key={society.id}
+                label={society.name}
+                left={<MaterialIcons name="groups" size={24} color={isActive ? theme.colors.primary : theme.colors.textPrimary} />}
+                right={
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Text style={{ color: isActive ? theme.colors.primary : theme.colors.textSecondary, fontWeight: isActive ? '700' : '400', fontSize: 13 }}>
+                      {isActive ? 'Active' : 'Switch'}
+                    </Text>
+                    <Ionicons name="log-out-outline" size={20} color={theme.colors.error} onPress={() => leaveActiveSociety(society.id)} />
+                  </View>
+                }
+                onPress={() => setActiveSocietyId(society.id)}
+              />
+            );
+          })}
+        </View>
+
+        {/* How you use SocietyHub */}
+        {renderSectionHeader('How you use SocietyHub')}
+        <View style={styles.sectionWrap}>
+          <ListItem
+            label="Push Notifications"
+            left={<Ionicons name="notifications-outline" size={24} color={theme.colors.textPrimary} />}
+            right={<Switch value={pushEnabled} onValueChange={setPushEnabled} trackColor={{ false: '#9CA3AF', true: theme.colors.primary }} />}
+          />
+          <ListItem
+            label="Event Reminders"
+            left={<MaterialIcons name="event-available" size={24} color={theme.colors.textPrimary} />}
+            right={<Switch value={remindersEnabled} onValueChange={setRemindersEnabled} trackColor={{ false: '#9CA3AF', true: theme.colors.primary }} />}
+          />
+          <ListItem
+            label="Announcements"
+            left={<Ionicons name="megaphone-outline" size={24} color={theme.colors.textPrimary} />}
+            right={<Switch value={announcementsEnabled} onValueChange={setAnnouncementsEnabled} trackColor={{ false: '#9CA3AF', true: theme.colors.primary }} />}
+          />
+          <ListItem
+            label="Poll Updates"
+            left={<Ionicons name="stats-chart-outline" size={24} color={theme.colors.textPrimary} />}
+            right={<Switch value={pollUpdatesEnabled} onValueChange={setPollUpdatesEnabled} trackColor={{ false: '#9CA3AF', true: theme.colors.primary }} />}
+          />
+        </View>
+
+        {/* App Settings */}
+        {renderSectionHeader('App settings')}
+        <View style={styles.sectionWrap}>
+          <ListItem
+            label="App Theme"
+            left={<Ionicons name="color-palette-outline" size={24} color={theme.colors.textPrimary} />}
+            right={<Text style={{ color: theme.colors.textSecondary, fontSize: 14 }}>{themePreference}</Text>}
+            onPress={cycleThemePreference}
+          />
+          <ListItem
+            label="Text Size"
+            left={<Ionicons name="text-outline" size={24} color={theme.colors.textPrimary} />}
+            right={<Text style={{ color: theme.colors.textSecondary, fontSize: 14 }}>{textSizePreference}</Text>}
+            onPress={cycleTextSize}
+          />
+        </View>
+
+        {/* More Info & Support */}
+        {renderSectionHeader('More info and support')}
+        <View style={styles.sectionWrap}>
+          <ListItem 
+            label="Help & FAQs"
+            left={<Ionicons name="help-circle-outline" size={24} color={theme.colors.textPrimary} />}
+            right={<Chevron />}
+          />
+          <ListItem 
+            label="Contact Us"
+            left={<Ionicons name="mail-outline" size={24} color={theme.colors.textPrimary} />}
+            right={<Chevron />}
+          />
+          <ListItem 
+            label="Privacy Policy"
+            left={<Ionicons name="shield-checkmark-outline" size={24} color={theme.colors.textPrimary} />}
+            right={<Chevron />}
+          />
+          <ListItem 
+            label="Terms of Service"
+            left={<Ionicons name="document-text-outline" size={24} color={theme.colors.textPrimary} />}
+            right={<Chevron />}
+          />
+        </View>
+
+        {/* Logins */}
+        {renderSectionHeader('Login & Account')}
+        <View style={styles.sectionWrap}>
+          <ListItem 
+            label="Log out"
+            left={<MaterialIcons name="logout" size={24} color={theme.colors.primary} />}
+            onPress={logOut}
+          />
+          <ListItem 
+            label="Delete account"
+            left={<MaterialIcons name="delete-outline" size={24} color={theme.colors.error} />}
+            onPress={deleteAccount}
+          />
+        </View>
+
+        <Text style={[styles.versionText, { color: theme.colors.textSecondary }]}>SocietyHub v1.0.4 • from Manchester with ❤️</Text>
+
+      </ScrollView>
     </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 96,
+  },
+  sectionHeader: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+    marginTop: 20,
+    paddingLeft: 8,
+    letterSpacing: 0.5
+  },
+  sectionWrap: {
+    backgroundColor: 'transparent',
+  },
+  securityDetails: {
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  versionText: {
+    textAlign: 'center',
+    marginVertical: 40,
+    fontSize: 12,
+  }
+});

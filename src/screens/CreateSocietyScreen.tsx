@@ -21,7 +21,7 @@ export const CreateSocietyScreen = () => {
   const [universityLink, setUniversityLink] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim() || !description.trim() || !universityLink.trim()) {
       Alert.alert('Missing Fields', 'Please fill in all fields to submit your society request.');
       return;
@@ -29,9 +29,8 @@ export const CreateSocietyScreen = () => {
 
     setIsSubmitting(true);
 
-    // Simulate network delay for approval workflow
-    setTimeout(() => {
-      createSociety({
+    try {
+      await createSociety({
         name: name.trim(),
         shortName: name.trim().split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4),
         university: 'Default University', // Would come from user profile/SSO
@@ -46,7 +45,10 @@ export const CreateSocietyScreen = () => {
         'Your society has been created and you are now the President. You can assign committee roles from member profiles.',
         [{ text: 'Great', onPress: () => navigation.goBack() }]
       );
-    }, 800);
+    } catch {
+      setIsSubmitting(false);
+      Alert.alert('Request Failed', 'Unable to create society right now. Please try again.');
+    }
   };
 
   return (

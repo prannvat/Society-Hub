@@ -9,10 +9,19 @@ import { TextButton } from '@/components/TextButton';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useAuth } from '@/hooks/useAuth';
 
 export const SignUpScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { loginWithAuth0 } = useAuth();
+
+  const continueWithAuth = async () => {
+    const success = await loginWithAuth0();
+    if (success) {
+      navigation.navigate('ProfileSetup');
+    }
+  };
 
   return (
     <ScreenLayout>
@@ -24,8 +33,7 @@ export const SignUpScreen = () => {
       <Text style={{ color: theme.colors.textSecondary }}>Join your society with your university email.</Text>
 
       <View style={{ gap: 8 }}>
-        <OutlineButton label="Continue with Google" onPress={() => navigation.navigate('ProfileSetup')} />
-        <OutlineButton label="Continue with Apple" onPress={() => navigation.navigate('ProfileSetup')} />
+        <OutlineButton label="Continue with Auth0" onPress={continueWithAuth} />
       </View>
 
       <Text style={{ textAlign: 'center', color: theme.colors.textSecondary }}>or continue with email</Text>
@@ -35,7 +43,7 @@ export const SignUpScreen = () => {
       <InputField label="Password" placeholder="Create password" secureTextEntry />
       <InputField label="Confirm Password" placeholder="Repeat password" secureTextEntry />
       <View style={{ marginTop: 8 }}>
-        <PrimaryButton label="Get Started" onPress={() => navigation.navigate('ProfileSetup')} />
+        <PrimaryButton label="Get Started" onPress={continueWithAuth} />
       </View>
       <View style={{ alignItems: 'center' }}>
         <TextButton label="Already have an account? Log In" onPress={() => navigation.navigate('Login')} />

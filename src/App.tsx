@@ -3,6 +3,9 @@ import { useFonts, Inter_400Regular, Inter_700Bold, Inter_800ExtraBold } from '@
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LocalAppStateProvider } from '@/hooks/useLocalAppState';
+import { AuthProvider } from '@/hooks/useAuth';
+import { UserRolesProvider } from '@/hooks/useUserRoles';
+import { CommitteeRequestsProvider } from '@/hooks/useCommitteeRequests';
 import { AppNavigator } from '@/navigation/AppNavigator';
 
 export default function App() {
@@ -21,9 +24,15 @@ export default function App() {
   }
 
   return (
-    <LocalAppStateProvider>
-      <StatusBar style="auto" />
-      <AppNavigator />
-    </LocalAppStateProvider>
+    <AuthProvider>
+      <UserRolesProvider>
+        <CommitteeRequestsProvider>
+          <LocalAppStateProvider>
+            <StatusBar style="auto" />
+            <AppNavigator />
+          </LocalAppStateProvider>
+        </CommitteeRequestsProvider>
+      </UserRolesProvider>
+    </AuthProvider>
   );
 }
