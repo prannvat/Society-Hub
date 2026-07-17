@@ -35,6 +35,41 @@ export type FeedSociety = {
   secondaryColor: string;
 };
 
+/**
+ * Compact, Instagram-style relative time for feed items.
+ * Just now · Nm · Nh · Yesterday · Nd · then an absolute date.
+ * Shared by the three feed cards so timestamps read identically.
+ */
+export function formatRelativeTime(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  const diffMs = Date.now() - parsed.getTime();
+  if (diffMs < 60000) {
+    return 'Just now';
+  }
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfDay = new Date(parsed);
+  startOfDay.setHours(0, 0, 0, 0);
+  const dayDiff = Math.round((startOfToday.getTime() - startOfDay.getTime()) / 86400000);
+  if (dayDiff <= 0) {
+    return `${Math.floor(minutes / 60)}h`;
+  }
+  if (dayDiff === 1) {
+    return 'Yesterday';
+  }
+  if (dayDiff < 7) {
+    return `${dayDiff}d`;
+  }
+  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 const toFeedSociety = (society: SocietyItem): FeedSociety => ({
   id: society.id,
   name: society.name,

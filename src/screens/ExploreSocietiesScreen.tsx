@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, FlatList, Image } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, Image, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { TopNavBar } from '@/components/TopNavBar';
 import { SearchBar } from '@/components/SearchBar';
 import { SectionHeader } from '@/components/SectionHeader';
-import { AnnouncementCard } from '@/components/AnnouncementCard';
+import { FilterChips } from '@/components/FilterChips';
 import { EventCard } from '@/components/EventCard';
 import { BadgeChip } from '@/components/BadgeChip';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/Toast';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -18,48 +19,81 @@ import { RootStackParamList } from '@/navigation/types';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { MaterialIcons } from '@expo/vector-icons';
 import { joinErrorMessage } from '@/services/api/memberships';
+import { spacing } from '@/config/theme';
 import { SocietyItem, EventItem } from '@/types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExploreSocieties'>;
+
+const FILTERS = ['All', 'My University', 'Open to join'] as const;
+type Filter = (typeof FILTERS)[number];
 
 export const ExploreSocietiesScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NavigationProp>();
   const toast = useToast();
-  const { allSocieties, mySocietyIds, pendingMembershipSocietyIds, joinSociety, exploreEvents, loadExploreEvents, loadSocieties, announcements, profile } = useLocalAppState();
-
-  useEffect(() => {
-    loadSocieties().then(() => loadExploreEvents());
-  }, [loadExploreEvents]);
+  const {
+    allSocieties,
+    mySocietyIds,
+    pendingMembershipSocietyIds,
+    joinSociety,
+    exploreEvents,
+    loadExploreEvents,
+    loadSocieties,
+    isLoadingExplore,
+    profile
+  } = useLocalAppState();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>('All');
   const [joiningSocietyId, setJoiningSocietyId] = useState<string | null>(null);
+  const [societiesLoaded, setSocietiesLoaded] = useState(false);
 
-  const discoverableSocieties = [...allSocieties]
-    .filter(s => !mySocietyIds.includes(s.id))
-    .sort((a, b) => {
-      const u = profile.university?.toLowerCase() || '';
-      const aUnis = [a.university?.toLowerCase(), ...(a.affiliatedUniversities || []).map(x => x.toLowerCase())].filter(Boolean);
-      const bUnis = [b.university?.toLowerCase(), ...(b.affiliatedUniversities || []).map(x => x.toLowerCase())].filter(Boolean);
+  useEffect(() => {
+    loadSocieties().finally(() => setSocietiesLoaded(true));
+  }, [loadSocieties]);
 
-      const aMatchesUni = u && aUnis.includes(u);
-      const bMatchesUni = u && bUnis.includes(u);
+  useEffect(() => {
+    loadExploreEvents();
+  }, [loadExploreEvents]);
 
-      if (aMatchesUni && !bMatchesUni) return -1;
-      if (!aMatchesUni && bMatchesUni) return 1;
+  const isSearching = searchQuery.trim().length > 0;
+  const query = searchQuery.trim().toLowerCase();
+  const userUni = profile.university?.toLowerCase() || '';
 
-      return 0; // fallback to default order
-    });
+  const filteredSocieties = useMemo(() => {
+    const matchesFilter = (society: SocietyItem) => {
+      if (filter === 'Open to join') {
+        return society.joinPolicy === 'OPEN' || !society.joinPolicy;
+      }
+      if (filter === 'My University') {
+        const unis = [society.university?.toLowerCase(), ...(society.affiliatedUniversities || []).map((u) => u.toLowerCase())];
+        return Boolean(userUni) && unis.includes(userUni);
+      }
+      return true;
+    };
 
-  const filteredSocieties = (searchQuery.trim().length > 0 ? allSocieties : discoverableSocieties).filter(s =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (s.description || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    const matchesSearch = (society: SocietyItem) =>
+      society.name.toLowerCase().includes(query) || (society.description || '').toLowerCase().includes(query);
 
-  const filteredEvents = exploreEvents.filter(e =>
-    e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    e.location.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    return allSocieties
+      .filter((society) => matchesFilter(society) && (!isSearching || matchesSearch(society)))
+      .sort((a, b) => {
+        // Surface the user's own university first for discovery.
+        const aUni = [a.university?.toLowerCase(), ...(a.affiliatedUniversities || []).map((u) => u.toLowerCase())].includes(userUni);
+        const bUni = [b.university?.toLowerCase(), ...(b.affiliatedUniversities || []).map((u) => u.toLowerCase())].includes(userUni);
+        if (userUni && aUni !== bUni) {
+          return aUni ? -1 : 1;
+        }
+        return 0;
+      });
+  }, [allSocieties, filter, isSearching, query, userUni]);
+
+  const trendingEvents = useMemo(() => exploreEvents.slice(0, 8), [exploreEvents]);
+
+  const handleRefresh = () => {
+    loadSocieties();
+    loadExploreEvents();
+  };
 
   const handleJoin = async (society: SocietyItem) => {
     if (joiningSocietyId) {
@@ -86,7 +120,7 @@ export const ExploreSocietiesScreen = () => {
     const brand = item.primaryColor || theme.colors.primary;
 
     return (
-      <View style={styles.societyCardWrap}>
+      <View style={styles.gridCell}>
         <Card padding={0} onPress={() => navigation.navigate('SocietyProfile', { societyId: item.id })} style={styles.societyCard}>
           <View style={[styles.societyAccent, { backgroundColor: brand }]} />
           <View style={styles.societyCardContent}>
@@ -120,9 +154,9 @@ export const ExploreSocietiesScreen = () => {
             </View>
             <View style={{ flex: 1 }} />
             {isPending ? (
-              <BadgeChip label="Pending" variant="warning" style={{ alignSelf: 'center' }} />
+              <BadgeChip label="Pending" variant="warning" style={styles.statusChip} />
             ) : isMember ? (
-              <BadgeChip label="Joined" variant="success" style={{ alignSelf: 'center' }} />
+              <BadgeChip label="Joined" variant="success" style={styles.statusChip} />
             ) : (
               <PrimaryButton
                 label="Join"
@@ -143,163 +177,132 @@ export const ExploreSocietiesScreen = () => {
     </View>
   );
 
-  return (
-    <ScreenLayout scroll={false}>
-      <View style={{ flex: 1 }}>
-        <TopNavBar title="Explore" onBack={() => navigation.goBack()} />
-
-        <View style={styles.searchContainer}>
-          <SearchBar
-            placeholder="Search societies and events..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+  const listHeader = (
+    <View>
+      {!isSearching && trendingEvents.length > 0 ? (
+        <View style={styles.strip}>
+          <View style={styles.sectionPad}>
+            <SectionHeader
+              title="Trending events"
+              rightText="See all"
+              onPressRight={() => navigation.navigate('MainTabs', { screen: 'Events' })}
+            />
+          </View>
+          <FlatList
+            data={trendingEvents}
+            keyExtractor={(event) => event.id}
+            renderItem={renderEventCard}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalList}
+            snapToInterval={280 + spacing.md}
+            decelerationRate="fast"
           />
         </View>
-
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {searchQuery ? (
-            <View>
-              <View style={styles.sectionPad}>
-                <SectionHeader title="Events" />
-              </View>
-              {filteredEvents.length === 0 ? (
-                <EmptyState icon="event-busy" title="No events found" subtitle="Try a different search term" />
-              ) : (
-                <FlatList
-                  data={filteredEvents}
-                  keyExtractor={e => e.id}
-                  renderItem={renderEventCard}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalList}
-                  snapToInterval={280 + 16}
-                  decelerationRate="fast"
-                />
-              )}
-
-              <View style={[styles.sectionPad, { marginTop: 24 }]}>
-                <SectionHeader title="Societies" />
-              </View>
-              {filteredSocieties.length === 0 ? (
-                <EmptyState
-                  icon="search-off"
-                  title="No societies found"
-                  subtitle="Try adjusting your search"
-                  actionLabel="Clear search"
-                  onAction={() => setSearchQuery('')}
-                />
-              ) : (
-                <FlatList
-                  data={filteredSocieties}
-                  keyExtractor={s => s.id}
-                  renderItem={renderSocietyCard}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalList}
-                  snapToInterval={220 + 16}
-                  decelerationRate="fast"
-                />
-              )}
-            </View>
-          ) : (
-            <View>
-              {/* Featured Events */}
-              <View style={styles.sectionPad}>
-                <SectionHeader
-                  title="Trending Events"
-                  rightText="See all"
-                  onPressRight={() => navigation.navigate('MainTabs', { screen: 'Events' })}
-                />
-              </View>
-              <FlatList
-                data={exploreEvents.slice(0, 5)}
-                keyExtractor={item => item.id}
-                renderItem={renderEventCard}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalList}
-                snapToInterval={280 + 16}
-                decelerationRate="fast"
-              />
-
-              {/* Discover Societies */}
-              <View style={[styles.sectionPad, { marginTop: 24 }]}>
-                <SectionHeader title="Discover Societies" />
-              </View>
-              {discoverableSocieties.length === 0 ? (
-                <EmptyState
-                  icon="check-circle-outline"
-                  title="You're all caught up"
-                  subtitle="You've joined every society we could find for you"
-                />
-              ) : (
-                <FlatList
-                  data={discoverableSocieties.slice(0, 6)}
-                  keyExtractor={item => item.id}
-                  renderItem={renderSocietyCard}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalList}
-                  snapToInterval={220 + 16}
-                  decelerationRate="fast"
-                />
-              )}
-
-              {/* University Updates */}
-              <View style={[styles.sectionPad, { marginTop: 24 }]}>
-                <SectionHeader
-                  title="Campus Hub"
-                  rightText="View all"
-                  onPressRight={() => navigation.navigate('AnnouncementsFeed')}
-                />
-              </View>
-              <View style={styles.verticalList}>
-                {announcements.length === 0 ? (
-                  <EmptyState icon="campaign" title="No notices yet" subtitle="Campus announcements will appear here" />
-                ) : (
-                  announcements.slice(0, 5).map((announcement) => (
-                    <AnnouncementCard
-                      key={announcement.id}
-                      item={announcement}
-                      onPress={(selected) => navigation.navigate('AnnouncementDetail', { announcementId: selected.id })}
-                    />
-                  ))
-                )}
-              </View>
-            </View>
-          )}
-        </ScrollView>
+      ) : null}
+      <View style={styles.sectionPad}>
+        <SectionHeader title={isSearching ? `Results for "${searchQuery.trim()}"` : 'Discover societies'} />
       </View>
+    </View>
+  );
+
+  return (
+    <ScreenLayout scroll={false}>
+      <View style={styles.headerWrap}>
+        <ScreenHeader title="Explore" subtitle="Find your people across every society" />
+      </View>
+
+      <View style={styles.searchContainer}>
+        <SearchBar
+          placeholder="Search societies..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      <View style={styles.filterWrap}>
+        <FilterChips items={[...FILTERS]} onChange={(value) => setFilter(value as Filter)} />
+      </View>
+
+      {!societiesLoaded ? (
+        <View style={styles.skeletonGrid}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={styles.skeletonCell}>
+              <Card style={styles.societyCard}>
+                <Skeleton width={44} height={44} radius={theme.radius.card} />
+                <Skeleton width="80%" height={16} style={{ marginTop: 12 }} />
+                <Skeleton width="60%" height={12} style={{ marginTop: 8 }} />
+                <Skeleton width={72} height={30} radius={theme.radius.pill} style={{ marginTop: 16 }} />
+              </Card>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <FlatList
+          data={filteredSocieties}
+          keyExtractor={(society) => society.id}
+          renderItem={renderSocietyCard}
+          numColumns={2}
+          columnWrapperStyle={styles.columnWrapper}
+          ListHeaderComponent={listHeader}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews
+          refreshControl={<RefreshControl refreshing={isLoadingExplore} onRefresh={handleRefresh} tintColor={theme.colors.primary} />}
+          ListEmptyComponent={
+            <EmptyState
+              icon={isSearching ? 'search-off' : 'groups'}
+              title={isSearching ? 'No societies found' : 'Nothing here yet'}
+              subtitle={isSearching ? 'Try a different search or filter.' : 'Check back soon for societies to join.'}
+              actionLabel={isSearching ? 'Clear search' : undefined}
+              onAction={isSearching ? () => setSearchQuery('') : undefined}
+            />
+          }
+        />
+      )}
     </ScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  searchContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    marginTop: 12
+  headerWrap: {
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm
   },
-  scrollContent: {
-    paddingBottom: 40
+  searchContainer: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm
+  },
+  filterWrap: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xs
+  },
+  list: {
+    paddingBottom: spacing.xxl
+  },
+  columnWrapper: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md
+  },
+  gridCell: {
+    flex: 1,
+    marginBottom: spacing.md
+  },
+  strip: {
+    marginBottom: spacing.md
   },
   sectionPad: {
-    paddingHorizontal: 16,
-    marginBottom: 12
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm
   },
   horizontalList: {
-    paddingHorizontal: 16,
-    gap: 16
-  },
-  verticalList: {
-    paddingHorizontal: 16,
-    gap: 12
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md
   },
   eventCardWrap: {
     width: 280
-  },
-  societyCardWrap: {
-    width: 220
   },
   societyCard: {
     minHeight: 250,
@@ -324,5 +327,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     marginTop: 8
+  },
+  statusChip: {
+    alignSelf: 'stretch',
+    alignItems: 'center'
+  },
+  skeletonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md
+  },
+  skeletonCell: {
+    width: '47%',
+    flexGrow: 1
   }
 });
