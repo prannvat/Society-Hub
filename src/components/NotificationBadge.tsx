@@ -14,8 +14,10 @@ export const NotificationBadge = ({ count }: NotificationBadgeProps) => {
   }
 
   return (
-    <View style={[styles.badge, { backgroundColor: theme.colors.error }]}> 
-      <Text style={styles.text}>{count > 99 ? '99+' : count}</Text>
+    <View style={[styles.badge, { backgroundColor: theme.colors.danger }]}>
+      <Text style={[styles.text, { color: theme.mode === 'dark' ? '#2B0A0A' : '#FFFFFF' }]}>
+        {count > 99 ? '99+' : count}
+      </Text>
     </View>
   );
 };
@@ -30,8 +32,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6
   },
   text: {
-    color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '700'
+    fontWeight: '700',
+    includeFontPadding: false
   }
 });

@@ -13,10 +13,19 @@ export const SectionHeader = ({ title, rightText, onPressRight }: SectionHeaderP
 
   return (
     <View style={styles.row}>
-      <Text style={[styles.title, { color: theme.colors.textPrimary, flex: 1, paddingRight: 8 }]} numberOfLines={1}>{title}</Text>
+      <Text
+        style={[theme.typography.h3, { color: theme.colors.textPrimary, flex: 1, paddingRight: 8 }]}
+        numberOfLines={1}
+      >
+        {title}
+      </Text>
       {rightText ? (
-        <Pressable onPress={onPressRight} hitSlop={6}>
-          <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>{rightText}</Text>
+        <Pressable onPress={onPressRight} hitSlop={10}>
+          {({ pressed }) => (
+            <Text style={[theme.typography.captionMedium, { color: theme.colors.primary, opacity: pressed ? 0.6 : 1 }]}>
+              {rightText}
+            </Text>
+          )}
         </Pressable>
       ) : null}
     </View>
@@ -28,9 +37,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center'
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700'
   }
 });

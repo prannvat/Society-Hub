@@ -1,41 +1,50 @@
 import React, { ReactNode } from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 type CardProps = {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
+  padding?: number;
+  onPress?: () => void;
 };
 
-export const Card = ({ children, style }: CardProps) => {
+export const Card = ({ children, style, padding = 16, onPress }: CardProps) => {
   const theme = useAppTheme();
 
-  return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: theme.colors.surface,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          shadowColor: theme.colors.textPrimary,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.05,
-          shadowRadius: 12,
-          elevation: 2
-        },
-        style
-      ]}
-    >
-      {children}
-    </View>
-  );
+  const baseStyle: StyleProp<ViewStyle> = [
+    styles.card,
+    theme.elevation.e1,
+    {
+      padding,
+      borderRadius: theme.radius.lg,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.border
+    },
+    style
+  ];
+
+  if (onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: false }}
+        style={({ pressed }) => [
+          ...baseStyle,
+          { opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.99 : 1 }] }
+        ]}
+      >
+        {children}
+      </Pressable>
+    );
+  }
+
+  return <View style={baseStyle}>{children}</View>;
 };
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
-    padding: 16,
     width: '100%'
   }
 });

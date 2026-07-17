@@ -1,15 +1,64 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, Platform } from 'react-native';
+import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
+
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type ButtonSize = 'lg' | 'md' | 'sm';
 
 type PrimaryButtonProps = {
   label: string;
   onPress?: () => void;
   disabled?: boolean;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  loading?: boolean;
+  icon?: keyof typeof MaterialIcons.glyphMap;
+  style?: StyleProp<ViewStyle>;
 };
 
-export const PrimaryButton = ({ label, onPress, disabled = false }: PrimaryButtonProps) => {
+const sizeStyles: Record<ButtonSize, { minHeight: number; paddingHorizontal: number; fontSize: number; iconSize: number }> = {
+  lg: { minHeight: 52, paddingHorizontal: 24, fontSize: 16, iconSize: 20 },
+  md: { minHeight: 44, paddingHorizontal: 18, fontSize: 15, iconSize: 18 },
+  sm: { minHeight: 36, paddingHorizontal: 14, fontSize: 13, iconSize: 16 }
+};
+
+export const PrimaryButton = ({
+  label,
+  onPress,
+  disabled = false,
+  variant = 'primary',
+  size = 'lg',
+  loading = false,
+  icon,
+  style
+}: PrimaryButtonProps) => {
   const theme = useAppTheme();
+  const dims = sizeStyles[size];
+  const inert = disabled || loading;
+
+  const palette = {
+    primary: {
+      background: theme.colors.primary,
+      pressed: theme.colors.primaryPressed,
+      label: theme.colors.textOnPrimary
+    },
+    secondary: {
+      background: theme.colors.primarySoft,
+      pressed: theme.colors.primarySoft,
+      label: theme.colors.primary
+    },
+    ghost: {
+      background: 'transparent',
+      pressed: theme.colors.primarySoft,
+      label: theme.colors.primary
+    },
+    danger: {
+      background: theme.colors.danger,
+      pressed: theme.colors.danger,
+      label: theme.mode === 'dark' ? '#2B0A0A' : '#FFFFFF'
+    }
+  }[variant];
 
   return (
     <Pressable
@@ -17,30 +66,47 @@ export const PrimaryButton = ({ label, onPress, disabled = false }: PrimaryButto
       style={({ pressed }) => [
         styles.button,
         {
-          backgroundColor: theme.colors.primary,
-          borderRadius: 100,
-          opacity: disabled ? 0.5 : pressed && Platform.OS === 'ios' ? 0.9 : 1,
-          transform: [{ scale: pressed && !disabled ? 0.995 : 1 }]
-        }
+          minHeight: dims.minHeight,
+          paddingHorizontal: dims.paddingHorizontal,
+          backgroundColor: pressed && !inert ? palette.pressed : palette.background,
+          borderRadius: theme.radius.pill,
+          opacity: disabled ? 0.45 : pressed && !inert && variant !== 'primary' ? 0.85 : 1,
+          transform: [{ scale: pressed && !inert ? 0.98 : 1 }]
+        },
+        style
       ]}
       onPress={onPress}
-      disabled={disabled}
+      disabled={inert}
     >
-      <Text style={[styles.text, { color: theme.colors.background }]} numberOfLines={1}>{label}</Text>
+      {loading ? (
+        <ActivityIndicator size="small" color={palette.label} />
+      ) : (
+        <View style={styles.content}>
+          {icon ? <MaterialIcons name={icon} size={dims.iconSize} color={palette.label} /> : null}
+          <Text
+            style={[styles.text, { fontSize: dims.fontSize, color: palette.label }]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        </View>
+      )}
     </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 50,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    paddingVertical: 10
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
   },
   text: {
-    fontSize: 16,
     fontWeight: '700',
     includeFontPadding: false
   }

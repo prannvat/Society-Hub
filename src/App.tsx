@@ -1,16 +1,26 @@
 import React from 'react';
-import { useFonts, Inter_400Regular, Inter_700Bold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold
+} from '@expo-google-fonts/inter';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LocalAppStateProvider } from '@/hooks/useLocalAppState';
 import { AuthProvider } from '@/hooks/useAuth';
 import { UserRolesProvider } from '@/hooks/useUserRoles';
 import { CommitteeRequestsProvider } from '@/hooks/useCommitteeRequests';
+import { ToastProvider } from '@/components/Toast';
 import { AppNavigator } from '@/navigation/AppNavigator';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
     Inter_700Bold,
     Inter_800ExtraBold
   });
@@ -28,8 +38,10 @@ export default function App() {
       <UserRolesProvider>
         <CommitteeRequestsProvider>
           <LocalAppStateProvider>
-            <StatusBar style="auto" />
-            <AppNavigator />
+            <ToastProvider>
+              <StatusBar style="auto" />
+              <AppNavigator />
+            </ToastProvider>
           </LocalAppStateProvider>
         </CommitteeRequestsProvider>
       </UserRolesProvider>

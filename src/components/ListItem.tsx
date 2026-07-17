@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, Platform } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 type ListItemProps = {
@@ -18,12 +18,21 @@ export const ListItem = ({ label, left, right, onPress }: ListItemProps) => {
       android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: false }}
       style={({ pressed }) => [
         styles.row,
-        { borderBottomColor: theme.colors.border, opacity: pressed && onPress && Platform.OS === 'ios' ? 0.7 : 1 }
+        {
+          borderBottomColor: theme.colors.border,
+          opacity: pressed && onPress && Platform.OS === 'ios' ? 0.7 : 1,
+          backgroundColor: pressed && onPress ? theme.colors.surfaceSunken : 'transparent'
+        }
       ]}
     >
       <View style={styles.leftWrap}>
         {left}
-        <Text style={{ color: theme.colors.textPrimary, flexShrink: 1 }} numberOfLines={2}>{label}</Text>
+        <Text
+          style={[theme.typography.body, { color: theme.colors.textPrimary, flexShrink: 1 }]}
+          numberOfLines={2}
+        >
+          {label}
+        </Text>
       </View>
       {right}
     </Pressable>
@@ -35,7 +44,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 52,
+    minHeight: 56,
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1
@@ -44,7 +53,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     paddingRight: 12
   }
 });

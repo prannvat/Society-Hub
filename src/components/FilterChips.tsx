@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, Platform } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 type FilterChipsProps = {
@@ -13,27 +13,40 @@ export const FilterChips = ({ items, onChange }: FilterChipsProps) => {
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {items.map((item) => (
-        <Pressable
-          key={item}
-          android_ripple={{ color: 'rgba(0,0,0,0.08)', borderless: false }}
-          onPress={() => {
-            setActiveChip(item);
-            onChange?.(item);
-          }}
-          hitSlop={4}
-          style={({ pressed }) => [
-            styles.chip,
-            {
-              backgroundColor: activeChip === item ? theme.colors.primary : theme.colors.surface,
-              borderColor: theme.colors.border,
-              opacity: pressed && Platform.OS === 'ios' ? 0.85 : 1
-            }
-          ]}
-        >
-          <Text style={{ color: activeChip === item ? theme.colors.background : theme.colors.textPrimary, fontWeight: '600' }} numberOfLines={1}>{item}</Text>
-        </Pressable>
-      ))}
+      {items.map((item) => {
+        const selected = activeChip === item;
+        return (
+          <Pressable
+            key={item}
+            android_ripple={{ color: 'rgba(0,0,0,0.08)', borderless: false }}
+            onPress={() => {
+              setActiveChip(item);
+              onChange?.(item);
+            }}
+            hitSlop={4}
+            style={({ pressed }) => [
+              styles.chip,
+              {
+                borderRadius: theme.radius.pill,
+                backgroundColor: selected ? theme.colors.primary : theme.colors.surface,
+                borderColor: selected ? theme.colors.primary : theme.colors.border,
+                opacity: pressed && Platform.OS === 'ios' ? 0.85 : 1,
+                transform: [{ scale: pressed ? 0.97 : 1 }]
+              }
+            ]}
+          >
+            <Text
+              style={[
+                theme.typography.captionMedium,
+                { color: selected ? theme.colors.textOnPrimary : theme.colors.textSecondary, fontSize: 14 }
+              ]}
+              numberOfLines={1}
+            >
+              {item}
+            </Text>
+          </Pressable>
+        );
+      })}
     </ScrollView>
   );
 };
@@ -45,9 +58,8 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderWidth: 1,
-    borderRadius: 100,
     minHeight: 36,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center'

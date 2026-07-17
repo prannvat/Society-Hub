@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View, Platform } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
@@ -17,23 +17,39 @@ export const TopNavBar = ({ title, subtitle, actionLabel, onPressAction, onBack 
   const { isAdminMode } = useLocalAppState();
 
   return (
-    <View style={[styles.row, { borderBottomColor: theme.colors.border }]}> 
-      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 12 }}>
+    <View style={[styles.row, { borderBottomColor: theme.colors.border }]}>
+      <View style={styles.leftWrap}>
         {onBack && (
-          <Pressable onPress={onBack} style={{ marginRight: 12 }}>
-            <MaterialIcons name="arrow-back-ios" size={24} color={theme.colors.textPrimary} />
+          <Pressable onPress={onBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.back}>
+            {({ pressed }) => (
+              <MaterialIcons
+                name="chevron-left"
+                size={30}
+                color={theme.colors.textPrimary}
+                style={{ opacity: pressed ? 0.5 : 1 }}
+              />
+            )}
           </Pressable>
         )}
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={[styles.title, { color: theme.colors.textPrimary, flexShrink: 1 }]} numberOfLines={1}>{title}</Text>
+          <View style={styles.titleRow}>
+            <Text
+              style={[theme.typography.h3, { color: theme.colors.textPrimary, flexShrink: 1 }]}
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
             {isAdminMode && (
-              <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                <Text style={{ color: theme.colors.background, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>Admin</Text>
+              <View style={[styles.adminBadge, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radius.sm }]}>
+                <Text style={[theme.typography.micro, { color: theme.colors.primary, fontSize: 10 }]}>Admin</Text>
               </View>
             )}
           </View>
-          {subtitle ? <Text style={{ color: theme.colors.textSecondary, marginTop: 2 }}>{subtitle}</Text> : null}
+          {subtitle ? (
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
       </View>
       {actionLabel ? (
@@ -43,13 +59,16 @@ export const TopNavBar = ({ title, subtitle, actionLabel, onPressAction, onBack 
           style={({ pressed }) => [
             styles.actionPill,
             {
-              borderColor: theme.colors.border,
-              backgroundColor: theme.colors.surface,
+              borderRadius: theme.radius.pill,
+              borderColor: pressed ? theme.colors.primary : theme.colors.borderStrong,
+              backgroundColor: pressed ? theme.colors.primarySoft : theme.colors.surface,
               opacity: pressed && Platform.OS === 'ios' ? 0.85 : 1
             }
           ]}
-        > 
-          <Text style={{ color: theme.colors.primary, fontWeight: '700', fontSize: 13 }} numberOfLines={1}>{actionLabel}</Text>
+        >
+          <Text style={[theme.typography.captionMedium, { color: theme.colors.primary }]} numberOfLines={1}>
+            {actionLabel}
+          </Text>
         </Pressable>
       ) : null}
     </View>
@@ -62,20 +81,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-    paddingTop: 4,
-    paddingBottom: 12,
+    minHeight: 56,
+    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '800'
+  leftWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: 12
+  },
+  back: {
+    marginRight: 6,
+    marginLeft: -6
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  adminBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2
   },
   actionPill: {
     maxWidth: '45%',
     minHeight: 40,
     borderWidth: 1,
-    borderRadius: 100,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center'
