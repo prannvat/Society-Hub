@@ -22,6 +22,21 @@ export const MemberProfileScreen = () => {
   const { activeSocietyMembers, activeSocietyRole, activeSocietyId, assignMemberRole, profile, currentUserId } = useLocalAppState();
   const { myRequests } = useCommitteeRequests();
   const member = activeSocietyMembers.find((entry) => entry.id === route.params?.memberId) ?? activeSocietyMembers[0];
+
+  if (!member) {
+    return (
+      <ScreenLayout>
+        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 60, paddingBottom: 40, gap: 16 }}>
+          <Text style={{ color: theme.colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Member not found</Text>
+          <Text style={{ color: theme.colors.textSecondary }}>
+            This member may have left the society, or the member list has not loaded yet.
+          </Text>
+          <OutlineButton label="Back" onPress={() => navigation.goBack()} />
+        </View>
+      </ScreenLayout>
+    );
+  }
+
   const canManageRoles = activeSocietyRole === 'President' && member.role !== 'President';
 
   // Check if this is the current user's profile

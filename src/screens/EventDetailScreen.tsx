@@ -14,9 +14,28 @@ export const EventDetailScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'EventDetail'>>();
-  const { rsvpedEventIds, toggleRSVP, events } = useLocalAppState();
+  const { rsvpedEventIds, toggleRSVP, events, exploreEvents, allSocieties } = useLocalAppState();
   const [saved, setSaved] = React.useState(false);
-  const event = events.find((entry) => entry.id === route.params?.eventId) ?? events[0];
+  const event =
+    events.find((entry) => entry.id === route.params?.eventId) ??
+    exploreEvents.find((entry) => entry.id === route.params?.eventId);
+
+  if (!event) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 12 }}>
+          <Text style={{ color: theme.colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Event not found</Text>
+          <Text style={{ color: theme.colors.textSecondary, textAlign: 'center' }}>
+            This event may have been removed or has not loaded yet.
+          </Text>
+          <PrimaryButton label="Go Back" onPress={() => navigation.goBack()} />
+        </View>
+      </View>
+    );
+  }
+
+  const hostSociety = allSocieties.find((society) => society.id === event.societyId);
+  const hostName = hostSociety?.name ?? event.societyName ?? 'Society';
   const isRsvped = rsvpedEventIds.includes(event.id);
   const hasPoster = typeof event.posterImageUrl === 'string' && /^https?:\/\//i.test(event.posterImageUrl);
   const hasCoords = typeof event.locationLatitude === 'number' && typeof event.locationLongitude === 'number';
@@ -103,8 +122,8 @@ export const EventDetailScreen = () => {
 
         <View style={styles.hostRow}>
           <View style={styles.hostInfo}>
-            <Avatar name="Manchester Sikh Society" size={36} />
-            <Text style={[styles.hostText, { color: theme.colors.textSecondary }]}>Hosted by Manchester Sikh Society</Text>
+            <Avatar name={hostName} size={36} />
+            <Text style={[styles.hostText, { color: theme.colors.textSecondary }]}>Hosted by {hostName}</Text>
           </View>
           <BadgeChip label="Follow" variant="outlined" />
         </View>
@@ -134,9 +153,6 @@ export const EventDetailScreen = () => {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Attendees</Text>
           <View style={styles.attendeesRow}>
-            <Avatar name="Amrit Kaur" size={30} />
-            <Avatar name="Harleen Kaur" size={30} />
-            <Avatar name="Gurpreet Singh" size={30} />
             <Text style={[styles.attendeeCount, { color: theme.colors.textSecondary }]}>{event.attendingCount} going</Text>
           </View>
         </View>

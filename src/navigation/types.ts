@@ -30,12 +30,3 @@ export type RootStackParamList = {
   ExploreSocieties: undefined;
   CommitteeRequest: { societyId: string; currentRole: string } | undefined;
 };
-
-// Legacy - keeping for backward compatibility
-export type MainTabParamList = {
-  Home: undefined;
-  Explore: undefined;
-  Members: undefined;
-  Polls: undefined;
-  Profile: undefined;
-};

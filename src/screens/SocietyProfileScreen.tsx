@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { Alert, Text, View, Pressable, ScrollView, Linking, Image, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, Text, View, Pressable, ScrollView, Linking, Image, StyleSheet } from 'react-native';
 import { MaterialIcons, FontAwesome } from '@expo/vector-icons';
 import { BadgeChip } from '@/components/BadgeChip';
 import { OutlineButton } from '@/components/OutlineButton';
@@ -16,30 +16,7 @@ import { EventItem } from '@/types';
 import { fetchEvents } from '@/services/api/events';
 import { fetchSocietyProfile } from '@/services/api/societies';
 import { joinErrorMessage } from '@/services/api/memberships';
-
-
-const mapEvent = (event: any): EventItem => {
-  const start = new Date(event.startAt);
-  return {
-    id: event.id,
-    societyId: event.societyId,
-    title: event.title,
-    description: event.description,
-    date: start.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-    time: start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    startAtIso: event.startAt,
-    endAtIso: event.endAt ?? null,
-    location: event.location,
-    locationPlaceId: event.locationPlaceId ?? undefined,
-    locationLatitude: event.locationLatitude ?? undefined,
-    locationLongitude: event.locationLongitude ?? undefined,
-    posterImageUrl: event.posterImageUrl ?? undefined,
-    isFree: event.isFree,
-    membersOnly: event.membersOnly,
-    isRsvpedByCurrentUser: event.isRsvpedByCurrentUser,
-    attendingCount: event._count?.rsvps || 0,
-  };
-};
+import { mapApiEvent } from '@/utils/mapApiEvent';
 
 export const SocietyProfileScreen = () => {
   const theme = useAppTheme();
@@ -91,7 +68,7 @@ export const SocietyProfileScreen = () => {
           fetchEvents(route.params!.societyId!).catch(() => [])
         ]);
         if (prof) setLocalSociety(prof);
-        if (evts) setSocietyEvents(evts.map(mapEvent));
+        if (evts) setSocietyEvents(evts.map(mapApiEvent));
       } catch (err) {
         console.error('Failed to load detail profile', err);
       } finally {
@@ -113,12 +90,18 @@ export const SocietyProfileScreen = () => {
     }, { upcomingEvents: [] as EventItem[], pastEvents: [] as EventItem[] });
   }, [societyEvents]);
 
-  if (!society && !isLoading) {
+  if (!society) {
     return (
       <ScreenLayout>
         <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 60, paddingBottom: 40, gap: 16 }}>
-          <Text style={{ color: theme.colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Society not found</Text>
-          <OutlineButton label="Back" onPress={() => navigation.goBack()} />
+          {isLoading ? (
+            <ActivityIndicator color={theme.colors.primary} />
+          ) : (
+            <>
+              <Text style={{ color: theme.colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Society not found</Text>
+              <OutlineButton label="Back" onPress={() => navigation.goBack()} />
+            </>
+          )}
         </View>
       </ScreenLayout>
     );

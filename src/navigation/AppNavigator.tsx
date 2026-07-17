@@ -1,12 +1,11 @@
 import React from 'react';
-import { Platform, View, Text } from 'react-native';
+import { View, Text } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { RootStackParamList, MainTabParamList } from './types';
+import { RootStackParamList } from './types';
 import { ConsumerNavigator } from './ConsumerNavigator';
 // Lazy load admin components for better performance
 const AdminNavigator = React.lazy(() => import('./AdminNavigator').then(module => ({ default: module.AdminNavigator })));
@@ -17,11 +16,6 @@ import { LoginScreen } from '@/screens/LoginScreen';
 import { SignUpScreen } from '@/screens/SignUpScreen';
 import { ProfileSetupScreen } from '@/screens/ProfileSetupScreen';
 import { InterestSelectionScreen } from '@/screens/InterestSelectionScreen';
-import { HomeScreen } from '@/screens/HomeScreen';
-import { EventsListScreen } from '@/screens/EventsListScreen';
-import { MembersDirectoryScreen } from '@/screens/MembersDirectoryScreen';
-import { SocietyPollsScreen } from '@/screens/SocietyPollsScreen';
-import { ProfileScreen } from '@/screens/ProfileScreen';
 import { EventDetailScreen } from '@/screens/EventDetailScreen';
 import { AnnouncementsFeedScreen } from '@/screens/AnnouncementsFeedScreen';
 import { AnnouncementDetailScreen } from '@/screens/AnnouncementDetailScreen';
@@ -33,13 +27,11 @@ import { SocietyProfileScreen } from '@/screens/SocietyProfileScreen';
 import { CreateSocietyScreen } from '@/screens/CreateSocietyScreen';
 import { EditSocietyProfileScreen } from '@/screens/EditSocietyProfileScreen';
 import { EditProfileScreen } from '@/screens/EditProfileScreen';
-import { ExploreSocietiesScreen } from '../screens/ExploreSocietiesScreen';
-import { ExploreScreen } from '@/screens/ExploreScreen';
+import { ExploreSocietiesScreen } from '@/screens/ExploreSocietiesScreen';
 import { CommitteeRequestScreen } from '@/screens/CommitteeRequestScreen';
 
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const MainTabs = () => {
   const { currentMode } = useUserRoles();

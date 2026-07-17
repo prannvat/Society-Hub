@@ -1,8 +1,8 @@
 import React from 'react';
-import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { getTabNavigatorOptions } from './tabOptions';
 import { ProfileScreen } from '@/screens/ProfileScreen';
 import { CommitteeRequestsScreen } from '@/screens/union-admin/CommitteeRequestsScreen';
 import { UnionDashboardScreen } from '@/screens/union-admin/UnionDashboardScreen';
@@ -25,27 +25,7 @@ export const UnionAdminNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarShowLabel: true,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.textSecondary,
-        tabBarStyle: {
-          height: Platform.OS === 'ios' ? 82 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 18 : 10,
-          paddingTop: Platform.OS === 'ios' ? 8 : 6,
-          borderTopColor: theme.colors.border,
-          backgroundColor: theme.colors.background,
-          borderTopWidth: Platform.OS === 'ios' ? 0.5 : 1,
-          elevation: Platform.OS === 'android' ? 8 : 0,
-          shadowColor: Platform.OS === 'ios' ? '#000000' : undefined,
-          shadowOffset: Platform.OS === 'ios' ? { width: 0, height: -2 } : undefined,
-          shadowOpacity: Platform.OS === 'ios' ? 0.08 : undefined,
-          shadowRadius: Platform.OS === 'ios' ? 8 : undefined
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '700'
-        },
+        ...getTabNavigatorOptions(theme),
         tabBarIcon: ({ color, size }) => {
           const iconNameMap: Record<keyof UnionAdminTabParamList, keyof typeof MaterialIcons.glyphMap> = {
             Dashboard: 'dashboard',
@@ -64,8 +44,8 @@ export const UnionAdminNavigator = () => {
         component={UnionDashboardScreen}
         options={{ tabBarLabel: 'Dashboard' }}
       />
-      <Tab.Screen 
-        name="Requests" 
+      <Tab.Screen
+        name="Requests"
         component={CommitteeRequestsScreen}
         options={{ tabBarLabel: 'Requests' }}
       />
@@ -79,8 +59,8 @@ export const UnionAdminNavigator = () => {
         component={UnionSettingsScreen}
         options={{ tabBarLabel: 'Settings' }}
       />
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Profile"
         component={ProfileScreen}
         options={{ tabBarLabel: 'Profile' }}
       />

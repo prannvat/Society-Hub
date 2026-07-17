@@ -1,9 +1,5 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { io } from 'socket.io-client';
-import { societies } from '@/data/societies';
-import { events as initialEvents } from '@/data/events';
-import { announcements as initialAnnouncements } from '@/data/announcements';
-import { members as initialMembers } from '@/data/members';
 import {
   ApiAnnouncement,
   ApiAnnouncementCategory,
@@ -33,7 +29,8 @@ import {
   voteOnPoll as voteOnPollRequest,
 } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
-import { AnnouncementCategory, AnnouncementItem, EventItem, MemberRole, PollItem, SocietyItem } from '@/types';
+import { mapApiEvent } from '@/utils/mapApiEvent';
+import { AnnouncementCategory, AnnouncementItem, EventItem, MemberItem, MemberRole, PollItem, SocietyItem } from '@/types';
 
 type ThemePreference = 'Auto' | 'Light' | 'Dark';
 type TextSizePreference = 'Small' | 'Medium' | 'Large';
@@ -56,7 +53,7 @@ type LocalProfile = {
   avatarUrl?: string;
 };
 
-type ActiveSocietyMember = (typeof initialMembers)[number] & { role: MemberRole };
+type ActiveSocietyMember = MemberItem;
 
 type LocalAppStateContextValue = {
   currentUserId: string;
@@ -139,57 +136,15 @@ const mapRoleToApi = (role: MemberRole): SocietyRole => {
   return 'MEMBER';
 };
 
-const mapSociety = (apiSociety: ApiSociety): SocietyItem => {
-  const existing = societies.find((entry) => entry.id === apiSociety.id);
-  return {
-    id: apiSociety.id,
-    name: apiSociety.name,
-    shortName: apiSociety.shortName,
-    university: apiSociety.university,
-    description: apiSociety.description,
-    primaryColor: existing?.primaryColor ?? '#000000',
-    secondaryColor: existing?.secondaryColor ?? '#737373',
-  };
-};
-
-const mapEvent = (event: {
-  id: string;
-  societyId: string;
-  title: string;
-  description?: string;
-  startAt: string;
-  endAt?: string | null;
-  location: string;
-  locationPlaceId?: string | null;
-  locationLatitude?: number | null;
-  locationLongitude?: number | null;
-  posterImageUrl?: string | null;
-  isFree: boolean;
-  membersOnly: boolean;
-  isRsvpedByCurrentUser?: boolean;
-  _count?: { rsvps: number };
-}): EventItem => {
-  const start = new Date(event.startAt);
-  return {
-    id: event.id,
-    societyId: event.societyId,
-    title: event.title,
-    description: event.description,
-    date: start.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-    time: start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    startAtIso: event.startAt,
-    endAtIso: event.endAt ?? null,
-    location: event.location,
-    locationPlaceId: event.locationPlaceId ?? undefined,
-    locationLatitude: event.locationLatitude ?? undefined,
-    locationLongitude: event.locationLongitude ?? undefined,
-    posterImageUrl: event.posterImageUrl ?? undefined,
-    isFree: event.isFree,
-    membersOnly: event.membersOnly,
-    attendingCount: event._count?.rsvps ?? 0,
-    isRsvpedByCurrentUser: Boolean(event.isRsvpedByCurrentUser),
-  };
-};
+const mapSociety = (apiSociety: ApiSociety): SocietyItem => ({
+  id: apiSociety.id,
+  name: apiSociety.name,
+  shortName: apiSociety.shortName,
+  university: apiSociety.university,
+  description: apiSociety.description,
+  primaryColor: apiSociety.primaryColor || '#000000',
+  secondaryColor: apiSociety.secondaryColor || '#737373',
+});
 
 const mapApiPolls = (polls: ApiPollItem[], currentUserId: string): PollItem[] =>
   polls.map((poll) => {
@@ -276,18 +231,18 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
   // The current user's id always comes from the authenticated /me profile.
   const actorUserId = user?.id ?? '';
 
-  const [allSocieties, setAllSocieties] = useState<SocietyItem[]>(societies);
+  const [allSocieties, setAllSocieties] = useState<SocietyItem[]>([]);
   const [mySocietyIds, setMySocietyIds] = useState<string[]>([]);
   const [pendingMembershipSocietyIds, setPendingMembershipSocietyIds] = useState<string[]>([]);
   const [favouritedSocietyIds, setFavouritedSocietyIds] = useState<string[]>([]);
-  const [activeSocietyId, setActiveSocietyIdState] = useState<string>('manc-sikh');
+  const [activeSocietyId, setActiveSocietyIdState] = useState<string>('');
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [rsvpedEventIds, setRsvpedEventIds] = useState<string[]>([]);
-  const [events, setEvents] = useState<EventItem[]>(initialEvents);
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [exploreEvents, setExploreEvents] = useState<EventItem[]>([]);
   const [isLoadingExplore, setIsLoadingExplore] = useState(false);
-  const [isLoadingRoleSwitch, setIsLoadingRoleSwitch] = useState(false);
-  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(initialAnnouncements);
+  const [isLoadingRoleSwitch] = useState(false);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [memberRolesBySocietyId, setMemberRolesBySocietyId] = useState<Record<string, Record<string, MemberRole>>>({});
   const [membershipsBySocietyId, setMembershipsBySocietyId] = useState<Record<string, Membership[]>>({});
   const [polls, setPolls] = useState<PollItem[]>([]);
@@ -301,9 +256,17 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
   const [textSizePreference, setTextSizePreference] = useState<TextSizePreference>('Medium');
   const currentUserMemberId = actorUserId;
 
-  const activeSocietyMembers = useMemo(
-    () => initialMembers.map((member) => ({ ...member, role: memberRolesBySocietyId[activeSocietyId]?.[member.id] ?? member.role })),
-    [activeSocietyId, memberRolesBySocietyId],
+  // Members come from the loaded memberships for the active society — no seed data.
+  const activeSocietyMembers = useMemo<ActiveSocietyMember[]>(
+    () =>
+      (membershipsBySocietyId[activeSocietyId] ?? []).map((membership) => ({
+        id: membership.userId,
+        name: membership.user?.fullName ?? 'Member',
+        year: '',
+        role: mapRole(membership.role),
+        universityBadge: '',
+      })),
+    [activeSocietyId, membershipsBySocietyId],
   );
 
   const activeSocietyRole = activeSocietyMembers.find((member) => member.id === currentUserMemberId)?.role ?? 'Member';
@@ -312,9 +275,11 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
   const loadSocieties = useCallback(async () => {
     try {
       const apiSocieties = await fetchSocieties();
-      const mapped = apiSocieties.map(mapSociety);
-      if (mapped.length > 0) setAllSocieties(mapped);
-    } catch {}
+      // The API is authoritative — an empty result means there are no societies.
+      setAllSocieties(apiSocieties.map(mapSociety));
+    } catch {
+      // Leave current state; screens render their empty/error states.
+    }
   }, []);
 
   const loadExploreEvents = useCallback(async () => {
@@ -325,7 +290,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
         allSocieties.map(async (soc) => {
           try {
             const evts = await fetchEvents(soc.id);
-            return evts.map((e) => ({ ...mapEvent(e), societyName: soc.name }));
+            return evts.map((e) => ({ ...mapApiEvent(e), societyName: soc.name }));
           } catch {
             return [];
           }
@@ -343,6 +308,9 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
   }, [allSocieties]);
 
   const loadSocietyData = useCallback(async (societyId: string) => {
+    if (!societyId) {
+      return;
+    }
     try {
       const [apiEvents, apiPolls, memberships, apiAnnouncements] = await Promise.all([
         fetchEvents(societyId),
@@ -350,7 +318,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
         fetchMemberships(societyId),
         fetchAnnouncements(societyId),
       ]);
-      setEvents(apiEvents.map(mapEvent));
+      setEvents(apiEvents.map(mapApiEvent));
       setRsvpedEventIds(apiEvents.filter((entry) => entry.isRsvpedByCurrentUser).map((entry) => entry.id));
       setPolls(mapApiPolls(apiPolls, actorUserId));
       setAnnouncements(apiAnnouncements.map(mapApiAnnouncement));
@@ -387,6 +355,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
     if (isAuthenticated) {
       return;
     }
+    setAllSocieties([]);
     setMySocietyIds([]);
     setPendingMembershipSocietyIds([]);
     setFavouritedSocietyIds([]);
@@ -488,6 +457,9 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
     }
     setMySocietyIds((prev) => (prev.includes(societyId) ? prev : [...prev, societyId]));
     setPendingMembershipSocietyIds((prev) => prev.filter((id) => id !== societyId));
+    if (!activeSocietyId) {
+      setActiveSocietyIdState(societyId);
+    }
     await loadSocietyData(societyId);
     return 'JOINED';
   };
