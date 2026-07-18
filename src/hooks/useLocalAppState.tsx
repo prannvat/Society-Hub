@@ -151,9 +151,16 @@ const mapSociety = (apiSociety: ApiSociety): SocietyItem => ({
 
 const mapApiPolls = (polls: ApiPollItem[], currentUserId: string): PollItem[] =>
   polls.map((poll) => {
+    // The UI counts votes by tallying this map, so it holds one entry per vote:
+    // anonymous placeholders for everyone else, plus a real entry keyed by the
+    // current user so their own choice can be highlighted. `option.count`
+    // already includes the current user's vote, so their option gets one fewer
+    // placeholder — otherwise every tally reads one too high.
     const responses: Record<string, string> = {};
     poll.options.forEach((option) => {
-      for (let index = 0; index < option.count; index += 1) {
+      const placeholders =
+        poll.currentUserVote === option.id ? option.count - 1 : option.count;
+      for (let index = 0; index < placeholders; index += 1) {
         responses[`vote-${poll.id}-${option.id}-${index}`] = option.id;
       }
     });

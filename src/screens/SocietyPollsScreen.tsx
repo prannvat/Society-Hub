@@ -39,7 +39,8 @@ const PollResultBar = ({ percent }: { percent: number }) => {
 export const SocietyPollsScreen = () => {
   const theme = useAppTheme();
   const toast = useToast();
-  const { activeSocietyId, activeSocietyRole, polls, createPoll, voteOnPoll } = useLocalAppState();
+  const { activeSocietyId, activeSocietyRole, polls, createPoll, voteOnPoll, currentUserId } =
+    useLocalAppState();
   const [showComposer, setShowComposer] = React.useState(false);
   const [draftQuestion, setDraftQuestion] = React.useState('');
   const [draftOptions, setDraftOptions] = React.useState(['', '', '']);
@@ -170,7 +171,7 @@ export const SocietyPollsScreen = () => {
         {activePolls.length > 0 ? (
           activePolls.map((poll) => {
             const totalVotes = Object.keys(poll.responses).length;
-            const myVote = poll.responses.m3;
+            const myVote = currentUserId ? poll.responses[currentUserId] : undefined;
 
             return (
               <Card key={poll.id}>
