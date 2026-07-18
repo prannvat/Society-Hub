@@ -37,7 +37,9 @@ export const CommitteeRequestsProvider = ({ children }: { children: ReactNode })
       const requests = await getMyCommitteeRequests();
       setMyRequests(requests);
     } catch (error) {
-      console.error('Failed to fetch my committee requests:', error);
+      // Handled and non-fatal: the screen falls back to its empty state. Logged as
+      // a warning so a transient network blip never throws a red box at the user.
+      console.warn('Failed to fetch my committee requests:', error);
     } finally {
       setIsLoadingMyRequests(false);
     }
