@@ -138,7 +138,7 @@ export const SocietyMembersScreen = () => {
 
     return (
       <Pressable
-        onPress={() => navigation.navigate('MemberProfile', { memberId: item.userId })}
+        onPress={() => navigation.navigate('UserProfile', { userId: item.userId })}
         accessibilityRole="button"
         accessibilityLabel={`View ${item.user.fullName}'s profile`}
         android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: false }}

@@ -23,6 +23,7 @@ import { AdminDashboardScreen } from '@/screens/AdminDashboardScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { CreateEventScreen } from '@/screens/CreateEventScreen';
 import { MemberProfileScreen } from '@/screens/MemberProfileScreen';
+import { UserProfileScreen } from '@/screens/UserProfileScreen';
 import { SocietyProfileScreen } from '@/screens/SocietyProfileScreen';
 import { CreateSocietyScreen } from '@/screens/CreateSocietyScreen';
 import { EditSocietyProfileScreen } from '@/screens/EditSocietyProfileScreen';
@@ -103,6 +104,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="AnnouncementsFeed" component={AnnouncementsFeedScreen} />
         <Stack.Screen name="EventDetail" component={EventDetailScreen} />
         <Stack.Screen name="AnnouncementDetail" component={AnnouncementDetailScreen} />
+        <Stack.Screen name="UserProfile" component={UserProfileScreen} />
         <Stack.Screen name="MemberProfile" component={MemberProfileScreen} />
         <Stack.Screen name="SocietyProfile" component={SocietyProfileScreen} />
         <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />

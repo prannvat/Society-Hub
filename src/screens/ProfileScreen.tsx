@@ -1,17 +1,19 @@
 import React from 'react';
-import { Alert, Pressable, Share, Text, View, Linking, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Pressable, Share, Text, View, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar } from '@/components/Avatar';
 import { BadgeChip } from '@/components/BadgeChip';
 import { Card } from '@/components/Card';
 import { ListRow } from '@/components/ListRow';
 import { SectionHeader } from '@/components/SectionHeader';
-import { EmptyState } from '@/components/EmptyState';
 import { CampusPointsCard } from '@/components/CampusPointsCard';
 import { BadgeRow } from '@/components/BadgeRow';
 import { ProfileStatsRow } from '@/components/ProfileStatsRow';
+import { ProfileIdentityBlock } from '@/components/ProfileIdentityBlock';
+import { ProfileLinkChips } from '@/components/ProfileLinkChips';
+import { SocietyGrid, SocietyGridItem } from '@/components/SocietyGrid';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { useAccountSwitcher } from '@/hooks/useAccountSwitcher';
 import { useToast } from '@/components/Toast';
@@ -25,11 +27,6 @@ import { spacing } from '@/config/theme';
 import { computeCampusProgress, CampusBadge } from '@/utils/campusPoints';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
-
-type SocialLink = {
-  icon: keyof typeof FontAwesome.glyphMap;
-  url: string;
-};
 
 export const ProfileScreen = () => {
   const theme = useAppTheme();
@@ -79,10 +76,10 @@ export const ProfileScreen = () => {
 
   const identityCaption = [profile.university, profile.course, profile.year].filter(Boolean).join(' • ');
 
-  // IG-style @handle derived from the name — a display convenience, no stored value.
-  const handle = profile.fullName
-    ? `@${profile.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '')}`
-    : '@you';
+  // The real, stored handle — `user` is the API source of truth for it.
+  const username = user?.username ?? null;
+  const handle = username ? `@${username}` : '@you';
+  const links = user?.links ?? [];
 
   // The committee/president role the user holds in a given society, if any.
   const roleForSociety = (societyId: string): MemberRole | undefined =>
@@ -97,16 +94,30 @@ export const ProfileScreen = () => {
     .map((id) => allSocieties.find((society) => society.id === id))
     .filter((society): society is NonNullable<typeof society> => society !== undefined);
 
-  const hasSocieties = joinedSocieties.length > 0 || pendingSocieties.length > 0;
-
-  const socialLinkEntries: (SocialLink | null)[] = [
-    profile.linkedinLink ? { icon: 'linkedin', url: profile.linkedinLink } : null,
-    profile.instagramLink ? { icon: 'instagram', url: profile.instagramLink } : null,
-    profile.githubLink ? { icon: 'github', url: profile.githubLink } : null,
-    profile.twitterLink ? { icon: 'twitter', url: profile.twitterLink } : null,
-    profile.websiteLink ? { icon: 'globe', url: profile.websiteLink } : null
+  // Joined societies first, then pending ones (muted) — one grid, one story.
+  const societyGridItems: SocietyGridItem[] = [
+    ...joinedSocieties.map((society) => {
+      const role = roleForSociety(society.id);
+      return {
+        id: society.id,
+        name: society.name,
+        shortName: society.shortName,
+        logoUrl: society.logoUrl,
+        primaryColor: society.primaryColor,
+        secondaryColor: society.secondaryColor,
+        role: role === 'President' ? ('PRESIDENT' as const) : role === 'Committee' ? ('COMMITTEE' as const) : undefined,
+      };
+    }),
+    ...pendingSocieties.map((society) => ({
+      id: society.id,
+      name: society.name,
+      shortName: society.shortName,
+      logoUrl: society.logoUrl,
+      primaryColor: society.primaryColor,
+      secondaryColor: society.secondaryColor,
+      pending: true,
+    })),
   ];
-  const socialLinks = socialLinkEntries.filter((link): link is SocialLink => link !== null);
 
   const handleShareProfile = async () => {
     const societyCount = mySocietyIds.length;
@@ -150,10 +161,15 @@ export const ProfileScreen = () => {
           <MaterialIcons name="expand-more" size={22} color={theme.colors.textPrimary} />
         </Pressable>
 
-        {/* Identity — IG layout: avatar left, stats right */}
-        <View style={styles.identityRow}>
-          <Avatar name={profile.fullName} size={84} url={profile.avatarUrl} />
-          <View style={styles.identityStats}>
+        {/* Identity — the same block anyone else's profile uses. The handle is
+            omitted here because the account bar directly above already shows it. */}
+        <ProfileIdentityBlock
+          fullName={profile.fullName || 'Your name'}
+          avatarUrl={profile.avatarUrl}
+          bio={profile.bio}
+          caption={identityCaption || null}
+          isVerifiedStudent={profile.isVerifiedStudent}
+          trailing={
             <ProfileStatsRow
               stats={[
                 { label: 'Societies', value: mySocietyIds.length },
@@ -161,50 +177,36 @@ export const ProfileScreen = () => {
                 { label: 'Points', value: campusProgress.points }
               ]}
             />
-          </View>
-        </View>
+          }
+        />
 
-        {/* Name + bio block, left-aligned IG-style */}
-        <View style={styles.nameBlock}>
-          <View style={styles.nameRow}>
-            <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, flexShrink: 1 }]} numberOfLines={1}>
-              {profile.fullName || 'Your name'}
-            </Text>
-            {profile.isVerifiedStudent ? (
-              <MaterialIcons name="verified" size={18} color={theme.colors.primary} />
-            ) : null}
+        {profile.isVerifiedStudent ? (
+          <View style={styles.chipRow}>
+            <BadgeChip label="Verified Student" variant="success" />
           </View>
-          {identityCaption ? (
-            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{identityCaption}</Text>
-          ) : null}
-          {profile.isVerifiedStudent ? (
-            <View style={styles.chipRow}>
-              <BadgeChip label="Verified Student" variant="success" />
-            </View>
-          ) : null}
-          {profile.bio ? (
-            <Text style={[theme.typography.body, { color: theme.colors.textPrimary, marginTop: 2 }]}>
-              {profile.bio}
+        ) : null}
+
+        {/* Socials — tappable chips, the same component other profiles use */}
+        <ProfileLinkChips links={links} />
+
+        {links.length === 0 ? (
+          <Pressable
+            onPress={() => navigation.navigate('EditProfile')}
+            style={({ pressed }) => [
+              styles.addLinksHint,
+              {
+                borderColor: theme.colors.borderStrong,
+                borderRadius: theme.radius.pill,
+                backgroundColor: pressed ? theme.colors.primarySoft : 'transparent'
+              }
+            ]}
+          >
+            <MaterialIcons name="add-link" size={18} color={theme.colors.primary} />
+            <Text style={[theme.typography.captionMedium, { color: theme.colors.primary }]}>
+              Add your Instagram, Snapchat and more
             </Text>
-          ) : null}
-          {socialLinks.length > 0 ? (
-            <View style={styles.socialRow}>
-              {socialLinks.map((link) => (
-                <Pressable
-                  key={link.icon}
-                  onPress={() => Linking.openURL(link.url)}
-                  hitSlop={4}
-                  style={({ pressed }) => [
-                    styles.socialChip,
-                    { backgroundColor: theme.colors.surfaceSunken, opacity: pressed ? 0.6 : 1 }
-                  ]}
-                >
-                  <FontAwesome name={link.icon} size={16} color={theme.colors.textPrimary} />
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-        </View>
+          </Pressable>
+        ) : null}
 
         {/* IG action buttons */}
         <View style={styles.actionRow}>
@@ -234,54 +236,17 @@ export const ProfileScreen = () => {
           <BadgeRow badges={campusProgress.badges} onPressBadge={handleBadgePress} />
         </View>
 
-        {/* Your societies */}
+        {/* Your societies — the grid is the visual anchor of the profile */}
         <View style={styles.section}>
           <SectionHeader title="Your societies" />
-          {hasSocieties ? (
-            <Card padding={0}>
-              {joinedSocieties.map((society, index) => {
-                const role = roleForSociety(society.id);
-                return (
-                  <React.Fragment key={society.id}>
-                    {index > 0 ? <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} /> : null}
-                    <ListRow
-                      title={society.name}
-                      subtitle={society.shortName || society.university || undefined}
-                      leading={<Avatar name={society.name} size={40} url={society.logoUrl ?? undefined} />}
-                      trailing={role && role !== 'Member' ? <BadgeChip label={role} variant="primary" /> : undefined}
-                      chevron
-                      onPress={() => navigation.navigate('SocietyProfile', { societyId: society.id })}
-                    />
-                  </React.Fragment>
-                );
-              })}
-              {pendingSocieties.map((society, index) => (
-                <React.Fragment key={society.id}>
-                  {joinedSocieties.length > 0 || index > 0 ? (
-                    <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />
-                  ) : null}
-                  <ListRow
-                    title={society.name}
-                    subtitle={society.shortName || society.university || undefined}
-                    leading={<Avatar name={society.name} size={40} url={society.logoUrl ?? undefined} />}
-                    trailing={<BadgeChip label="Pending" variant="warning" />}
-                    chevron
-                    onPress={() => navigation.navigate('SocietyProfile', { societyId: society.id })}
-                  />
-                </React.Fragment>
-              ))}
-            </Card>
-          ) : (
-            <Card>
-              <EmptyState
-                icon="groups"
-                title="No societies yet"
-                subtitle="Discover and join societies at your university to see them here."
-                actionLabel="Explore societies"
-                onAction={() => navigation.navigate('MainTabs', { screen: 'Explore' })}
-              />
-            </Card>
-          )}
+          <SocietyGrid
+            societies={societyGridItems}
+            onPressSociety={(societyId) => navigation.navigate('SocietyProfile', { societyId })}
+            emptyTitle="No societies yet"
+            emptySubtitle="Discover and join societies at your university to see them here."
+            emptyActionLabel="Explore societies"
+            onEmptyAction={() => navigation.navigate('MainTabs', { screen: 'Explore' })}
+          />
         </View>
 
         {/* Switch account — committee members act AS their societies (IG-style) */}
@@ -361,23 +326,6 @@ const styles = StyleSheet.create({
     gap: 4,
     minHeight: 32
   },
-  identityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg
-  },
-  identityStats: {
-    flex: 1
-  },
-  nameBlock: {
-    gap: 4,
-    marginTop: -6
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6
-  },
   chipRow: {
     flexDirection: 'row',
     gap: 8,
@@ -391,18 +339,15 @@ const styles = StyleSheet.create({
   rewards: {
     gap: 14
   },
-  socialRow: {
+  addLinksHint: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 6,
-    flexWrap: 'wrap'
-  },
-  socialChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderStyle: 'dashed'
   },
   section: {
     gap: 12

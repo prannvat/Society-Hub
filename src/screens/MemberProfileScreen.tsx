@@ -36,7 +36,7 @@ export const MemberProfileScreen = () => {
   if (!member) {
     return (
       <ScreenLayout scroll={false}>
-        <TopNavBar title="Member" onBack={() => navigation.goBack()} />
+        <TopNavBar title="Manage member" onBack={() => navigation.goBack()} />
         <View style={styles.notFoundWrap}>
           <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>Member not found</Text>
           <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
@@ -97,7 +97,7 @@ export const MemberProfileScreen = () => {
 
   return (
     <ScreenLayout scroll={false}>
-      <TopNavBar title="Member" onBack={() => navigation.goBack()} />
+      <TopNavBar title="Manage member" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Identity block — IG-style */}
         <View style={styles.identity}>
@@ -148,14 +148,15 @@ export const MemberProfileScreen = () => {
           </View>
         </View>
 
-        <Card>
-          <View style={{ gap: 6 }}>
-            <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>About</Text>
-            <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
-              Interested in helping new members settle in and grow confidence.
-            </Text>
-          </View>
-        </Card>
+        {/* This screen is the committee's role-management surface; the real bio,
+            links and societies live on the public profile. */}
+        <PrimaryButton
+          label="View full profile"
+          size="md"
+          variant="secondary"
+          icon="person"
+          onPress={() => navigation.navigate('UserProfile', { userId: member.id })}
+        />
 
         {canManageRoles ? (
           <Card>

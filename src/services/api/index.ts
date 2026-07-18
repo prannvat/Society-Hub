@@ -8,6 +8,7 @@ export * from './memberships';
 export * from './polls';
 export * from './societies';
 export * from './types';
+export * from './users';
 
 // Admin APIs
 export * from './admin';

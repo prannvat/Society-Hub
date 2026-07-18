@@ -65,12 +65,18 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       console.warn('[API] !!', method, url, { status: response.status, requestId, errorText });
     }
 
+    // Parse first, throw after. Throwing inside the `try` would be caught by its
+    // own `catch` and re-thrown without `code`, which silently breaks every
+    // code-driven error path (USERNAME_TAKEN, INVALID_CREDENTIALS, ...).
+    type ParsedApiError = { message?: string | string[]; code?: string; statusCode?: number };
+    let parsed: ParsedApiError | null = null;
     try {
-      const parsed = JSON.parse(errorText) as {
-        message?: string | string[];
-        code?: string;
-        statusCode?: number;
-      };
+      parsed = JSON.parse(errorText) as ParsedApiError;
+    } catch {
+      parsed = null;
+    }
+
+    if (parsed && typeof parsed === 'object') {
       const message = Array.isArray(parsed.message) ? parsed.message.join(', ') : parsed.message;
       throw new ApiError(
         message || `API request failed with status ${response.status}`,
@@ -78,9 +84,14 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
         parsed.code,
         requestId,
       );
-    } catch {
-      throw new ApiError(errorText || `API request failed with status ${response.status}`, response.status, undefined, requestId);
     }
+
+    throw new ApiError(
+      errorText || `API request failed with status ${response.status}`,
+      response.status,
+      undefined,
+      requestId,
+    );
   }
 
   return (await response.json()) as T;

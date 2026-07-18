@@ -18,6 +18,10 @@ export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabsParamList> | undefined;
   Notifications: undefined;
   AnnouncementsFeed: undefined;
+  // A real person's public profile, reachable by id or @handle. This is what
+  // students land on when they tap someone anywhere in the app.
+  UserProfile: { userId?: string; username?: string } | undefined;
+  // Committee-only member management (role changes within the active society).
   MemberProfile: { memberId?: string } | undefined;
   SocietyProfile: { societyId?: string } | undefined;
   EventDetail: { eventId?: string } | undefined;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Alert, Image, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,16 +7,24 @@ import { TopNavBar } from '@/components/TopNavBar';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { InputField } from '@/components/InputField';
 import { Card } from '@/components/Card';
+import { ProfileLinksEditor } from '@/components/ProfileLinksEditor';
+import { UsernameField, UsernameStatus } from '@/components/UsernameField';
 import { useToast } from '@/components/Toast';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useAuth } from '@/hooks/useAuth';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
+import { updateMe } from '@/services/api/me';
+import { UserLinkInput, profileErrorMessage, updateMyLinks } from '@/services/api/users';
+
+const MAX_BIO_LENGTH = 300;
 
 export const EditProfileScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation();
   const toast = useToast();
   const { profile, updateProfile } = useLocalAppState();
+  const { user, refreshUser } = useAuth();
 
   const [fullName, setFullName] = useState(profile.fullName || '');
   const [bio, setBio] = useState(profile.bio || '');
@@ -26,12 +34,30 @@ export const EditProfileScreen = () => {
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl || '');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Social Links
-  const [instagramLink, setInstagramLink] = useState(profile.instagramLink || '');
-  const [linkedinLink, setLinkedinLink] = useState(profile.linkedinLink || '');
-  const [githubLink, setGithubLink] = useState(profile.githubLink || '');
-  const [twitterLink, setTwitterLink] = useState(profile.twitterLink || '');
-  const [websiteLink, setWebsiteLink] = useState(profile.websiteLink || '');
+  // Handle + links come from the API user, the source of truth for both.
+  const [username, setUsername] = useState(user?.username ?? '');
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('empty');
+  const [links, setLinks] = useState<UserLinkInput[]>(
+    (user?.links ?? []).map((link) => ({
+      platform: link.platform,
+      label: link.label,
+      url: link.url,
+    })),
+  );
+
+  const originalUsername = (user?.username ?? '').toLowerCase();
+  const normalisedUsername = username.trim().toLowerCase();
+  // Clearing a handle isn't supported by the backend (PATCH /me with null 500s),
+  // so an emptied field is treated as "leave my handle alone" rather than a change.
+  const usernameChanged = normalisedUsername.length > 0 && normalisedUsername !== originalUsername;
+  // Only block on a handle the user actually touched — a stale 'taken' reading
+  // for their own existing handle must never lock them out of saving.
+  const usernameBlocked =
+    usernameChanged && (usernameStatus === 'invalid' || usernameStatus === 'taken' || usernameStatus === 'checking');
+
+  const handleUsernameStatus = useCallback((status: UsernameStatus) => {
+    setUsernameStatus(status);
+  }, []);
 
   const pickAvatar = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -56,8 +82,24 @@ export const EditProfileScreen = () => {
     if (isSaving) {
       return;
     }
+    if (usernameBlocked) {
+      toast.show(
+        usernameStatus === 'checking'
+          ? 'Still checking that username — one moment.'
+          : 'Pick an available username before saving.',
+        'error',
+      );
+      return;
+    }
+
     setIsSaving(true);
     try {
+      // The handle lives on PATCH /me but not in LocalProfile, so it goes in its
+      // own call before the shared profile update.
+      if (usernameChanged) {
+        await updateMe({ username: normalisedUsername });
+      }
+
       await updateProfile({
         ...profile,
         fullName,
@@ -66,16 +108,18 @@ export const EditProfileScreen = () => {
         course,
         year,
         avatarUrl,
-        instagramLink,
-        linkedinLink,
-        githubLink,
-        twitterLink,
-        websiteLink
       });
+
+      // Links are replaced as a whole set, ordered by list position.
+      await updateMyLinks(links);
+
+      // Pull the authoritative user back so username/links render immediately.
+      await refreshUser();
+
       toast.show('Profile updated', 'success');
       navigation.goBack();
-    } catch {
-      toast.show('Failed to update profile. Please try again.', 'error');
+    } catch (error) {
+      toast.show(profileErrorMessage(error), 'error');
     } finally {
       setIsSaving(false);
     }
@@ -125,13 +169,32 @@ export const EditProfileScreen = () => {
               onChangeText={setFullName}
               icon="badge"
             />
-            <InputField
-              label="Bio"
-              placeholder="A little bit about yourself..."
-              value={bio}
-              onChangeText={setBio}
-              multiline
+            <UsernameField
+              value={username}
+              onChangeText={setUsername}
+              onStatusChange={handleUsernameStatus}
             />
+            <View>
+              <InputField
+                label="Bio"
+                placeholder="A little bit about yourself..."
+                value={bio}
+                onChangeText={(next) => setBio(next.slice(0, MAX_BIO_LENGTH))}
+                multiline
+              />
+              <Text
+                style={[
+                  theme.typography.caption,
+                  {
+                    color: bio.length >= MAX_BIO_LENGTH ? theme.colors.danger : theme.colors.textTertiary,
+                    alignSelf: 'flex-end',
+                    marginTop: 4
+                  }
+                ]}
+              >
+                {bio.length}/{MAX_BIO_LENGTH}
+              </Text>
+            </View>
           </View>
         </Card>
 
@@ -165,59 +228,24 @@ export const EditProfileScreen = () => {
           </View>
         </Card>
 
-        {/* Links */}
+        {/* Links — the flexible "add your socials" surface */}
         <Card>
           <Text style={[theme.typography.h3, styles.sectionTitle, { color: theme.colors.textPrimary }]}>
-            Links
+            Your links
           </Text>
           <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginBottom: 14 }]}>
-            Add your social and professional links to your profile.
+            Show people where to find you. These appear as tappable chips on your profile.
           </Text>
-          <View style={styles.fieldGroup}>
-            <InputField
-              label="Instagram"
-              placeholder="Instagram profile URL"
-              value={instagramLink}
-              onChangeText={setInstagramLink}
-              icon="link"
-              autoCapitalize="none"
-            />
-            <InputField
-              label="LinkedIn"
-              placeholder="LinkedIn profile URL"
-              value={linkedinLink}
-              onChangeText={setLinkedinLink}
-              icon="link"
-              autoCapitalize="none"
-            />
-            <InputField
-              label="GitHub"
-              placeholder="GitHub profile URL"
-              value={githubLink}
-              onChangeText={setGithubLink}
-              icon="link"
-              autoCapitalize="none"
-            />
-            <InputField
-              label="X (Twitter)"
-              placeholder="X (Twitter) profile URL"
-              value={twitterLink}
-              onChangeText={setTwitterLink}
-              icon="link"
-              autoCapitalize="none"
-            />
-            <InputField
-              label="Website"
-              placeholder="Website / portfolio URL"
-              value={websiteLink}
-              onChangeText={setWebsiteLink}
-              icon="language"
-              autoCapitalize="none"
-            />
-          </View>
+          <ProfileLinksEditor links={links} onChange={setLinks} />
         </Card>
 
-        <PrimaryButton label="Save Changes" onPress={handleSave} loading={isSaving} icon="check" />
+        <PrimaryButton
+          label="Save Changes"
+          onPress={handleSave}
+          loading={isSaving}
+          disabled={usernameBlocked}
+          icon="check"
+        />
       </ScrollView>
       </KeyboardAvoidingView>
     </ScreenLayout>

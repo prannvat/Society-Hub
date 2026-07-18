@@ -34,6 +34,11 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
   /** Signs out every account. */
   signOutAll: () => Promise<void>;
+  /**
+   * Re-reads the active account from `/me` and updates the stored session.
+   * Call after editing your own profile so username/links/avatar stay in sync.
+   */
+  refreshUser: () => Promise<void>;
 };
 
 const SESSIONS_KEY = 'societyhub_sessions';
@@ -158,6 +163,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [activeUserId, persist]);
 
+  const refreshUser = useCallback(async () => {
+    if (!activeUserId) return;
+    const me = await fetchMe();
+    setSessions((prev) => {
+      const next = prev.map((s) => (s.user.id === me.id ? { ...s, user: me } : s));
+      void persist({ activeUserId: me.id, sessions: next });
+      return next;
+    });
+  }, [activeUserId, persist]);
+
   const signOutAll = useCallback(async () => {
     setApiAccessToken(null);
     setSessions([]);
@@ -190,8 +205,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       switchAccount,
       signOut,
       signOutAll,
+      refreshUser,
     }),
-    [isRestoring, active, activeUserId, accounts, signIn, signUp, switchAccount, signOut, signOutAll],
+    [isRestoring, active, activeUserId, accounts, signIn, signUp, switchAccount, signOut, signOutAll, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
