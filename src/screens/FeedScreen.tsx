@@ -76,8 +76,12 @@ export const FeedScreen = () => {
             preview={item.preview}
             body={item.body}
             category={item.category}
+            postId={item.postId}
+            likeCount={item.likeCount}
+            commentCount={item.commentCount}
+            likedByMe={item.likedByMe}
             onOpenSociety={() => openSociety(item.society.id)}
-            onReadMore={() => navigation.navigate('AnnouncementDetail', { announcementId: item.id.replace(/^post_/, '') })}
+            onReadMore={() => navigation.navigate('AnnouncementDetail', { announcementId: item.postId })}
           />
         );
       }
