@@ -7,6 +7,7 @@ import {
   approveUnionSociety,
   getUnionSocieties,
   rejectUnionSociety,
+  setUnionSocietyFeatured,
   UnionSocietyListItem,
 } from '@/services/api/union-admin';
 import { SocietyRegistrationStatus } from '@/types/union-admin';
@@ -52,6 +53,10 @@ export const UnionSocietiesScreen = () => {
   const [actingSocietyId, setActingSocietyId] = useState<string | null>(null);
   const [rejectingSocietyId, setRejectingSocietyId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [featuringSocietyId, setFeaturingSocietyId] = useState<string | null>(null);
+  // Optimistic featured-state overrides, keyed by society id. Cleared on reload,
+  // where the server response becomes the source of truth again.
+  const [featuredOverrides, setFeaturedOverrides] = useState<Record<string, boolean>>({});
 
   const selectedUniversity = unionAdminRelationships.find(
     (entry) => entry.universityId === selectedUniversityId,
@@ -79,6 +84,7 @@ export const UnionSocietiesScreen = () => {
     setIsLoading(true);
     setRejectingSocietyId(null);
     setRejectReason('');
+    setFeaturedOverrides({});
     loadSocieties().finally(() => setIsLoading(false));
   }, [loadSocieties]);
 
@@ -130,6 +136,34 @@ export const UnionSocietiesScreen = () => {
     }
   };
 
+  // `isFeatured` may not be on the typed list item yet — read the optimistic
+  // override first, then fall back to whatever the server sent.
+  const resolveFeatured = (society: UnionSocietyListItem): boolean =>
+    featuredOverrides[society.id] ?? (society as { isFeatured?: boolean }).isFeatured ?? false;
+
+  const handleToggleFeatured = async (society: UnionSocietyListItem) => {
+    if (!selectedUniversityId) {
+      return;
+    }
+    const previous = resolveFeatured(society);
+    const next = !previous;
+    setFeaturedOverrides((prev) => ({ ...prev, [society.id]: next }));
+    setFeaturingSocietyId(society.id);
+    try {
+      const result = await setUnionSocietyFeatured(society.id, selectedUniversityId, next);
+      setFeaturedOverrides((prev) => ({ ...prev, [society.id]: result.isFeatured }));
+      toast.show(
+        result.isFeatured ? `${society.name} is now featured` : `${society.name} unfeatured`,
+        'success',
+      );
+    } catch {
+      setFeaturedOverrides((prev) => ({ ...prev, [society.id]: previous }));
+      toast.show('Could not update featured status. Please try again.', 'error');
+    } finally {
+      setFeaturingSocietyId(null);
+    }
+  };
+
   const activeFilterLabel = FILTERS.find((filter) => filter.status === statusFilter)?.label ?? 'Pending';
 
   return (
@@ -178,6 +212,9 @@ export const UnionSocietiesScreen = () => {
               {societies.map((society) => {
                 const isActing = actingSocietyId === society.id;
                 const isRejecting = rejectingSocietyId === society.id;
+                const isApproved = society.registrationStatus === 'APPROVED';
+                const isFeatured = resolveFeatured(society);
+                const isFeaturing = featuringSocietyId === society.id;
 
                 return (
                   <Card key={society.id}>
@@ -193,10 +230,13 @@ export const UnionSocietiesScreen = () => {
                             {society._count.memberships === 1 ? 'member' : 'members'}
                           </Text>
                         </View>
-                        <BadgeChip
-                          label={society.registrationStatus.toLowerCase()}
-                          variant={STATUS_CHIP_VARIANT[society.registrationStatus]}
-                        />
+                        <View style={styles.headerChips}>
+                          {isApproved && isFeatured ? <BadgeChip label="Featured" variant="primary" /> : null}
+                          <BadgeChip
+                            label={society.registrationStatus.toLowerCase()}
+                            variant={STATUS_CHIP_VARIANT[society.registrationStatus]}
+                          />
+                        </View>
                       </View>
 
                       {society.description ? (
@@ -215,6 +255,33 @@ export const UnionSocietiesScreen = () => {
                           {new Date(society.createdAt).toLocaleDateString()}
                         </Text>
                       </View>
+
+                      {isApproved ? (
+                        <View style={[styles.featureWrap, { borderTopColor: theme.colors.border }]}>
+                          <View style={styles.featureCopy}>
+                            <MaterialIcons
+                              name={isFeatured ? 'star' : 'star-outline'}
+                              size={16}
+                              color={isFeatured ? theme.colors.accent : theme.colors.textTertiary}
+                            />
+                            <Text
+                              style={[theme.typography.caption, { color: theme.colors.textTertiary, flex: 1 }]}
+                              numberOfLines={2}
+                            >
+                              Featured societies appear at the top of Explore for every student.
+                            </Text>
+                          </View>
+                          <PrimaryButton
+                            label={isFeatured ? 'Unfeature' : 'Feature'}
+                            variant={isFeatured ? 'ghost' : 'primary'}
+                            size="sm"
+                            icon={isFeatured ? 'star-outline' : 'star'}
+                            loading={isFeaturing}
+                            disabled={!selectedUniversityId}
+                            onPress={() => handleToggleFeatured(society)}
+                          />
+                        </View>
+                      ) : null}
 
                       {society.registrationStatus === 'PENDING' && !isRejecting ? (
                         <View style={styles.actionRow}>
@@ -311,7 +378,25 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2
   },
+  headerChips: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
   requesterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  featureWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth
+  },
+  featureCopy: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6

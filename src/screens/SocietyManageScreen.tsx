@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from '@/components/Avatar';
 import { Card } from '@/components/Card';
+import { EngagementCard, EngagementMetrics } from '@/components/EngagementCard';
 import { ListRow } from '@/components/ListRow';
 import { StatCard } from '@/components/StatCard';
 import { TopNavBar } from '@/components/TopNavBar';
@@ -44,6 +45,43 @@ export const SocietyManageScreen = () => {
   useEffect(() => {
     setActiveSocietyId(societyId);
   }, [societyId, setActiveSocietyId]);
+
+  // Engagement metrics — derived ONLY from data already loaded for this society.
+  // We never fabricate reach/impression figures we don't track.
+  const engagement = useMemo<EngagementMetrics>(() => {
+    const totalRsvps = events.reduce((sum, event) => sum + (event.attendingCount || 0), 0);
+    // Poll responses are keyed `vote-<pollId>-<optionId>-<n>` per backend-counted
+    // vote; the current user's own vote is stored under their user id, so counting
+    // only the `vote-` keys avoids double-counting them.
+    const totalVotes = polls.reduce(
+      (sum, poll) => sum + Object.keys(poll.responses).filter((key) => key.startsWith('vote-')).length,
+      0,
+    );
+
+    const avgRsvpsPerEvent = events.length > 0 ? totalRsvps / events.length : null;
+    const pollTurnoutPct =
+      polls.length > 0 && activeSocietyMemberCount > 0
+        ? Math.min(100, (totalVotes / (polls.length * activeSocietyMemberCount)) * 100)
+        : null;
+
+    const topEvent = events.reduce<{ title: string; count: number } | null>((best, event) => {
+      const count = event.attendingCount || 0;
+      if (count <= 0) return best;
+      if (!best || count > best.count) return { title: event.title, count };
+      return best;
+    }, null);
+
+    return {
+      totalRsvps,
+      totalVotes,
+      eventCount: events.length,
+      pollCount: polls.length,
+      memberCount: activeSocietyMemberCount,
+      avgRsvpsPerEvent,
+      pollTurnoutPct,
+      topEvent,
+    };
+  }, [events, polls, activeSocietyMemberCount]);
 
   const create = (screen: 'CreatePost' | 'CreateEvent' | 'CreatePoll') => {
     setActiveSocietyId(societyId);
@@ -92,6 +130,10 @@ export const SocietyManageScreen = () => {
           <View style={styles.statCell}>
             <StatCard label="Polls" value={String(polls.length)} icon="how-to-vote" />
           </View>
+        </View>
+
+        <View style={styles.engagementWrap}>
+          <EngagementCard metrics={engagement} />
         </View>
 
         <Text style={[theme.typography.micro, styles.section, { color: theme.colors.textSecondary }]}>CREATE</Text>
@@ -161,6 +203,7 @@ const styles = StyleSheet.create({
   identityText: { flex: 1, paddingBottom: spacing.xs, gap: 2 },
   statRow: { flexDirection: 'row', gap: spacing.sm },
   statCell: { flex: 1 },
+  engagementWrap: { marginTop: spacing.md },
   section: { marginTop: spacing.lg, marginBottom: spacing.xs },
   icon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   rowDivider: { height: StyleSheet.hairlineWidth, marginLeft: 68 },
