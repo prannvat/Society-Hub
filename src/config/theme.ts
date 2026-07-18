@@ -1,5 +1,4 @@
 import { TextStyle, ViewStyle } from 'react-native';
-import { societyConfig } from '@/config/societyConfig';
 import { ThemeMode } from '@/types';
 
 const baseSpacing = 4;
@@ -125,19 +124,32 @@ const darkColors: ThemeColors = {
   error: '#ED4956'
 };
 
-// Instagram's type is lighter and denser than a dashboard: mostly regular
-// weight, semibold (600) for names and emphasis, no 800 anywhere. Big headings
-// still tighten their tracking, but they don't shout.
+// Named font faces. React Native does NOT map fontWeight → a numbered face for
+// custom fonts, so each token must name its exact face. Fraunces (a soft modern
+// serif) carries the big editorial moments; Inter carries everything else.
+export const fonts = {
+  serifBold: 'Fraunces_700Bold',
+  serifSemibold: 'Fraunces_600SemiBold',
+  serifMedium: 'Fraunces_500Medium',
+  sansRegular: 'Inter_400Regular',
+  sansMedium: 'Inter_500Medium',
+  sansSemibold: 'Inter_600SemiBold',
+  sansBold: 'Inter_700Bold'
+} as const;
+
+// display/h1/h2 are the editorial signature (screen titles, society & person
+// hero names). h3 and everything below stay in Inter — usernames, body, buttons
+// and chips read as clean sans; serif at those sizes would feel fussy.
 const typeScale = {
-  display: { fontSize: 30, fontWeight: '700', lineHeight: 36, letterSpacing: -0.5 },
-  h1: { fontSize: 24, fontWeight: '700', lineHeight: 30, letterSpacing: -0.4 },
-  h2: { fontSize: 20, fontWeight: '600', lineHeight: 26, letterSpacing: -0.3 },
-  h3: { fontSize: 16, fontWeight: '600', lineHeight: 21, letterSpacing: -0.2 },
-  body: { fontSize: 14, fontWeight: '400', lineHeight: 20 },
-  bodyMedium: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
-  caption: { fontSize: 13, fontWeight: '400', lineHeight: 17 },
-  captionMedium: { fontSize: 13, fontWeight: '600', lineHeight: 17 },
-  micro: { fontSize: 11, fontWeight: '600', lineHeight: 14, letterSpacing: 0.4, textTransform: 'uppercase' }
+  display: { fontFamily: fonts.serifBold, fontSize: 32, lineHeight: 38, letterSpacing: -0.4 },
+  h1: { fontFamily: fonts.serifBold, fontSize: 25, lineHeight: 31, letterSpacing: -0.3 },
+  h2: { fontFamily: fonts.serifSemibold, fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
+  h3: { fontFamily: fonts.sansSemibold, fontSize: 16, fontWeight: '600', lineHeight: 21, letterSpacing: -0.2 },
+  body: { fontFamily: fonts.sansRegular, fontSize: 14, fontWeight: '400', lineHeight: 20 },
+  bodyMedium: { fontFamily: fonts.sansSemibold, fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  caption: { fontFamily: fonts.sansRegular, fontSize: 13, fontWeight: '400', lineHeight: 17 },
+  captionMedium: { fontFamily: fonts.sansSemibold, fontSize: 13, fontWeight: '600', lineHeight: 17 },
+  micro: { fontFamily: fonts.sansSemibold, fontSize: 11, fontWeight: '600', lineHeight: 14, letterSpacing: 0.4, textTransform: 'uppercase' }
 } satisfies Record<string, TextStyle>;
 
 export type TypographyScale = typeof typeScale;
@@ -210,9 +222,11 @@ export const getTheme = (mode: ThemeMode) => {
     spacing,
     radius,
     typography: {
+      // Raw face names, for the rare spot that needs a family without a full
+      // type token. Every token in the scale already carries its own family.
       fontFamily: {
-        heading: societyConfig.fonts.heading,
-        body: societyConfig.fonts.body
+        heading: fonts.serifBold,
+        body: fonts.sansRegular
       },
       ...typeScale
     },

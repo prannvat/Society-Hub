@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { fonts } from '@/config/theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'lg' | 'md' | 'sm';
@@ -83,7 +84,7 @@ export const PrimaryButton = ({
         <View style={styles.content}>
           {icon ? <MaterialIcons name={icon} size={dims.iconSize} color={palette.label} /> : null}
           <Text
-            style={[styles.text, { fontSize: dims.fontSize, color: palette.label }]}
+            style={[styles.text, { fontFamily: fonts.sansSemibold, fontSize: dims.fontSize, color: palette.label }]}
             numberOfLines={1}
           >
             {label}
