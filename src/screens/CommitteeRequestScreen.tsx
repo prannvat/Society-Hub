@@ -21,6 +21,11 @@ import { ScreenLayout } from './ScreenLayout';
 
 type CommitteeRequestScreenRouteProp = RouteProp<RootStackParamList, 'CommitteeRequest'>;
 
+// Mirrors @Length(50, 1000) on the API's CreateCommitteeRequestDto. Enforced
+// here too so a short justification is caught before it becomes a 400.
+const MIN_JUSTIFICATION = 50;
+const MAX_JUSTIFICATION = 1000;
+
 export const CommitteeRequestScreen = () => {
   const theme = useAppTheme();
   const toast = useToast();
@@ -40,8 +45,12 @@ export const CommitteeRequestScreen = () => {
   const society = allSocieties.find(s => s.id === societyId);
 
   const handleSubmit = async () => {
-    if (!justification.trim()) {
-      toast.show('Please provide a justification for your request', 'error');
+    const trimmedJustification = justification.trim();
+    if (trimmedJustification.length < MIN_JUSTIFICATION) {
+      toast.show(
+        `Please write at least ${MIN_JUSTIFICATION} characters — ${MIN_JUSTIFICATION - trimmedJustification.length} to go.`,
+        'error',
+      );
       return;
     }
 
@@ -55,7 +64,7 @@ export const CommitteeRequestScreen = () => {
       await submitRequest({
         societyId,
         requestedRole,
-        justification: justification.trim(),
+        justification: trimmedJustification,
       });
 
       toast.show('Request submitted for union admin review', 'success');
@@ -200,14 +209,16 @@ export const CommitteeRequestScreen = () => {
             placeholder="Describe your qualifications, experience, and motivation for this role..."
             value={justification}
             onChangeText={(value) => {
-              if (value.length <= 1000) {
+              if (value.length <= MAX_JUSTIFICATION) {
                 setJustification(value);
               }
             }}
             multiline
           />
           <Text style={[theme.typography.caption, styles.charCount, { color: theme.colors.textTertiary }]}>
-            {justification.length}/1000 characters
+            {justification.trim().length < MIN_JUSTIFICATION
+              ? `${MIN_JUSTIFICATION - justification.trim().length} more characters needed`
+              : `${justification.length}/${MAX_JUSTIFICATION} characters`}
           </Text>
         </View>
 
@@ -234,7 +245,7 @@ export const CommitteeRequestScreen = () => {
           label="Submit Request"
           onPress={handleSubmit}
           loading={isSubmitting}
-          disabled={!justification.trim()}
+          disabled={justification.trim().length < MIN_JUSTIFICATION}
         />
       </View>
     </ScreenLayout>

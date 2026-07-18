@@ -632,12 +632,16 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
   };
 
   const updateProfile = async (nextProfile: LocalProfile) => {
-    // Exact Endpoint Implementation
+    // fullName/university/course/year are @IsNotEmpty on the API: sending ''
+    // for one a user hasn't filled in fails the WHOLE save. Omit them instead
+    // — they're @IsOptional, so leaving them out keeps the stored value.
+    // bio/links/avatar are nullable, so '' is sent as null to clear them.
+    const optionalText = (value: string) => (value.trim() ? value.trim() : undefined);
     const apiResponse = await updateMe({
-      fullName: nextProfile.fullName,
-      university: nextProfile.university,
-      course: nextProfile.course,
-      year: nextProfile.year,
+      fullName: optionalText(nextProfile.fullName),
+      university: optionalText(nextProfile.university),
+      course: optionalText(nextProfile.course),
+      year: optionalText(nextProfile.year),
       bio: nextProfile.bio || null,
       instagramLink: nextProfile.instagramLink || null,
       linkedinLink: nextProfile.linkedinLink || null,

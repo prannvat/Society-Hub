@@ -110,11 +110,14 @@ export const EditSocietyProfileScreen = () => {
     if (!society) return;
     setIsSaving(true);
     try {
+      // The link fields are @IsUrl on the API, which rejects ''. Empty means
+      // "clear it", so send null — @IsOptional accepts null and the service
+      // normalises it away. Sending '' fails the entire save.
       await updateSocietyProfile(society.id, {
         description,
-        logoUrl,
-        instagramLink,
-        whatsappLink
+        logoUrl: logoUrl || null,
+        instagramLink: instagramLink || null,
+        whatsappLink: whatsappLink || null,
       });
       toast.show('Society profile saved', 'success');
       navigation.goBack();
