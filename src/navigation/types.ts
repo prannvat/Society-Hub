@@ -17,7 +17,6 @@ export type RootStackParamList = {
   InterestSelection: undefined;
   MainTabs: NavigatorScreenParams<MainTabsParamList> | undefined;
   Notifications: undefined;
-  AnnouncementsFeed: undefined;
   // A real person's public profile, reachable by id or @handle. This is what
   // students land on when they tap someone anywhere in the app.
   UserProfile: { userId?: string; username?: string } | undefined;
@@ -26,13 +25,11 @@ export type RootStackParamList = {
   SocietyProfile: { societyId?: string } | undefined;
   EventDetail: { eventId?: string } | undefined;
   AnnouncementDetail: { announcementId?: string } | undefined;
-  AdminDashboard: undefined;
   Settings: undefined;
   CreateEvent: { societyId?: string } | undefined;
   CreateSociety: undefined;
   EditSocietyProfile: undefined;
   EditProfile: undefined;
-  ExploreSocieties: undefined;
   CommitteeRequest: { societyId: string; currentRole: string } | undefined;
   // Committee/creator surface — contextual, reached without a mode switch.
   SocietyManage: { societyId: string };

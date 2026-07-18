@@ -76,8 +76,6 @@ type LocalAppStateContextValue = {
   activeSocietyMemberCount: number;
   leaveSociety: (societyId: string) => Promise<void>;
   assignMemberRole: (memberId: string, role: MemberRole) => Promise<void>;
-  isAdminMode: boolean;
-  setIsAdminMode: (enabled: boolean) => void;
   rsvpedEventIds: string[];
   toggleRSVP: (eventId: string) => Promise<void>;
   events: EventItem[];
@@ -241,7 +239,6 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
   const [pendingMembershipSocietyIds, setPendingMembershipSocietyIds] = useState<string[]>([]);
   const [favouritedSocietyIds, setFavouritedSocietyIds] = useState<string[]>([]);
   const [activeSocietyId, setActiveSocietyIdState] = useState<string>('');
-  const [isAdminMode, setIsAdminMode] = useState(false);
   const [rsvpedEventIds, setRsvpedEventIds] = useState<string[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [exploreEvents, setExploreEvents] = useState<EventItem[]>([]);
@@ -440,9 +437,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
 
   const setActiveSocietyId = useCallback((societyId: string) => {
     setActiveSocietyIdState(societyId);
-    const nextRole = memberRolesBySocietyId[societyId]?.[currentUserMemberId] ?? 'Member';
-    if (nextRole === 'Member') setIsAdminMode(false);
-  }, [memberRolesBySocietyId]);
+  }, []);
 
   const toggleFavouriteSociety = useCallback((societyId: string) => {
     setFavouritedSocietyIds((prev) =>
@@ -680,8 +675,6 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       activeSocietyMemberCount,
       leaveSociety,
       assignMemberRole,
-      isAdminMode,
-      setIsAdminMode,
       rsvpedEventIds,
       toggleRSVP,
       events,
@@ -725,7 +718,6 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       activeSocietyMembers,
       activeSocietyMemberCount,
       pendingMembershipSocietyIds,
-      isAdminMode,
       rsvpedEventIds,
       events,
       exploreEvents,

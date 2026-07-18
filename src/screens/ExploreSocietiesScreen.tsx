@@ -20,7 +20,7 @@ import { joinErrorMessage } from '@/services/api/memberships';
 import { spacing } from '@/config/theme';
 import { SocietyItem, EventItem } from '@/types';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExploreSocieties'>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const RAIL_CARD_WIDTH = 224;

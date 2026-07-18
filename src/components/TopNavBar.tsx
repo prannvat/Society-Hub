@@ -3,7 +3,6 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { useLocalAppState } from '@/hooks/useLocalAppState';
 
 type TopNavBarProps = {
   title: string;
@@ -17,7 +16,6 @@ type TopNavBarProps = {
 
 export const TopNavBar = ({ title, subtitle, actionLabel, onPressAction, onBack, gutter = true }: TopNavBarProps) => {
   const theme = useAppTheme();
-  const { isAdminMode } = useLocalAppState();
 
   return (
     <View style={[styles.row, gutter ? { paddingHorizontal: spacing.lg } : null, { borderBottomColor: theme.colors.border }]}>
@@ -42,11 +40,6 @@ export const TopNavBar = ({ title, subtitle, actionLabel, onPressAction, onBack,
             >
               {title}
             </Text>
-            {isAdminMode && (
-              <View style={[styles.adminBadge, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radius.sm }]}>
-                <Text style={[theme.typography.micro, { color: theme.colors.primary, fontSize: 10 }]}>Admin</Text>
-              </View>
-            )}
           </View>
           {subtitle ? (
             <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]} numberOfLines={1}>
@@ -102,10 +95,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6
-  },
-  adminBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2
   },
   actionPill: {
     maxWidth: '45%',

@@ -10,6 +10,4 @@ export * from './societies';
 export * from './types';
 export * from './users';
 
-// Admin APIs
-export * from './admin';
 export * from './committee-requests';

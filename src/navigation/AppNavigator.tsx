@@ -17,9 +17,7 @@ import { SignUpScreen } from '@/screens/SignUpScreen';
 import { ProfileSetupScreen } from '@/screens/ProfileSetupScreen';
 import { InterestSelectionScreen } from '@/screens/InterestSelectionScreen';
 import { EventDetailScreen } from '@/screens/EventDetailScreen';
-import { AnnouncementsFeedScreen } from '@/screens/AnnouncementsFeedScreen';
 import { AnnouncementDetailScreen } from '@/screens/AnnouncementDetailScreen';
-import { AdminDashboardScreen } from '@/screens/AdminDashboardScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { CreateEventScreen } from '@/screens/CreateEventScreen';
 import { MemberProfileScreen } from '@/screens/MemberProfileScreen';
@@ -28,7 +26,6 @@ import { SocietyProfileScreen } from '@/screens/SocietyProfileScreen';
 import { CreateSocietyScreen } from '@/screens/CreateSocietyScreen';
 import { EditSocietyProfileScreen } from '@/screens/EditSocietyProfileScreen';
 import { EditProfileScreen } from '@/screens/EditProfileScreen';
-import { ExploreSocietiesScreen } from '@/screens/ExploreSocietiesScreen';
 import { CommitteeRequestScreen } from '@/screens/CommitteeRequestScreen';
 import { SocietyManageScreen } from '@/screens/SocietyManageScreen';
 import { CreateHubScreen } from '@/screens/CreateHubScreen';
@@ -101,19 +98,16 @@ export const AppNavigator = () => {
         <Stack.Screen name="InterestSelection" component={InterestSelectionScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
-        <Stack.Screen name="AnnouncementsFeed" component={AnnouncementsFeedScreen} />
         <Stack.Screen name="EventDetail" component={EventDetailScreen} />
         <Stack.Screen name="AnnouncementDetail" component={AnnouncementDetailScreen} />
         <Stack.Screen name="UserProfile" component={UserProfileScreen} />
         <Stack.Screen name="MemberProfile" component={MemberProfileScreen} />
         <Stack.Screen name="SocietyProfile" component={SocietyProfileScreen} />
-        <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
         <Stack.Screen name="CreateSociety" component={CreateSocietyScreen} />
         <Stack.Screen name="EditSocietyProfile" component={EditSocietyProfileScreen} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-        <Stack.Screen name="ExploreSocieties" component={ExploreSocietiesScreen} />
         <Stack.Screen name="CommitteeRequest" component={CommitteeRequestScreen} />
         <Stack.Screen name="SocietyManage" component={SocietyManageScreen} />
         <Stack.Screen name="CreateHub" component={CreateHubScreen} options={{ presentation: 'modal' }} />
