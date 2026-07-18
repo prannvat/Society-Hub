@@ -37,4 +37,5 @@ export type RootStackParamList = {
   CreatePoll: { societyId?: string } | undefined;
   MembersDirectory: { societyId?: string } | undefined;
   SocietyPolls: { societyId?: string } | undefined;
+  Comments: { announcementId: string };
 };

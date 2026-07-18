@@ -178,8 +178,12 @@ const mapApiAnnouncement = (announcement: ApiAnnouncement): AnnouncementItem => 
   body: announcement.body ?? undefined,
   category: mapAnnouncementCategory(announcement.category),
   authorName: announcement.createdBy?.fullName ?? 'Committee',
-  timestamp: new Date(announcement.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric' }),
+  timestamp: announcement.createdAt,
   readCount: 0,
+  likeCount: announcement.likeCount ?? 0,
+  commentCount: announcement.commentCount ?? 0,
+  likedByMe: announcement.likedByCurrentUser ?? false,
+  societyId: announcement.societyId,
 });
 
 const parseTimeTo24Hour = (timeLabel: string) => {

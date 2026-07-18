@@ -33,6 +33,11 @@ export type AnnouncementItem = {
   timestamp: string;
   readCount: number;
   pinned?: boolean;
+  // Post interactions
+  likeCount?: number;
+  commentCount?: number;
+  likedByMe?: boolean;
+  societyId?: string;
 };
 
 export type MemberRole = 'Member' | 'Committee' | 'President';

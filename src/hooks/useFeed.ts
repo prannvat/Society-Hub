@@ -22,7 +22,7 @@ export type FeedPoll = {
  * home experience.
  */
 export type FeedItem =
-  | { kind: 'post'; id: string; society: FeedSociety; createdAtIso: string; title: string; preview: string; body?: string; category: AnnouncementCategory }
+  | { kind: 'post'; id: string; postId: string; society: FeedSociety; createdAtIso: string; title: string; preview: string; body?: string; category: AnnouncementCategory; likeCount: number; commentCount: number; likedByMe: boolean }
   | { kind: 'event'; id: string; society: FeedSociety; createdAtIso: string; event: EventItem }
   | { kind: 'poll'; id: string; society: FeedSociety; createdAtIso: string; poll: FeedPoll };
 
@@ -90,12 +90,16 @@ async function loadSocietyFeed(society: SocietyItem): Promise<FeedItem[]> {
   const postItems: FeedItem[] = announcements.map((a) => ({
     kind: 'post',
     id: `post_${a.id}`,
+    postId: a.id,
     society: feedSociety,
     createdAtIso: a.createdAt,
     title: a.title,
     preview: a.preview,
     body: a.body ?? undefined,
     category: mapAnnouncementCategory(a.category),
+    likeCount: a.likeCount ?? 0,
+    commentCount: a.commentCount ?? 0,
+    likedByMe: a.likedByCurrentUser ?? false,
   }));
 
   const eventItems: FeedItem[] = events.map((e) => ({
