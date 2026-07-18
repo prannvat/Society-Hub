@@ -82,26 +82,20 @@ const HeroEvents = ({ theme }: { theme: AppTheme }) => (
   </View>
 );
 
-/** Step 3 — polls: mock poll bars with an accent-highlighted leader. */
-const HeroPolls = ({ theme }: { theme: AppTheme }) => (
+/** Step 3 — rewards: trophy mark orbited by points & perk chips. */
+const HeroRewards = ({ theme }: { theme: AppTheme }) => (
   <View style={styles.heroCanvas}>
-    <View style={[styles.heroCenterCircle, styles.heroSmallCircle]}>
-      <MaterialIcons name="how-to-vote" size={36} color={theme.colors.textOnPrimary} />
+    <View style={[styles.orbitRing, { width: 220, height: 220, borderRadius: 110 }]} />
+    <View style={[styles.orbitRing, { width: 290, height: 290, borderRadius: 145 }]} />
+    <View style={styles.heroCenterCircle}>
+      <MaterialIcons name="emoji-events" size={52} color={theme.colors.textOnPrimary} />
     </View>
-    <View style={styles.pollPanel}>
-      <View style={styles.pollRow}>
-        <View style={[styles.pollBar, { width: '86%', backgroundColor: theme.colors.accent }]} />
-        <View style={styles.pollCheck}>
-          <MaterialIcons name="check" size={13} color={theme.colors.textOnPrimary} />
-        </View>
-      </View>
-      <View style={styles.pollRow}>
-        <View style={[styles.pollBar, { width: '58%' }]} />
-      </View>
-      <View style={styles.pollRow}>
-        <View style={[styles.pollBar, { width: '34%' }]} />
-      </View>
-    </View>
+    <FloatingChip icon="star" size={48} iconColor={theme.colors.textOnPrimary} style={{ top: 36, left: 46 }} />
+    <FloatingChip icon="redeem" size={44} iconColor={theme.colors.textOnPrimary} style={{ top: 54, right: 44 }} />
+    <FloatingChip icon="local-activity" size={44} iconColor={theme.colors.textOnPrimary} style={{ bottom: 42, left: 62 }} />
+    <FloatingChip icon="bolt" size={48} iconColor={theme.colors.textOnPrimary} style={{ bottom: 34, right: 58 }} />
+    <View style={[styles.dotAccent, { top: 96, right: 96 }]} />
+    <View style={[styles.dotAccent, { bottom: 86, left: 34, width: 8, height: 8, borderRadius: 4 }]} />
   </View>
 );
 
@@ -118,22 +112,22 @@ export const OnboardingScreen = () => {
     Hero: ({ theme }: { theme: AppTheme }) => React.JSX.Element;
   }[] = [
     {
-      title: 'Welcome to SocietyHub',
-      subtitle: 'Discover communities, events, and people from your university.',
+      title: 'Find your people',
+      subtitle: 'Discover societies matched to your interests and university — your community is one tap away.',
       gradient: [theme.colors.primary, theme.colors.primaryPressed],
       Hero: HeroCommunity
     },
     {
-      title: 'Find What Matters',
-      subtitle: 'Follow announcements, RSVP quickly, and stay in the loop.',
+      title: 'Never miss out',
+      subtitle: 'Events, RSVPs, and updates from every society you join — all in one live feed.',
       gradient: [theme.colors.primaryPressed, theme.colors.primary],
       Hero: HeroEvents
     },
     {
-      title: 'Build Your Network',
-      subtitle: 'Vote in live polls, connect with committee leaders, and join meaningful activities.',
+      title: 'Get rewarded',
+      subtitle: 'Earn Campus Points and unlock member perks as you join societies and show up.',
       gradient: [theme.colors.primary, theme.colors.primaryPressed],
-      Hero: HeroPolls
+      Hero: HeroRewards
     }
   ];
 
@@ -325,28 +319,6 @@ const styles = StyleSheet.create({
   mockPill: {
     height: 18,
     borderRadius: 9,
-    backgroundColor: GLASS_MEDIUM
-  },
-  pollPanel: {
-    width: 224,
-    gap: 12
-  },
-  pollRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  pollBar: {
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: GLASS_MEDIUM
-  },
-  pollCheck: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: GLASS_MEDIUM
   },
   textBlock: {

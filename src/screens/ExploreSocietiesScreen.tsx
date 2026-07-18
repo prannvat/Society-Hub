@@ -1,31 +1,30 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ScrollView, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SearchBar } from '@/components/SearchBar';
 import { SectionHeader } from '@/components/SectionHeader';
-import { FilterChips } from '@/components/FilterChips';
 import { EventCard } from '@/components/EventCard';
-import { BadgeChip } from '@/components/BadgeChip';
-import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
+import { SocietyDiscoveryCard, societyMemberCount } from '@/components/SocietyDiscoveryCard';
+import { FeaturedSocietyCard } from '@/components/FeaturedSocietyCard';
 import { useToast } from '@/components/Toast';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { RootStackParamList } from '@/navigation/types';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
-import { MaterialIcons } from '@expo/vector-icons';
 import { joinErrorMessage } from '@/services/api/memberships';
 import { spacing } from '@/config/theme';
 import { SocietyItem, EventItem } from '@/types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ExploreSocieties'>;
 
-const FILTERS = ['All', 'My University', 'Open to join'] as const;
-type Filter = (typeof FILTERS)[number];
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const RAIL_CARD_WIDTH = 224;
+const FEATURED_CARD_WIDTH = 300;
 
 export const ExploreSocietiesScreen = () => {
   const theme = useAppTheme();
@@ -40,11 +39,11 @@ export const ExploreSocietiesScreen = () => {
     loadExploreEvents,
     loadSocieties,
     isLoadingExplore,
+    selectedInterests,
     profile
   } = useLocalAppState();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<Filter>('All');
   const [joiningSocietyId, setJoiningSocietyId] = useState<string | null>(null);
   const [societiesLoaded, setSocietiesLoaded] = useState(false);
 
@@ -60,35 +59,84 @@ export const ExploreSocietiesScreen = () => {
   const query = searchQuery.trim().toLowerCase();
   const userUni = profile.university?.toLowerCase() || '';
 
-  const filteredSocieties = useMemo(() => {
-    const matchesFilter = (society: SocietyItem) => {
-      if (filter === 'Open to join') {
-        return society.joinPolicy === 'OPEN' || !society.joinPolicy;
+  const societyUniMatches = useMemo(() => {
+    return (society: SocietyItem): boolean => {
+      if (!userUni) {
+        return false;
       }
-      if (filter === 'My University') {
-        const unis = [society.university?.toLowerCase(), ...(society.affiliatedUniversities || []).map((u) => u.toLowerCase())];
-        return Boolean(userUni) && unis.includes(userUni);
-      }
-      return true;
+      const unis = [
+        society.university?.toLowerCase(),
+        ...(society.affiliatedUniversities || []).map((u) => u.toLowerCase())
+      ];
+      return unis.includes(userUni);
+    };
+  }, [userUni]);
+
+  // For-You relevance score: interest match (strongest) > same university > popularity.
+  const forYou = useMemo(() => {
+    const scoreSociety = (society: SocietyItem): number => {
+      const haystack = `${society.name} ${society.description || ''}`.toLowerCase();
+      const interestScore = selectedInterests.reduce((acc, interest) => {
+        const term = interest.trim().toLowerCase();
+        return term && haystack.includes(term) ? acc + 10 : acc;
+      }, 0);
+      const uniScore = societyUniMatches(society) ? 6 : 0;
+      const popScore = Math.min(societyMemberCount(society), 500) / 50; // 0..10
+      return interestScore + uniScore + popScore;
     };
 
-    const matchesSearch = (society: SocietyItem) =>
-      society.name.toLowerCase().includes(query) || (society.description || '').toLowerCase().includes(query);
-
     return allSocieties
-      .filter((society) => matchesFilter(society) && (!isSearching || matchesSearch(society)))
-      .sort((a, b) => {
-        // Surface the user's own university first for discovery.
-        const aUni = [a.university?.toLowerCase(), ...(a.affiliatedUniversities || []).map((u) => u.toLowerCase())].includes(userUni);
-        const bUni = [b.university?.toLowerCase(), ...(b.affiliatedUniversities || []).map((u) => u.toLowerCase())].includes(userUni);
+      .filter((society) => !mySocietyIds.includes(society.id))
+      .map((society) => ({ society, score: scoreSociety(society) }))
+      .sort((a, b) => b.score - a.score || societyMemberCount(b.society) - societyMemberCount(a.society))
+      .slice(0, 10)
+      .map((entry) => entry.society);
+  }, [allSocieties, mySocietyIds, selectedInterests, societyUniMatches]);
+
+  const featured = useMemo(() => allSocieties.filter((society) => society.isFeatured), [allSocieties]);
+
+  const trending = useMemo(
+    () =>
+      [...allSocieties]
+        .filter((society) => societyMemberCount(society) > 0)
+        .sort((a, b) => societyMemberCount(b) - societyMemberCount(a))
+        .slice(0, 8),
+    [allSocieties]
+  );
+
+  const trendingIds = useMemo(() => new Set(trending.slice(0, 5).map((society) => society.id)), [trending]);
+
+  const eventsThisWeek = useMemo(() => {
+    const now = Date.now();
+    return exploreEvents
+      .filter((event) => {
+        const t = event.startAtIso ? new Date(event.startAtIso).getTime() : NaN;
+        return !Number.isNaN(t) && t >= now && t <= now + WEEK_MS;
+      })
+      .slice(0, 10);
+  }, [exploreEvents]);
+
+  const allSorted = useMemo(
+    () =>
+      [...allSocieties].sort((a, b) => {
+        const aUni = societyUniMatches(a);
+        const bUni = societyUniMatches(b);
         if (userUni && aUni !== bUni) {
           return aUni ? -1 : 1;
         }
-        return 0;
-      });
-  }, [allSocieties, filter, isSearching, query, userUni]);
+        return societyMemberCount(b) - societyMemberCount(a);
+      }),
+    [allSocieties, userUni, societyUniMatches]
+  );
 
-  const trendingEvents = useMemo(() => exploreEvents.slice(0, 8), [exploreEvents]);
+  const searchResults = useMemo(() => {
+    if (!isSearching) {
+      return [];
+    }
+    return allSocieties.filter(
+      (society) => society.name.toLowerCase().includes(query) || (society.description || '').toLowerCase().includes(query)
+    );
+  }, [allSocieties, isSearching, query]);
 
   const handleRefresh = () => {
     loadSocieties();
@@ -114,62 +162,40 @@ export const ExploreSocietiesScreen = () => {
     }
   };
 
-  const renderSocietyCard = ({ item }: { item: SocietyItem }) => {
-    const isMember = mySocietyIds.includes(item.id);
-    const isPending = pendingMembershipSocietyIds.includes(item.id);
-    const brand = item.primaryColor || theme.colors.primary;
+  const cardBindings = (society: SocietyItem) => ({
+    society,
+    isMember: mySocietyIds.includes(society.id),
+    isPending: pendingMembershipSocietyIds.includes(society.id),
+    isJoining: joiningSocietyId === society.id,
+    onJoin: () => handleJoin(society),
+    onPress: () => navigation.navigate('SocietyProfile', { societyId: society.id })
+  });
 
-    return (
-      <View style={styles.gridCell}>
-        <Card padding={0} onPress={() => navigation.navigate('SocietyProfile', { societyId: item.id })} style={styles.societyCard}>
-          <View style={[styles.societyAccent, { backgroundColor: brand }]} />
-          <View style={styles.societyCardContent}>
-            {item.logoUrl ? (
-              <Image
-                source={{ uri: item.logoUrl }}
-                style={[styles.societyLogo, { borderRadius: theme.radius.card, backgroundColor: theme.colors.surfaceSunken }]}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={[styles.societyLogo, { borderRadius: theme.radius.card, backgroundColor: `${brand}22` }]}>
-                <Text style={[theme.typography.captionMedium, { color: brand }]} numberOfLines={1}>
-                  {item.shortName}
-                </Text>
-              </View>
-            )}
-            <Text style={[theme.typography.h3, { color: theme.colors.textPrimary, marginTop: 10 }]} numberOfLines={1}>
-              {item.name}
-            </Text>
-            <Text
-              style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 2, minHeight: 36 }]}
-              numberOfLines={2}
-            >
-              {item.description || 'Official university society.'}
-            </Text>
-            <View style={styles.societyMetaRow}>
-              <MaterialIcons name="groups" size={14} color={theme.colors.textTertiary} />
-              <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>
-                {item._count?.memberships || 0} members
-              </Text>
-            </View>
-            <View style={{ flex: 1 }} />
-            {isPending ? (
-              <BadgeChip label="Pending" variant="warning" style={styles.statusChip} />
-            ) : isMember ? (
-              <BadgeChip label="Joined" variant="success" style={styles.statusChip} />
-            ) : (
-              <PrimaryButton
-                label="Join"
-                size="sm"
-                loading={joiningSocietyId === item.id}
-                onPress={() => handleJoin(item)}
-              />
-            )}
-          </View>
-        </Card>
-      </View>
-    );
-  };
+  const renderSectionHeading = (title: string, subtitle?: string, rightText?: string, onPressRight?: () => void) => (
+    <View style={styles.sectionHead}>
+      <SectionHeader title={title} rightText={rightText} onPressRight={onPressRight} />
+      {subtitle ? (
+        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 2 }]}>{subtitle}</Text>
+      ) : null}
+    </View>
+  );
+
+  const renderSocietyRail = (societies: SocietyItem[]) => (
+    <FlatList
+      data={societies}
+      keyExtractor={(society) => society.id}
+      renderItem={({ item }) => (
+        <View style={styles.railCard}>
+          <SocietyDiscoveryCard {...cardBindings(item)} trending={trendingIds.has(item.id)} />
+        </View>
+      )}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.rail}
+      snapToInterval={RAIL_CARD_WIDTH + spacing.md}
+      decelerationRate="fast"
+    />
+  );
 
   const renderEventCard = ({ item }: { item: EventItem }) => (
     <View style={styles.eventCardWrap}>
@@ -177,32 +203,112 @@ export const ExploreSocietiesScreen = () => {
     </View>
   );
 
-  const listHeader = (
-    <View>
-      {!isSearching && trendingEvents.length > 0 ? (
-        <View style={styles.strip}>
-          <View style={styles.sectionPad}>
-            <SectionHeader
-              title="Trending events"
-              rightText="See all"
-              onPressRight={() => navigation.navigate('MainTabs', { screen: 'Events' })}
-            />
-          </View>
+  const renderSearchResult = ({ item }: { item: SocietyItem }) => (
+    <View style={styles.searchCell}>
+      <SocietyDiscoveryCard {...cardBindings(item)} trending={trendingIds.has(item.id)} />
+    </View>
+  );
+
+  const renderDiscovery = () => (
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={<RefreshControl refreshing={isLoadingExplore} onRefresh={handleRefresh} tintColor={theme.colors.primary} />}
+    >
+      {featured.length > 0 ? (
+        <View style={styles.section}>
+          {renderSectionHeading('Featured', 'Handpicked by your students’ union')}
           <FlatList
-            data={trendingEvents}
+            data={featured}
+            keyExtractor={(society) => society.id}
+            renderItem={({ item }) => (
+              <View style={styles.featuredCard}>
+                <FeaturedSocietyCard {...cardBindings(item)} />
+              </View>
+            )}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.rail}
+            snapToInterval={FEATURED_CARD_WIDTH + spacing.md}
+            decelerationRate="fast"
+          />
+        </View>
+      ) : null}
+
+      {forYou.length > 0 ? (
+        <View style={styles.section}>
+          {renderSectionHeading('For You', 'Matched to your interests')}
+          {renderSocietyRail(forYou)}
+        </View>
+      ) : null}
+
+      {trending.length > 0 ? (
+        <View style={styles.section}>
+          {renderSectionHeading('Trending on campus', 'The societies students are joining now')}
+          {renderSocietyRail(trending)}
+        </View>
+      ) : null}
+
+      {eventsThisWeek.length > 0 ? (
+        <View style={styles.section}>
+          {renderSectionHeading('Happening this week', undefined, 'See all', () =>
+            navigation.navigate('MainTabs', { screen: 'Events' })
+          )}
+          <FlatList
+            data={eventsThisWeek}
             keyExtractor={(event) => event.id}
             renderItem={renderEventCard}
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}
+            contentContainerStyle={styles.rail}
             snapToInterval={280 + spacing.md}
             decelerationRate="fast"
           />
         </View>
       ) : null}
-      <View style={styles.sectionPad}>
-        <SectionHeader title={isSearching ? `Results for "${searchQuery.trim()}"` : 'Discover societies'} />
+
+      <View style={styles.section}>
+        {renderSectionHeading('All societies', 'Browse everything on campus')}
+        {allSorted.length > 0 ? (
+          <View style={styles.grid}>
+            {allSorted.map((society) => (
+              <View key={society.id} style={styles.gridCell}>
+                <SocietyDiscoveryCard {...cardBindings(society)} trending={trendingIds.has(society.id)} />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <EmptyState
+            icon="groups"
+            title="Nothing here yet"
+            subtitle="Check back soon for societies to join."
+          />
+        )}
       </View>
+    </ScrollView>
+  );
+
+  const renderSkeleton = () => (
+    <View style={styles.scrollContent}>
+      {[0, 1].map((row) => (
+        <View key={row} style={styles.section}>
+          <View style={styles.sectionHead}>
+            <Skeleton width={160} height={18} />
+          </View>
+          <View style={[styles.rail, styles.skeletonRail]}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={styles.railCard}>
+                <Card style={styles.skeletonCard}>
+                  <Skeleton width={44} height={44} radius={theme.radius.card} />
+                  <Skeleton width="80%" height={16} style={{ marginTop: 12 }} />
+                  <Skeleton width="60%" height={12} style={{ marginTop: 8 }} />
+                  <Skeleton width="100%" height={34} radius={theme.radius.pill} style={{ marginTop: 24 }} />
+                </Card>
+              </View>
+            ))}
+          </View>
+        </View>
+      ))}
     </View>
   );
 
@@ -213,52 +319,37 @@ export const ExploreSocietiesScreen = () => {
       </View>
 
       <View style={styles.searchContainer}>
-        <SearchBar
-          placeholder="Search societies..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+        <SearchBar placeholder="Search societies..." value={searchQuery} onChangeText={setSearchQuery} />
       </View>
 
-      <View style={styles.filterWrap}>
-        <FilterChips items={[...FILTERS]} onChange={(value) => setFilter(value as Filter)} />
-      </View>
-
-      {!societiesLoaded ? (
-        <View style={styles.skeletonGrid}>
-          {[0, 1, 2, 3].map((i) => (
-            <View key={i} style={styles.skeletonCell}>
-              <Card style={styles.societyCard}>
-                <Skeleton width={44} height={44} radius={theme.radius.card} />
-                <Skeleton width="80%" height={16} style={{ marginTop: 12 }} />
-                <Skeleton width="60%" height={12} style={{ marginTop: 8 }} />
-                <Skeleton width={72} height={30} radius={theme.radius.pill} style={{ marginTop: 16 }} />
-              </Card>
-            </View>
-          ))}
-        </View>
-      ) : (
+      {isSearching ? (
         <FlatList
-          data={filteredSocieties}
+          data={searchResults}
           keyExtractor={(society) => society.id}
-          renderItem={renderSocietyCard}
+          renderItem={renderSearchResult}
           numColumns={2}
           columnWrapperStyle={styles.columnWrapper}
-          ListHeaderComponent={listHeader}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={styles.searchList}
           showsVerticalScrollIndicator={false}
-          removeClippedSubviews
-          refreshControl={<RefreshControl refreshing={isLoadingExplore} onRefresh={handleRefresh} tintColor={theme.colors.primary} />}
+          ListHeaderComponent={
+            <View style={styles.sectionHead}>
+              <SectionHeader title={`Results for “${searchQuery.trim()}”`} />
+            </View>
+          }
           ListEmptyComponent={
             <EmptyState
-              icon={isSearching ? 'search-off' : 'groups'}
-              title={isSearching ? 'No societies found' : 'Nothing here yet'}
-              subtitle={isSearching ? 'Try a different search or filter.' : 'Check back soon for societies to join.'}
-              actionLabel={isSearching ? 'Clear search' : undefined}
-              onAction={isSearching ? () => setSearchQuery('') : undefined}
+              icon="search-off"
+              title="No societies found"
+              subtitle="Try a different search term."
+              actionLabel="Clear search"
+              onAction={() => setSearchQuery('')}
             />
           }
         />
+      ) : !societiesLoaded ? (
+        renderSkeleton()
+      ) : (
+        renderDiscovery()
       )}
     </ScreenLayout>
   );
@@ -274,72 +365,57 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     marginBottom: spacing.sm
   },
-  filterWrap: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.xs
-  },
-  list: {
+  scrollContent: {
+    paddingTop: spacing.xs,
     paddingBottom: spacing.xxl
+  },
+  section: {
+    marginBottom: spacing.lg
+  },
+  sectionHead: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm
+  },
+  rail: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md
+  },
+  skeletonRail: {
+    flexDirection: 'row',
+    overflow: 'hidden'
+  },
+  skeletonCard: {
+    minHeight: 214
+  },
+  railCard: {
+    width: RAIL_CARD_WIDTH
+  },
+  featuredCard: {
+    width: FEATURED_CARD_WIDTH
+  },
+  eventCardWrap: {
+    width: 280
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.lg,
+    justifyContent: 'space-between'
+  },
+  gridCell: {
+    width: '48%',
+    marginBottom: spacing.md
+  },
+  searchCell: {
+    flex: 1,
+    marginBottom: spacing.md
   },
   columnWrapper: {
     paddingHorizontal: spacing.lg,
     gap: spacing.md
   },
-  gridCell: {
-    flex: 1,
-    marginBottom: spacing.md
-  },
-  strip: {
-    marginBottom: spacing.md
-  },
-  sectionPad: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    marginTop: spacing.sm
-  },
-  horizontalList: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md
-  },
-  eventCardWrap: {
-    width: 280
-  },
-  societyCard: {
-    minHeight: 250,
-    overflow: 'hidden'
-  },
-  societyAccent: {
-    height: 4,
-    width: '100%'
-  },
-  societyCardContent: {
-    flex: 1,
-    padding: 14
-  },
-  societyLogo: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  societyMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 8
-  },
-  statusChip: {
-    alignSelf: 'stretch',
-    alignItems: 'center'
-  },
-  skeletonGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md
-  },
-  skeletonCell: {
-    width: '47%',
-    flexGrow: 1
+  searchList: {
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl
   }
 });
