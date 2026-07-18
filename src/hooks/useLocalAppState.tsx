@@ -1,5 +1,6 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { io } from 'socket.io-client';
+import * as SecureStore from 'expo-secure-store';
 import {
   ApiAnnouncement,
   ApiAnnouncementCategory,
@@ -34,6 +35,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { mapApiEvent } from '@/utils/mapApiEvent';
 import { mapAnnouncementCategory, mapAnnouncementCategoryToApi } from '@/utils/mapAnnouncementCategory';
 import { AnnouncementCategory, AnnouncementItem, EventItem, MemberItem, MemberRole, PollItem, SocietyItem } from '@/types';
+
+const DEFAULT_INTERESTS = ['Events', 'Volunteering'];
+/** Per-account so switching users doesn't inherit the previous one's interests. */
+const interestsKey = (userId: string) => `societyhub_interests_${userId}`;
 
 type ThemePreference = 'Auto' | 'Light' | 'Dark';
 type TextSizePreference = 'Small' | 'Medium' | 'Large';
@@ -249,7 +254,42 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
   const [membershipsBySocietyId, setMembershipsBySocietyId] = useState<Record<string, Membership[]>>({});
   const [polls, setPolls] = useState<PollItem[]>([]);
   const [profile, setProfile] = useState<LocalProfile>(emptyProfile);
-  const [selectedInterests, setSelectedInterests] = useState<string[]>(['Events', 'Volunteering']);
+  // Interests drive Explore's ranking and are chosen during onboarding, so they
+  // have to outlive the session. There's no API field for them yet, so they're
+  // persisted on-device, keyed per account.
+  const [selectedInterests, setSelectedInterestsState] = useState<string[]>(DEFAULT_INTERESTS);
+
+  const setSelectedInterests = useCallback(
+    (interests: string[]) => {
+      setSelectedInterestsState(interests);
+      if (actorUserId) {
+        void SecureStore.setItemAsync(interestsKey(actorUserId), JSON.stringify(interests));
+      }
+    },
+    [actorUserId],
+  );
+
+  // Restore the active account's saved interests; fall back to the defaults so a
+  // new account never inherits the previous one's picks.
+  useEffect(() => {
+    if (!actorUserId) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const stored = await SecureStore.getItemAsync(interestsKey(actorUserId));
+        if (!cancelled) {
+          setSelectedInterestsState(stored ? (JSON.parse(stored) as string[]) : DEFAULT_INTERESTS);
+        }
+      } catch {
+        if (!cancelled) setSelectedInterestsState(DEFAULT_INTERESTS);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [actorUserId]);
   const [pushEnabled, setPushEnabled] = useState(true);
   const [announcementsEnabled, setAnnouncementsEnabled] = useState(true);
   const [pollUpdatesEnabled, setPollUpdatesEnabled] = useState(true);

@@ -212,7 +212,7 @@ export const MembersDirectoryScreen = () => {
           />
         ) : viewMode === 'grid' ? (
           <View style={styles.section}>
-            {filteredMembers.slice(0, 12).map((member) => (
+            {filteredMembers.map((member) => (
               <MemberCard
                 key={member.id}
                 member={member}
