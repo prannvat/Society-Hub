@@ -1,9 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AnnouncementItem } from '@/types';
+import { RootStackParamList } from '@/navigation/types';
 import { BadgeChip, BadgeChipVariant } from './BadgeChip';
 import { Card } from './Card';
+import { PostActionBar } from './PostActionBar';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 type AnnouncementCardProps = {
@@ -61,6 +65,7 @@ export const formatRelativeTime = (value: string): string => {
 
 export const AnnouncementCard = ({ item, onPress }: AnnouncementCardProps) => {
   const theme = useAppTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
     <Card onPress={onPress ? () => onPress(item) : undefined}>
@@ -82,6 +87,13 @@ export const AnnouncementCard = ({ item, onPress }: AnnouncementCardProps) => {
           {item.authorName}
         </Text>
       </View>
+      <PostActionBar
+        postId={item.id}
+        likeCount={item.likeCount ?? 0}
+        commentCount={item.commentCount ?? 0}
+        likedByMe={item.likedByMe ?? false}
+        onOpenComments={() => navigation.navigate('Comments', { announcementId: item.id })}
+      />
     </Card>
   );
 };
