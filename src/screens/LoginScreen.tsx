@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { InputField } from '@/components/InputField';
 import { PrimaryButton } from '@/components/PrimaryButton';
@@ -41,6 +41,8 @@ type FieldErrors = {
 export const LoginScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Login'>>();
+  const isAddMode = route.params?.mode === 'add';
   const { signIn } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -70,7 +72,12 @@ export const LoginScreen = () => {
     setIsSubmitting(true);
     try {
       await signIn({ email: email.trim().toLowerCase(), password });
-      navigation.replace('MainTabs');
+      if (isAddMode) {
+        // Adding another account while signed in — return to the app as the new account.
+        navigation.goBack();
+      } else {
+        navigation.replace('MainTabs');
+      }
     } catch (error) {
       setErrorMessage(authErrorMessage(error));
     } finally {
@@ -92,8 +99,8 @@ export const LoginScreen = () => {
         </Pressable>
 
         <ScreenHeader
-          title="Welcome back"
-          subtitle="Sign in to continue to your societies, events, and polls."
+          title={isAddMode ? 'Add account' : 'Welcome back'}
+          subtitle={isAddMode ? 'Log in as another person — you can switch back anytime.' : 'Sign in to continue to your societies, events, and polls.'}
         />
 
         <View style={{ gap: theme.spacing.lg, marginTop: theme.spacing.xl }}>
@@ -128,7 +135,7 @@ export const LoginScreen = () => {
         </View>
 
         <View style={[styles.footerLink, { marginTop: theme.spacing.lg }]}>
-          <TextButton label="New here? Create an account" onPress={() => navigation.navigate('SignUp')} />
+          <TextButton label="New here? Create an account" onPress={() => navigation.navigate('SignUp', isAddMode ? { mode: 'add' } : undefined)} />
         </View>
       </View>
     </ScreenLayout>

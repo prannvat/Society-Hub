@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
 import { InputField } from '@/components/InputField';
@@ -46,6 +46,8 @@ type FieldErrors = {
 export const SignUpScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'SignUp'>>();
+  const isAddMode = route.params?.mode === 'add';
   const { signUp } = useAuth();
 
   const [fullName, setFullName] = useState('');
@@ -114,7 +116,12 @@ export const SignUpScreen = () => {
         password,
         ...(selectedUniversityId ? { universityId: selectedUniversityId } : {}),
       });
-      navigation.navigate('ProfileSetup');
+      if (isAddMode) {
+        // Added another account while signed in — pop Login + SignUp back into the app.
+        navigation.pop(2);
+      } else {
+        navigation.navigate('ProfileSetup');
+      }
     } catch (error) {
       setErrorMessage(authErrorMessage(error));
     } finally {

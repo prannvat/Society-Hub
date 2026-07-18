@@ -22,8 +22,8 @@ type AccountSwitcherProps = {
 export const AccountSwitcher = ({ visible, onClose }: AccountSwitcherProps) => {
   const theme = useAppTheme();
   const { activeAccount, adminSocieties, switchToPersonal, switchToSociety } = useUserRoles();
-  const { profile, allSocieties } = useLocalAppState();
-  const { signOut } = useAuth();
+  const { allSocieties } = useLocalAppState();
+  const { accounts, activeUserId, switchAccount } = useAuth();
   const [switching, setSwitching] = React.useState<string | null>(null);
 
   const run = async (fn: () => Promise<void>, key: string) => {
@@ -36,17 +36,28 @@ export const AccountSwitcher = ({ visible, onClose }: AccountSwitcherProps) => {
     }
   };
 
-  const personalActive = activeAccount.kind === 'personal';
+  // A person account is "active" only when it's the active login AND we're in personal mode
+  // (society mode belongs to the active login but presents as the society).
+  const personalMode = activeAccount.kind === 'personal';
 
   const goCreateSociety = () => {
     onClose();
     navigate('CreateSociety');
   };
 
-  const logInAsAnother = async () => {
+  const addAccount = () => {
     onClose();
-    await signOut(); // routing back to Login is driven by auth state
+    navigate('Login', { mode: 'add' });
   };
+
+  const selectPerson = (userId: string) =>
+    run(async () => {
+      if (userId !== activeUserId) {
+        await switchAccount(userId);
+      } else {
+        await switchToPersonal();
+      }
+    }, `person_${userId}`);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
@@ -66,14 +77,18 @@ export const AccountSwitcher = ({ visible, onClose }: AccountSwitcherProps) => {
           </Text>
 
           <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-            <AccountRow
-              name={profile.fullName || 'You'}
-              handle="Personal account"
-              avatarUrl={profile.avatarUrl}
-              active={personalActive}
-              loading={switching === 'personal'}
-              onPress={() => run(switchToPersonal, 'personal')}
-            />
+            {/* Person accounts — every logged-in login */}
+            {accounts.map((acc) => (
+              <AccountRow
+                key={acc.userId}
+                name={acc.fullName || 'You'}
+                handle={acc.isActive ? 'Personal account' : acc.email}
+                avatarUrl={acc.avatarUrl ?? undefined}
+                active={acc.isActive && personalMode}
+                loading={switching === `person_${acc.userId}`}
+                onPress={() => selectPerson(acc.userId)}
+              />
+            ))}
 
             {adminSocieties.length > 0 ? (
               <Text style={[theme.typography.micro, styles.section, { color: theme.colors.textTertiary }]}>SOCIETIES YOU MANAGE</Text>
@@ -97,10 +112,10 @@ export const AccountSwitcher = ({ visible, onClose }: AccountSwitcherProps) => {
               );
             })}
 
-            {/* Account actions — the IG "add account" equivalents */}
+            {/* Account actions */}
             <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+            <ActionRow icon="person-add-alt" label="Add account" sublabel="Log in as another person" onPress={addAccount} />
             <ActionRow icon="add-circle-outline" label="Create a society" sublabel="Start a new society account" onPress={goCreateSociety} />
-            <ActionRow icon="login" label="Log in to a different account" sublabel="Sign out and use another login" onPress={logInAsAnother} />
           </ScrollView>
         </Pressable>
       </Pressable>

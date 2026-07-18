@@ -4,112 +4,194 @@ import { ApiError, setApiAccessToken } from '@/services/api/client';
 import { ApiMeProfile, fetchMe } from '@/services/api/me';
 import { AuthResponse, loginRequest, SignInInput, signUpRequest, SignUpInput } from '@/services/api/auth';
 
+/** One logged-in account. The app can hold several at once (Instagram-style). */
+export type StoredSession = {
+  accessToken: string;
+  user: ApiMeProfile;
+};
+
+export type AccountSummary = {
+  userId: string;
+  fullName: string;
+  email: string;
+  avatarUrl: string | null;
+  isActive: boolean;
+};
+
 type AuthContextValue = {
-  /** True while the stored session is being restored on app start. */
+  /** True while stored sessions are being restored on app start. */
   isRestoring: boolean;
   isAuthenticated: boolean;
   accessToken: string | null;
   user: ApiMeProfile | null;
+  activeUserId: string | null;
+  /** All logged-in accounts, for the account switcher. */
+  accounts: AccountSummary[];
   signIn: (input: SignInInput) => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
+  switchAccount: (userId: string) => Promise<void>;
+  /** Signs out the active account; if others remain, switches to one of them. */
   signOut: () => Promise<void>;
+  /** Signs out every account. */
+  signOutAll: () => Promise<void>;
 };
 
-const ACCESS_TOKEN_KEY = 'societyhub_access_token';
+const SESSIONS_KEY = 'societyhub_sessions';
+const LEGACY_TOKEN_KEY = 'societyhub_access_token';
+
+type PersistedState = { activeUserId: string | null; sessions: StoredSession[] };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-type AuthProviderProps = {
-  children: ReactNode;
-};
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isRestoring, setIsRestoring] = useState(true);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [user, setUser] = useState<ApiMeProfile | null>(null);
+  const [sessions, setSessions] = useState<StoredSession[]>([]);
+  const [activeUserId, setActiveUserId] = useState<string | null>(null);
 
-  // Restore a stored session on app start and validate it against /me.
+  const active = sessions.find((s) => s.user.id === activeUserId) ?? null;
+
+  const persist = useCallback(async (state: PersistedState) => {
+    await SecureStore.setItemAsync(SESSIONS_KEY, JSON.stringify(state));
+  }, []);
+
+  // Restore stored sessions (migrating the old single-token key) on app start.
   useEffect(() => {
     let cancelled = false;
-
     (async () => {
       try {
-        const token = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-        if (!token) {
-          return;
+        const raw = await SecureStore.getItemAsync(SESSIONS_KEY);
+        let restored: PersistedState | null = raw ? (JSON.parse(raw) as PersistedState) : null;
+
+        // Migrate a legacy single-token session into the new multi-session store.
+        if (!restored) {
+          const legacy = await SecureStore.getItemAsync(LEGACY_TOKEN_KEY);
+          if (legacy) {
+            setApiAccessToken(legacy);
+            try {
+              const me = await fetchMe();
+              restored = { activeUserId: me.id, sessions: [{ accessToken: legacy, user: me }] };
+              await persist(restored);
+              await SecureStore.deleteItemAsync(LEGACY_TOKEN_KEY);
+            } catch {
+              restored = null;
+            }
+          }
         }
 
-        setApiAccessToken(token);
+        if (!restored || restored.sessions.length === 0) return;
+
+        const act = restored.sessions.find((s) => s.user.id === restored!.activeUserId) ?? restored.sessions[0];
+        setApiAccessToken(act.accessToken);
+        if (cancelled) return;
+        setSessions(restored.sessions);
+        setActiveUserId(act.user.id);
+
+        // Validate the active token; refresh its profile.
         try {
           const me = await fetchMe();
-          if (cancelled) {
-            return;
-          }
-          setAccessToken(token);
-          setUser(me);
+          if (cancelled) return;
+          setSessions((prev) => prev.map((s) => (s.user.id === me.id ? { ...s, user: me } : s)));
         } catch (error) {
           if (error instanceof ApiError && error.statusCode === 401) {
-            // Token is no longer valid — clear it.
-            setApiAccessToken(null);
-            await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
-          } else if (!cancelled) {
-            // Network or server error: keep the session; the profile loads later.
-            setAccessToken(token);
+            // Active token dead — drop that session.
+            const remaining = restored.sessions.filter((s) => s.user.id !== act.user.id);
+            const next = remaining[0] ?? null;
+            setApiAccessToken(next?.accessToken ?? null);
+            setSessions(remaining);
+            setActiveUserId(next?.user.id ?? null);
+            await persist({ activeUserId: next?.user.id ?? null, sessions: remaining });
           }
         }
       } finally {
-        if (!cancelled) {
-          setIsRestoring(false);
-        }
+        if (!cancelled) setIsRestoring(false);
       }
     })();
-
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [persist]);
 
-  const applySession = useCallback(async (session: AuthResponse) => {
-    setApiAccessToken(session.accessToken);
-    await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, session.accessToken);
-    setAccessToken(session.accessToken);
-    setUser(session.user);
-  }, []);
-
-  const signIn = useCallback(
-    async (input: SignInInput) => {
-      const session = await loginRequest(input);
-      await applySession(session);
+  /** Add or replace a session (by user id) and make it active. */
+  const applySession = useCallback(
+    async (session: AuthResponse) => {
+      setApiAccessToken(session.accessToken);
+      setSessions((prev) => {
+        const others = prev.filter((s) => s.user.id !== session.user.id);
+        const next = [...others, { accessToken: session.accessToken, user: session.user }];
+        void persist({ activeUserId: session.user.id, sessions: next });
+        return next;
+      });
+      setActiveUserId(session.user.id);
     },
-    [applySession],
+    [persist],
   );
 
-  const signUp = useCallback(
-    async (input: SignUpInput) => {
-      const session = await signUpRequest(input);
-      await applySession(session);
+  const signIn = useCallback(async (input: SignInInput) => applySession(await loginRequest(input)), [applySession]);
+  const signUp = useCallback(async (input: SignUpInput) => applySession(await signUpRequest(input)), [applySession]);
+
+  const switchAccount = useCallback(
+    async (userId: string) => {
+      const target = sessions.find((s) => s.user.id === userId);
+      if (!target || userId === activeUserId) return;
+      setApiAccessToken(target.accessToken);
+      setActiveUserId(userId);
+      await persist({ activeUserId: userId, sessions });
+      // Refresh the switched-to profile in the background.
+      try {
+        const me = await fetchMe();
+        setSessions((prev) => prev.map((s) => (s.user.id === me.id ? { ...s, user: me } : s)));
+      } catch {
+        // keep the stored snapshot
+      }
     },
-    [applySession],
+    [sessions, activeUserId, persist],
   );
 
   const signOut = useCallback(async () => {
+    setSessions((prev) => {
+      const remaining = prev.filter((s) => s.user.id !== activeUserId);
+      const next = remaining[0] ?? null;
+      setApiAccessToken(next?.accessToken ?? null);
+      setActiveUserId(next?.user.id ?? null);
+      void persist({ activeUserId: next?.user.id ?? null, sessions: remaining });
+      return remaining;
+    });
+  }, [activeUserId, persist]);
+
+  const signOutAll = useCallback(async () => {
     setApiAccessToken(null);
-    setAccessToken(null);
-    setUser(null);
-    await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+    setSessions([]);
+    setActiveUserId(null);
+    await SecureStore.deleteItemAsync(SESSIONS_KEY);
   }, []);
+
+  const accounts: AccountSummary[] = useMemo(
+    () =>
+      sessions.map((s) => ({
+        userId: s.user.id,
+        fullName: s.user.fullName,
+        email: s.user.email,
+        avatarUrl: s.user.avatarUrl ?? null,
+        isActive: s.user.id === activeUserId,
+      })),
+    [sessions, activeUserId],
+  );
 
   const value = useMemo(
     () => ({
       isRestoring,
-      isAuthenticated: Boolean(accessToken),
-      accessToken,
-      user,
+      isAuthenticated: Boolean(active),
+      accessToken: active?.accessToken ?? null,
+      user: active?.user ?? null,
+      activeUserId,
+      accounts,
       signIn,
       signUp,
+      switchAccount,
       signOut,
+      signOutAll,
     }),
-    [accessToken, isRestoring, user, signIn, signUp, signOut],
+    [isRestoring, active, activeUserId, accounts, signIn, signUp, switchAccount, signOut, signOutAll],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

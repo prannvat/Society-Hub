@@ -11,8 +11,9 @@ export type MainTabsParamList = ConsumerTabParamList & AdminTabParamList & Union
 export type RootStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
-  Login: undefined;
-  SignUp: undefined;
+  // `mode: 'add'` = adding another account while already signed in (Instagram-style).
+  Login: { mode?: 'add' } | undefined;
+  SignUp: { mode?: 'add' } | undefined;
   ProfileSetup: undefined;
   InterestSelection: undefined;
   MainTabs: NavigatorScreenParams<MainTabsParamList> | undefined;

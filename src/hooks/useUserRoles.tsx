@@ -75,7 +75,7 @@ const mapApiUnionRolesToUnionRelationships = (apiRoles: ApiUnionAdminRole[]): Un
 };
 
 export const UserRolesProvider = ({ children }: { children: ReactNode }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, activeUserId } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [adminSocieties, setAdminSocieties] = useState<SocietyAdminRelationship[]>([]);
   const [unionAdminRelationships, setUnionAdminRelationships] = useState<UnionAdminRelationship[]>([]);
@@ -120,9 +120,15 @@ export const UserRolesProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Refetch roles whenever the active account changes (login, switch, add-account).
+  // A different person has different society/union roles, so drop back to personal mode.
   useEffect(() => {
+    setCurrentModeState('Consumer');
+    setSelectedAdminSocietyId(null);
+    setSelectedUniversityId(null);
     refreshUserRoles();
-  }, [isAuthenticated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, activeUserId]);
 
   const setCurrentMode = async (mode: AppMode) => {
     setCurrentModeState(mode);

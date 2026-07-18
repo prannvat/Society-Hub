@@ -363,7 +363,8 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       return;
     }
     loadSocieties();
-  }, [isAuthenticated, loadSocieties]);
+    // actorUserId in deps so switching accounts reloads for the new user.
+  }, [isAuthenticated, actorUserId, loadSocieties]);
 
   // Hydrate the user's memberships and pending join requests so they survive app restarts.
   useEffect(() => {
@@ -391,7 +392,8 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated]);
+    // actorUserId in deps so switching accounts re-hydrates memberships for the new user.
+  }, [isAuthenticated, actorUserId]);
 
   useEffect(() => {
     if (!isAuthenticated) {
