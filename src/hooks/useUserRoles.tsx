@@ -13,6 +13,15 @@ import {
 } from '@/types';
 import { useAuth } from './useAuth';
 
+/**
+ * Instagram-style account identity the whole app acts as. Switching to a society
+ * fully takes over the app (its own tab world), exactly like switching IG accounts.
+ */
+export type ActiveAccount =
+  | { kind: 'personal' }
+  | { kind: 'society'; societyId: string }
+  | { kind: 'union'; universityId: string };
+
 type UserRolesContextValue = UserRoleData & EnhancedUserRoleData & {
   currentMode: AppMode;
   setCurrentMode: (mode: AppMode) => Promise<void>;
@@ -22,6 +31,11 @@ type UserRolesContextValue = UserRoleData & EnhancedUserRoleData & {
   setSelectedUniversityId: (universityId: string | null) => void;
   isLoading: boolean;
   refreshUserRoles: () => Promise<void>;
+  // Account switching (the seamless IG-style identity switch)
+  activeAccount: ActiveAccount;
+  switchToPersonal: () => Promise<void>;
+  switchToSociety: (societyId: string) => Promise<void>;
+  switchToUnion: (universityId: string) => Promise<void>;
 };
 
 const UserRolesContext = createContext<UserRolesContextValue | undefined>(undefined);
@@ -152,6 +166,30 @@ export const UserRolesProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [adminSocieties, unionAdminRelationships, selectedUniversityId]);
 
+  const activeAccount: ActiveAccount = useMemo(() => {
+    if (currentMode === 'Admin' && selectedAdminSocietyId) {
+      return { kind: 'society', societyId: selectedAdminSocietyId };
+    }
+    if (currentMode === 'UnionAdmin' && selectedUniversityId) {
+      return { kind: 'union', universityId: selectedUniversityId };
+    }
+    return { kind: 'personal' };
+  }, [currentMode, selectedAdminSocietyId, selectedUniversityId]);
+
+  const switchToPersonal = async () => {
+    await setCurrentMode('Consumer');
+  };
+
+  const switchToSociety = async (societyId: string) => {
+    setSelectedAdminSocietyId(societyId);
+    await setCurrentMode('Admin');
+  };
+
+  const switchToUnion = async (universityId: string) => {
+    setSelectedUniversityId(universityId);
+    await setCurrentMode('UnionAdmin');
+  };
+
   const contextValue: UserRolesContextValue = useMemo(() => ({
     ...userRoleData,
     currentMode,
@@ -162,12 +200,17 @@ export const UserRolesProvider = ({ children }: { children: ReactNode }) => {
     setSelectedUniversityId,
     isLoading,
     refreshUserRoles,
+    activeAccount,
+    switchToPersonal,
+    switchToSociety,
+    switchToUnion,
   }), [
     userRoleData,
     currentMode,
     selectedAdminSocietyId,
     selectedUniversityId,
     isLoading,
+    activeAccount,
   ]);
 
   return (

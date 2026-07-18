@@ -49,6 +49,7 @@ export const ProfileScreen = () => {
     selectedUniversityId,
     setSelectedUniversityId,
     setCurrentMode,
+    switchToSociety,
   } = useUserRoles();
   const { user, signOut } = useAuth();
 
@@ -263,21 +264,21 @@ export const ProfileScreen = () => {
           )}
         </View>
 
-        {/* Manage — committee members only */}
+        {/* Switch account — committee members act AS their societies (IG-style) */}
         {adminSocieties.length > 0 ? (
           <View style={styles.section}>
-            <SectionHeader title="Manage" />
+            <SectionHeader title="Switch to a society account" />
             <Card padding={0}>
               {adminSocieties.map((relationship, index) => (
                 <React.Fragment key={relationship.societyId}>
                   {index > 0 ? <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} /> : null}
                   <ListRow
                     title={relationship.societyName}
-                    subtitle="Events, posts, polls, and members"
+                    subtitle={`Manage as ${relationship.role} — post, insights, members`}
                     leading={<Avatar name={relationship.societyName} size={40} />}
-                    trailing={<BadgeChip label={relationship.role} variant="primary" />}
+                    trailing={<BadgeChip label="Switch" variant="primary" />}
                     chevron
-                    onPress={() => navigation.navigate('SocietyManage', { societyId: relationship.societyId })}
+                    onPress={() => switchToSociety(relationship.societyId)}
                   />
                 </React.Fragment>
               ))}

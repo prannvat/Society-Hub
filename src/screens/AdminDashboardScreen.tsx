@@ -70,7 +70,7 @@ export const AdminDashboardScreen = () => {
   }[] = [
     { icon: 'event', label: 'Create event', onPress: () => navigation.navigate('CreateEvent') },
     { icon: 'post-add', label: 'New post', onPress: () => navigation.navigate('AnnouncementsFeed') },
-    { icon: 'poll', label: 'New poll', onPress: () => navigation.navigate('MainTabs', { screen: 'Polls' }) },
+    { icon: 'poll', label: 'New poll', onPress: () => navigation.navigate('CreatePoll', undefined) },
     { icon: 'edit', label: 'Edit profile', onPress: () => navigation.navigate('EditSocietyProfile') }
   ];
 

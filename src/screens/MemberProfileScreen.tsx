@@ -112,7 +112,7 @@ export const MemberProfileScreen = () => {
 
         <View style={styles.actionRow}>
           <View style={{ flex: 1 }}>
-            <PrimaryButton label="View Polls" size="md" variant="secondary" icon="poll" onPress={() => navigation.navigate('MainTabs', { screen: 'Polls' })} />
+            <PrimaryButton label="View Polls" size="md" variant="secondary" icon="poll" onPress={() => navigation.navigate('SocietyPolls', undefined)} />
           </View>
           <View style={{ flex: 1 }}>
             <PrimaryButton label="Open Society" size="md" variant="secondary" icon="groups" onPress={() => navigation.navigate('SocietyProfile', { societyId: activeSocietyId })} />

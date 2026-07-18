@@ -256,7 +256,7 @@ export const SocietyProfileScreen = () => {
                 variant="secondary"
                 size="md"
                 icon="poll"
-                onPress={() => navigation.navigate('MainTabs', { screen: 'Polls' })}
+                onPress={() => navigation.navigate('SocietyPolls', undefined)}
               />
             </View>
           </View>
