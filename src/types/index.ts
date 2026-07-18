@@ -28,6 +28,7 @@ export type AnnouncementItem = {
   title: string;
   preview: string;
   body?: string;
+  imageUrl?: string;
   category: AnnouncementCategory;
   authorName: string;
   timestamp: string;

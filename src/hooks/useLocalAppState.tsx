@@ -106,7 +106,7 @@ type LocalAppStateContextValue = {
     membersOnly: boolean;
   }) => Promise<string>;
   announcements: AnnouncementItem[];
-  addAnnouncement: (announcement: { title: string; preview: string; category: AnnouncementCategory }) => Promise<string>;
+  addAnnouncement: (announcement: { title: string; preview: string; category: AnnouncementCategory; imageUrl?: string }) => Promise<string>;
   polls: PollItem[];
   createPoll: (poll: { societyId: string; question: string; options: string[] }) => Promise<string>;
   voteOnPoll: (pollId: string, optionId: string) => Promise<void>;
@@ -191,6 +191,7 @@ const mapApiAnnouncement = (announcement: ApiAnnouncement, societyName?: string)
   title: announcement.title,
   preview: announcement.preview,
   body: announcement.body ?? undefined,
+  imageUrl: announcement.imageUrl ?? undefined,
   category: mapAnnouncementCategory(announcement.category),
   authorName: societyName ?? 'Society',
   timestamp: announcement.createdAt,
@@ -294,7 +295,9 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
   const [announcementsEnabled, setAnnouncementsEnabled] = useState(true);
   const [pollUpdatesEnabled, setPollUpdatesEnabled] = useState(true);
   const [remindersEnabled, setRemindersEnabled] = useState(true);
-  const [themePreference, setThemePreference] = useState<ThemePreference>('Auto');
+  // Default to the light (Instagram-white) look rather than following the
+  // system into dark. Users can still pick Dark or Auto in Settings.
+  const [themePreference, setThemePreference] = useState<ThemePreference>('Light');
   const [textSizePreference, setTextSizePreference] = useState<TextSizePreference>('Medium');
   const currentUserMemberId = actorUserId;
 
@@ -651,12 +654,18 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
     return created.id;
   };
 
-  const addAnnouncement = async (announcement: { title: string; preview: string; category: AnnouncementCategory }) => {
+  const addAnnouncement = async (announcement: {
+    title: string;
+    preview: string;
+    category: AnnouncementCategory;
+    imageUrl?: string;
+  }) => {
     const created = await createAnnouncementRequest({
       societyId: activeSocietyId,
       title: announcement.title,
       preview: announcement.preview,
       body: announcement.preview,
+      imageUrl: announcement.imageUrl,
       category: mapAnnouncementCategoryToApi(announcement.category),
     });
     await loadSocietyData(activeSocietyId);

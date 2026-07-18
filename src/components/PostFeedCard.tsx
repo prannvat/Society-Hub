@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Image, StyleSheet, Text } from 'react-native';
 import { FeedPostShell } from './FeedPostShell';
 import { BadgeChip } from './BadgeChip';
 import { FeedCardHeader } from './FeedCardHeader';
@@ -17,6 +17,7 @@ type PostFeedCardProps = {
   preview: string;
   body?: string;
   category: AnnouncementCategory;
+  imageUrl?: string;
   onOpenSociety: () => void;
   onReadMore: () => void;
   // Post interactions. Optional so the card stays usable in surfaces that don't
@@ -35,6 +36,7 @@ export const PostFeedCard = ({
   preview,
   body,
   category,
+  imageUrl,
   onOpenSociety,
   onReadMore,
   postId,
@@ -55,6 +57,14 @@ export const PostFeedCard = ({
         onPressSociety={onOpenSociety}
         trailing={<BadgeChip label={category} variant={categoryChipVariant(category)} />}
       />
+
+      {imageUrl ? (
+        <Image
+          source={{ uri: imageUrl }}
+          style={[styles.image, { backgroundColor: theme.colors.surfaceSunken }]}
+          resizeMode="cover"
+        />
+      ) : null}
 
       {/* The post itself. Tapping the text opens the full detail view. */}
       <Text onPress={onReadMore} suppressHighlighting style={styles.content}>
@@ -91,8 +101,14 @@ export const PostFeedCard = ({
 };
 
 const styles = StyleSheet.create({
+  // Edge-to-edge, cancelling the shell's 16px horizontal padding.
+  image: {
+    height: 320,
+    marginTop: 12,
+    marginHorizontal: -16
+  },
   content: {
-    marginTop: 10
+    marginTop: 12
   },
   more: {
     marginTop: 2

@@ -76,6 +76,7 @@ export const FeedScreen = () => {
             title={item.title}
             preview={item.preview}
             body={item.body}
+            imageUrl={item.imageUrl}
             category={item.category}
             postId={item.postId}
             likeCount={item.likeCount}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from '@/components/Avatar';
@@ -108,6 +108,14 @@ export const AnnouncementDetailScreen = () => {
           </Text>
         </View>
 
+        {announcement.imageUrl ? (
+          <Image
+            source={{ uri: announcement.imageUrl }}
+            style={[styles.image, { borderRadius: theme.radius.card, backgroundColor: theme.colors.surfaceSunken }]}
+            resizeMode="cover"
+          />
+        ) : null}
+
         <Text style={[theme.typography.h1, { color: theme.colors.textPrimary }]}>{announcement.title}</Text>
 
         <View style={styles.bylineRow}>
@@ -187,6 +195,11 @@ export const AnnouncementDetailScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  image: {
+    width: '100%',
+    height: 240,
+    marginBottom: 14
+  },
   notFoundWrap: {
     flex: 1,
     paddingHorizontal: 16,

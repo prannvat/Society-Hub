@@ -9,6 +9,7 @@ export type ApiAnnouncement = {
   title: string;
   preview: string;
   body?: string | null;
+  imageUrl?: string | null;
   category: ApiAnnouncementCategory;
   createdAt: string;
   updatedAt: string;
@@ -49,6 +50,7 @@ export async function createAnnouncement(input: {
   title: string;
   preview: string;
   body?: string;
+  imageUrl?: string;
   category: ApiAnnouncementCategory;
 }) {
   return apiRequest<ApiAnnouncement>('/announcements', {

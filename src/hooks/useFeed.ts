@@ -22,7 +22,7 @@ export type FeedPoll = {
  * home experience.
  */
 export type FeedItem =
-  | { kind: 'post'; id: string; postId: string; society: FeedSociety; createdAtIso: string; title: string; preview: string; body?: string; category: AnnouncementCategory; likeCount: number; commentCount: number; likedByMe: boolean }
+  | { kind: 'post'; id: string; postId: string; society: FeedSociety; createdAtIso: string; title: string; preview: string; body?: string; imageUrl?: string; category: AnnouncementCategory; likeCount: number; commentCount: number; likedByMe: boolean }
   | { kind: 'event'; id: string; society: FeedSociety; createdAtIso: string; event: EventItem }
   | { kind: 'poll'; id: string; society: FeedSociety; createdAtIso: string; poll: FeedPoll };
 
@@ -96,6 +96,7 @@ async function loadSocietyFeed(society: SocietyItem): Promise<FeedItem[]> {
     title: a.title,
     preview: a.preview,
     body: a.body ?? undefined,
+    imageUrl: a.imageUrl ?? undefined,
     category: mapAnnouncementCategory(a.category),
     likeCount: a.likeCount ?? 0,
     commentCount: a.commentCount ?? 0,
