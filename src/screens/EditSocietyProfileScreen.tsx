@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -11,6 +11,8 @@ import { useToast } from '@/components/Toast';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
+import { SocietyPerk } from '@/types';
+import { addSocietyPerk, fetchSocietyPerks, removeSocietyPerk } from '@/services/api/perks';
 
 export const EditSocietyProfileScreen = () => {
   const theme = useAppTheme();
@@ -25,6 +27,65 @@ export const EditSocietyProfileScreen = () => {
   const [instagramLink, setInstagramLink] = useState(society?.instagramLink || '');
   const [whatsappLink, setWhatsappLink] = useState(society?.whatsappLink || '');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Member perks — the committee-managed rewards this society offers.
+  const societyId = society?.id;
+  const [perks, setPerks] = useState<SocietyPerk[]>([]);
+  const [newPerkTitle, setNewPerkTitle] = useState('');
+  const [newPerkDescription, setNewPerkDescription] = useState('');
+  const [isAddingPerk, setIsAddingPerk] = useState(false);
+
+  useEffect(() => {
+    if (!societyId) {
+      return;
+    }
+    let cancelled = false;
+    fetchSocietyPerks(societyId)
+      .then((result) => {
+        if (!cancelled) setPerks(result);
+      })
+      .catch(() => {
+        // Endpoint not up yet — start from an empty list; adds still work optimistically.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [societyId]);
+
+  const handleAddPerk = async () => {
+    const title = newPerkTitle.trim();
+    if (!societyId || !title || isAddingPerk) {
+      if (!title) toast.show('Give the perk a title first', 'info');
+      return;
+    }
+    setIsAddingPerk(true);
+    try {
+      const created = await addSocietyPerk(societyId, { title, description: newPerkDescription.trim() });
+      setPerks((prev) => [...prev, created]);
+      setNewPerkTitle('');
+      setNewPerkDescription('');
+      toast.show('Perk added', 'success');
+    } catch {
+      toast.show('Unable to add perk right now. Please try again.', 'error');
+    } finally {
+      setIsAddingPerk(false);
+    }
+  };
+
+  const handleRemovePerk = async (perkId: string) => {
+    if (!societyId) {
+      return;
+    }
+    const previous = perks;
+    setPerks((prev) => prev.filter((perk) => perk.id !== perkId));
+    try {
+      await removeSocietyPerk(societyId, perkId);
+      toast.show('Perk removed', 'success');
+    } catch {
+      setPerks(previous);
+      toast.show('Unable to remove perk right now. Please try again.', 'error');
+    }
+  };
 
   const pickLogo = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -140,6 +201,75 @@ export const EditSocietyProfileScreen = () => {
           />
         </View>
 
+        {/* Member perks — rewards the committee offers to members */}
+        <View style={styles.section}>
+          <SectionHeader title="Member perks" />
+          {perks.length > 0 ? (
+            <View style={styles.perkList}>
+              {perks.map((perk) => (
+                <View
+                  key={perk.id}
+                  style={[
+                    styles.perkRow,
+                    {
+                      borderColor: theme.colors.border,
+                      backgroundColor: theme.colors.surface,
+                      borderRadius: theme.radius.card
+                    }
+                  ]}
+                >
+                  <View style={[styles.perkIcon, { backgroundColor: theme.colors.primarySoft }]}>
+                    <MaterialIcons name="card-giftcard" size={18} color={theme.colors.primary} />
+                  </View>
+                  <View style={styles.perkText}>
+                    <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                      {perk.title}
+                    </Text>
+                    {perk.description ? (
+                      <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]} numberOfLines={2}>
+                        {perk.description}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Pressable
+                    onPress={() => handleRemovePerk(perk.id)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove perk ${perk.title}`}
+                    style={({ pressed }) => [styles.perkRemove, { opacity: pressed ? 0.6 : 1 }]}
+                  >
+                    <MaterialIcons name="delete-outline" size={22} color={theme.colors.danger} />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>
+              No perks yet. Add one below to reward your members.
+            </Text>
+          )}
+          <InputField
+            label="Perk title"
+            placeholder="e.g. 10% off at the union bar"
+            value={newPerkTitle}
+            onChangeText={setNewPerkTitle}
+          />
+          <InputField
+            label="Description"
+            placeholder="Add a short detail members will see..."
+            value={newPerkDescription}
+            onChangeText={setNewPerkDescription}
+            multiline
+          />
+          <PrimaryButton
+            label="Add perk"
+            variant="secondary"
+            icon="add"
+            onPress={handleAddPerk}
+            loading={isAddingPerk}
+          />
+        </View>
+
         <PrimaryButton label="Save Changes" onPress={handleSave} loading={isSaving} />
       </View>
     </ScreenLayout>
@@ -178,5 +308,34 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     resizeMode: 'cover',
+  },
+  perkList: {
+    gap: 8,
+  },
+  perkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 60,
+  },
+  perkIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  perkText: {
+    flex: 1,
+    gap: 2,
+  },
+  perkRemove: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   }
 });

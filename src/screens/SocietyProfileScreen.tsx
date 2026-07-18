@@ -17,9 +17,11 @@ import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { EventCard } from '@/components/EventCard';
-import { EventItem } from '@/types';
+import { PerksList } from '@/components/PerksList';
+import { EventItem, SocietyPerk } from '@/types';
 import { fetchEvents } from '@/services/api/events';
 import { fetchSocietyProfile } from '@/services/api/societies';
+import { fetchSocietyPerks } from '@/services/api/perks';
 import { joinErrorMessage } from '@/services/api/memberships';
 import { mapApiEvent } from '@/utils/mapApiEvent';
 
@@ -33,6 +35,7 @@ export const SocietyProfileScreen = () => {
 
   const [localSociety, setLocalSociety] = useState<any>(null);
   const [societyEvents, setSocietyEvents] = useState<EventItem[]>([]);
+  const [perks, setPerks] = useState<SocietyPerk[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -68,12 +71,15 @@ export const SocietyProfileScreen = () => {
     const loadProfileData = async () => {
       try {
         setIsLoading(true);
-        const [prof, evts] = await Promise.all([
+        const [prof, evts, societyPerks] = await Promise.all([
           fetchSocietyProfile(route.params!.societyId!).catch(() => null),
-          fetchEvents(route.params!.societyId!).catch(() => [])
+          fetchEvents(route.params!.societyId!).catch(() => []),
+          // Rewards layer — degrade to no perks section if the endpoint isn't up yet.
+          fetchSocietyPerks(route.params!.societyId!).catch(() => [] as SocietyPerk[])
         ]);
         if (prof) setLocalSociety(prof);
         if (evts) setSocietyEvents(evts.map(mapApiEvent));
+        setPerks(societyPerks);
       } catch (err) {
         console.error('Failed to load detail profile', err);
       } finally {
@@ -317,6 +323,14 @@ export const SocietyProfileScreen = () => {
                   </Pressable>
                 ) : null}
               </View>
+            </View>
+          ) : null}
+
+          {/* Member perks — rewards incentive. Hidden entirely when there are none. */}
+          {perks.length > 0 ? (
+            <View style={styles.section}>
+              <SectionHeader title="Member perks" />
+              <PerksList perks={perks} isMember={isMember} />
             </View>
           ) : null}
 

@@ -9,6 +9,9 @@ import { Card } from '@/components/Card';
 import { ListRow } from '@/components/ListRow';
 import { SectionHeader } from '@/components/SectionHeader';
 import { EmptyState } from '@/components/EmptyState';
+import { CampusPointsCard } from '@/components/CampusPointsCard';
+import { BadgeRow } from '@/components/BadgeRow';
+import { useToast } from '@/components/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { useUserRoles } from '@/hooks/useUserRoles';
@@ -16,6 +19,7 @@ import { TopNavBar } from '@/components/TopNavBar';
 import { RootStackParamList } from '@/navigation/types';
 import { MemberRole } from '@/types';
 import { spacing } from '@/config/theme';
+import { computeCampusProgress, CampusBadge } from '@/utils/campusPoints';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
@@ -34,7 +38,10 @@ export const ProfileScreen = () => {
     profile,
     rsvpedEventIds,
     exploreEvents,
+    polls,
+    currentUserId,
   } = useLocalAppState();
+  const toast = useToast();
   const {
     adminSocieties,
     hasUnionAdminAccess,
@@ -50,6 +57,25 @@ export const ProfileScreen = () => {
     ...rsvpedEventIds,
     ...exploreEvents.filter((event) => event.isRsvpedByCurrentUser).map((event) => event.id),
   ]).size;
+
+  // Campus Points — derived honestly from real activity. pollsVoted counts loaded
+  // polls the current user has actually voted in; only the active society's polls are
+  // loaded into state, so this can under-count across other societies. That's an
+  // acceptable, truthful floor — never inflated.
+  const pollsVoted = polls.filter((poll) => Boolean(poll.responses[currentUserId])).length;
+  const campusProgress = computeCampusProgress({
+    societiesJoined: mySocietyIds.length,
+    eventsRsvped: eventsAttended,
+    pollsVoted,
+  });
+
+  const handleBadgePress = (badge: CampusBadge) => {
+    if (badge.earned) {
+      toast.show(`${badge.label} unlocked`, 'success');
+    } else {
+      toast.show(`${badge.label}: ${badge.hint}`, 'info');
+    }
+  };
 
   const memberSinceYear = user?.createdAt ? String(new Date(user.createdAt).getFullYear()) : '—';
 
@@ -159,6 +185,12 @@ export const ProfileScreen = () => {
               ))}
             </View>
           ) : null}
+        </View>
+
+        {/* Campus Points — rewards / gamification, derived from real activity */}
+        <View style={styles.rewards}>
+          <CampusPointsCard progress={campusProgress} />
+          <BadgeRow badges={campusProgress.badges} onPressBadge={handleBadgePress} />
         </View>
 
         {/* Stat row */}
@@ -345,6 +377,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginHorizontal: 20,
     marginTop: 4
+  },
+  rewards: {
+    gap: 14
   },
   socialRow: {
     flexDirection: 'row',
