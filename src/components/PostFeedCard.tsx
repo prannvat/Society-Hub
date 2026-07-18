@@ -1,7 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { Card } from './Card';
+import { StyleSheet, Text } from 'react-native';
+import { FeedPostShell } from './FeedPostShell';
 import { BadgeChip } from './BadgeChip';
 import { FeedCardHeader } from './FeedCardHeader';
 import { categoryChipVariant } from './AnnouncementCard';
@@ -49,7 +48,7 @@ export const PostFeedCard = ({
   const isClamped = content.length > 180;
 
   return (
-    <Card onPress={onReadMore}>
+    <FeedPostShell>
       <FeedCardHeader
         society={society}
         createdAtIso={createdAtIso}
@@ -57,21 +56,25 @@ export const PostFeedCard = ({
         trailing={<BadgeChip label={category} variant={categoryChipVariant(category)} />}
       />
 
-      <Text style={[theme.typography.h3, styles.title, { color: theme.colors.textPrimary }]} numberOfLines={2}>
-        {title}
+      {/* The post itself. Tapping the text opens the full detail view. */}
+      <Text onPress={onReadMore} suppressHighlighting style={styles.content}>
+        <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>{title}</Text>
+        {content ? (
+          <Text style={[theme.typography.body, { color: theme.colors.textPrimary }]}>
+            {'\n'}
+            {content}
+          </Text>
+        ) : null}
       </Text>
 
-      {content ? (
-        <Text style={[theme.typography.body, styles.body, { color: theme.colors.textSecondary }]} numberOfLines={4}>
-          {content}
-        </Text>
-      ) : null}
-
       {isClamped ? (
-        <View style={styles.readMoreRow}>
-          <Text style={[theme.typography.captionMedium, { color: theme.colors.primary }]}>Read more</Text>
-          <MaterialIcons name="arrow-forward" size={14} color={theme.colors.primary} />
-        </View>
+        <Text
+          onPress={onReadMore}
+          suppressHighlighting
+          style={[theme.typography.body, styles.more, { color: theme.colors.textTertiary }]}
+        >
+          more
+        </Text>
       ) : null}
 
       {postId ? (
@@ -83,21 +86,15 @@ export const PostFeedCard = ({
           onOpenComments={() => openComments(postId)}
         />
       ) : null}
-    </Card>
+    </FeedPostShell>
   );
 };
 
 const styles = StyleSheet.create({
-  title: {
-    marginTop: 12
+  content: {
+    marginTop: 10
   },
-  body: {
-    marginTop: 6
-  },
-  readMoreRow: {
-    marginTop: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4
+  more: {
+    marginTop: 2
   }
 });

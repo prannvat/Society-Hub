@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Card } from './Card';
+import { FeedPostShell } from './FeedPostShell';
 import { BadgeChip } from './BadgeChip';
 import { FeedCardHeader } from './FeedCardHeader';
 import { FeedPoll, FeedSociety } from '@/hooks/useFeed';
@@ -127,7 +127,7 @@ export const PollFeedCard = ({ society, createdAtIso, poll, onOpenSociety, onVot
   };
 
   return (
-    <Card>
+    <FeedPostShell>
       <FeedCardHeader
         society={society}
         createdAtIso={createdAtIso}
@@ -175,7 +175,7 @@ export const PollFeedCard = ({ society, createdAtIso, poll, onOpenSociety, onVot
         {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
         {hasVoted ? ' · Tap another option to change your vote' : ' · Tap an option to vote'}
       </Text>
-    </Card>
+    </FeedPostShell>
   );
 };
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Card } from './Card';
+import { FeedPostShell } from './FeedPostShell';
 import { BadgeChip } from './BadgeChip';
 import { FeedCardHeader } from './FeedCardHeader';
 import { FeedSociety } from '@/hooks/useFeed';
@@ -63,7 +63,7 @@ export const EventFeedCard = ({
   };
 
   return (
-    <Card onPress={onOpenDetail}>
+    <FeedPostShell onPress={onOpenDetail}>
       <FeedCardHeader
         society={society}
         createdAtIso={createdAtIso}
@@ -149,7 +149,7 @@ export const EventFeedCard = ({
           </Text>
         </Pressable>
       </View>
-    </Card>
+    </FeedPostShell>
   );
 };
 

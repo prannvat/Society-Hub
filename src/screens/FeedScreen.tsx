@@ -118,14 +118,8 @@ export const FeedScreen = () => {
   return (
     <ScreenLayout scroll={false}>
       <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <View style={styles.brand}>
-          <View style={[styles.logomark, { backgroundColor: theme.colors.primary }]}>
-            <MaterialIcons name="groups" size={18} color={theme.colors.textOnPrimary} />
-          </View>
-          <Text style={[styles.wordmark, theme.typography.h2, { color: theme.colors.textPrimary }]}>SocietyHub</Text>
-        </View>
+        <Text style={[styles.wordmark, theme.typography.h1, { color: theme.colors.textPrimary }]}>SocietyHub</Text>
         <View style={styles.headerActions}>
-          <NotificationBell />
           {canCreate ? (
             <Pressable
               onPress={() => navigation.navigate('CreateHub', undefined)}
@@ -135,6 +129,7 @@ export const FeedScreen = () => {
               <MaterialIcons name="add-box" size={26} color={theme.colors.textPrimary} />
             </Pressable>
           ) : null}
+          <NotificationBell />
         </View>
       </View>
 
@@ -197,12 +192,10 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  logomark: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  wordmark: { letterSpacing: -0.3 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  wordmark: { letterSpacing: -0.5 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
+  list: { paddingBottom: spacing.xxl },
   skeletonWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.lg },
   skeletonCard: { gap: spacing.sm },
   skeletonHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: spacing.xs },

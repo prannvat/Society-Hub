@@ -55,43 +55,58 @@ export const PostActionBar = ({ postId, likeCount, commentCount, likedByMe, onOp
   };
 
   return (
-    <View style={[styles.row, { borderTopColor: theme.colors.border }]}>
-      <Pressable
-        onPress={onToggleLike}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={liked ? 'Unlike post' : 'Like post'}
-        style={({ pressed }) => [styles.action, { opacity: pressed ? 0.6 : 1 }]}
-      >
-        <MaterialIcons
-          name={liked ? 'favorite' : 'favorite-border'}
-          size={22}
-          color={liked ? theme.colors.danger : theme.colors.textSecondary}
-        />
-        {count > 0 ? (
-          <Text
-            style={[
-              theme.typography.captionMedium,
-              { color: liked ? theme.colors.danger : theme.colors.textSecondary }
-            ]}
-          >
-            {count}
-          </Text>
-        ) : null}
-      </Pressable>
+    <View>
+      <View style={styles.row}>
+        <Pressable
+          onPress={onToggleLike}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={liked ? 'Unlike post' : 'Like post'}
+          style={({ pressed }) => [styles.action, { opacity: pressed ? 0.5 : 1 }]}
+        >
+          <MaterialIcons
+            name={liked ? 'favorite' : 'favorite-border'}
+            size={26}
+            color={liked ? theme.colors.danger : theme.colors.textPrimary}
+          />
+        </Pressable>
 
-      <Pressable
-        onPress={onOpenComments}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel="View comments"
-        style={({ pressed }) => [styles.action, { opacity: pressed ? 0.6 : 1 }]}
-      >
-        <MaterialIcons name="chat-bubble-outline" size={20} color={theme.colors.textSecondary} />
-        {commentCount > 0 ? (
-          <Text style={[theme.typography.captionMedium, { color: theme.colors.textSecondary }]}>{commentCount}</Text>
-        ) : null}
-      </Pressable>
+        <Pressable
+          onPress={onOpenComments}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="View comments"
+          style={({ pressed }) => [styles.action, { opacity: pressed ? 0.5 : 1 }]}
+        >
+          <MaterialIcons name="chat-bubble-outline" size={24} color={theme.colors.textPrimary} />
+        </Pressable>
+
+        <Pressable
+          onPress={onOpenComments}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Share post"
+          style={({ pressed }) => [styles.action, { opacity: pressed ? 0.5 : 1 }]}
+        >
+          <MaterialIcons name="send" size={22} color={theme.colors.textPrimary} />
+        </Pressable>
+      </View>
+
+      {count > 0 ? (
+        <Text style={[theme.typography.bodyMedium, styles.likes, { color: theme.colors.textPrimary }]}>
+          {count} {count === 1 ? 'like' : 'likes'}
+        </Text>
+      ) : null}
+
+      {commentCount > 0 ? (
+        <Text
+          onPress={onOpenComments}
+          suppressHighlighting
+          style={[theme.typography.body, styles.comments, { color: theme.colors.textTertiary }]}
+        >
+          View all {commentCount} comments
+        </Text>
+      ) : null}
     </View>
   );
 };
@@ -100,17 +115,19 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth
+    gap: 6,
+    marginTop: 10
   },
   action: {
-    minHeight: 44,
-    minWidth: 44,
-    flexDirection: 'row',
+    minHeight: 40,
     alignItems: 'center',
-    gap: 6,
-    paddingRight: 12
+    justifyContent: 'center',
+    paddingRight: 10
+  },
+  likes: {
+    marginTop: 2
+  },
+  comments: {
+    marginTop: 3
   }
 });
