@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Alert, Pressable, Share, Text, View, Linking, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
@@ -11,6 +11,9 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { CampusPointsCard } from '@/components/CampusPointsCard';
 import { BadgeRow } from '@/components/BadgeRow';
+import { ProfileStatsRow } from '@/components/ProfileStatsRow';
+import { PrimaryButton } from '@/components/PrimaryButton';
+import { AccountSwitcher } from '@/components/AccountSwitcher';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
@@ -52,6 +55,7 @@ export const ProfileScreen = () => {
     switchToSociety,
   } = useUserRoles();
   const { user, signOut } = useAuth();
+  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   // Events the user has RSVPed across all loaded events (deduplicated by id).
   const eventsAttended = new Set([
@@ -78,9 +82,12 @@ export const ProfileScreen = () => {
     }
   };
 
-  const memberSinceYear = user?.createdAt ? String(new Date(user.createdAt).getFullYear()) : '—';
-
   const identityCaption = [profile.university, profile.course, profile.year].filter(Boolean).join(' • ');
+
+  // IG-style @handle derived from the name — a display convenience, no stored value.
+  const handle = profile.fullName
+    ? `@${profile.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '')}`
+    : '@you';
 
   // The committee/president role the user holds in a given society, if any.
   const roleForSociety = (societyId: string): MemberRole | undefined =>
@@ -148,16 +155,44 @@ export const ProfileScreen = () => {
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Identity block */}
-        <View style={styles.identity}>
-          <Avatar name={profile.fullName} size={96} url={profile.avatarUrl} />
-          <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, textAlign: 'center' }]}>
-            {profile.fullName}
+        {/* IG-style account bar — tapping your name opens the account switcher */}
+        <Pressable
+          onPress={() => setSwitcherOpen(true)}
+          hitSlop={8}
+          style={({ pressed }) => [styles.accountBar, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Text style={[theme.typography.h3, { color: theme.colors.textPrimary, flexShrink: 1 }]} numberOfLines={1}>
+            {handle}
           </Text>
-          {identityCaption ? (
-            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, textAlign: 'center' }]}>
-              {identityCaption}
+          <MaterialIcons name="expand-more" size={22} color={theme.colors.textPrimary} />
+        </Pressable>
+
+        {/* Identity — IG layout: avatar left, stats right */}
+        <View style={styles.identityRow}>
+          <Avatar name={profile.fullName} size={84} url={profile.avatarUrl} />
+          <View style={styles.identityStats}>
+            <ProfileStatsRow
+              stats={[
+                { label: 'Societies', value: mySocietyIds.length },
+                { label: 'Events', value: eventsAttended },
+                { label: 'Points', value: campusProgress.points }
+              ]}
+            />
+          </View>
+        </View>
+
+        {/* Name + bio block, left-aligned IG-style */}
+        <View style={styles.nameBlock}>
+          <View style={styles.nameRow}>
+            <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, flexShrink: 1 }]} numberOfLines={1}>
+              {profile.fullName || 'Your name'}
             </Text>
+            {profile.isVerifiedStudent ? (
+              <MaterialIcons name="verified" size={18} color={theme.colors.primary} />
+            ) : null}
+          </View>
+          {identityCaption ? (
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{identityCaption}</Text>
           ) : null}
           {profile.isVerifiedStudent ? (
             <View style={styles.chipRow}>
@@ -165,7 +200,7 @@ export const ProfileScreen = () => {
             </View>
           ) : null}
           {profile.bio ? (
-            <Text style={[theme.typography.body, styles.bio, { color: theme.colors.textPrimary }]}>
+            <Text style={[theme.typography.body, { color: theme.colors.textPrimary, marginTop: 2 }]}>
               {profile.bio}
             </Text>
           ) : null}
@@ -188,31 +223,33 @@ export const ProfileScreen = () => {
           ) : null}
         </View>
 
+        {/* IG action buttons */}
+        <View style={styles.actionRow}>
+          <View style={{ flex: 1 }}>
+            <PrimaryButton
+              label="Edit profile"
+              variant="secondary"
+              size="md"
+              icon="edit"
+              onPress={() => navigation.navigate('EditProfile')}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <PrimaryButton
+              label="Share"
+              variant="secondary"
+              size="md"
+              icon="ios-share"
+              onPress={handleShareProfile}
+            />
+          </View>
+        </View>
+
         {/* Campus Points — rewards / gamification, derived from real activity */}
         <View style={styles.rewards}>
           <CampusPointsCard progress={campusProgress} />
           <BadgeRow badges={campusProgress.badges} onPressBadge={handleBadgePress} />
         </View>
-
-        {/* Stat row */}
-        <Card padding={14}>
-          <View style={styles.statRow}>
-            <View style={styles.statCell}>
-              <Text style={[theme.typography.h2, { color: theme.colors.textPrimary }]}>{eventsAttended}</Text>
-              <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>Events</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
-            <View style={styles.statCell}>
-              <Text style={[theme.typography.h2, { color: theme.colors.textPrimary }]}>{memberSinceYear}</Text>
-              <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>Since</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
-            <View style={styles.statCell}>
-              <Text style={[theme.typography.h2, { color: theme.colors.textPrimary }]}>{mySocietyIds.length}</Text>
-              <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>Societies</Text>
-            </View>
-          </View>
-        </Card>
 
         {/* Your societies */}
         <View style={styles.section}>
@@ -319,14 +356,6 @@ export const ProfileScreen = () => {
             />
             <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />
             <ListRow
-              title="Share profile"
-              subtitle="Invite friends to SocietyHub"
-              leading={<MaterialIcons name="ios-share" size={22} color={theme.colors.primary} />}
-              chevron
-              onPress={handleShareProfile}
-            />
-            <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />
-            <ListRow
               title="Settings"
               subtitle="Notifications, appearance, account"
               leading={<MaterialIcons name="settings" size={22} color={theme.colors.primary} />}
@@ -351,6 +380,8 @@ export const ProfileScreen = () => {
           <Text style={[theme.typography.bodyMedium, { color: theme.colors.danger }]}>Sign out</Text>
         </Pressable>
       </ScrollView>
+
+      <AccountSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </ScreenLayout>
   );
 };
@@ -362,22 +393,39 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
     gap: 18
   },
-  identity: {
+  accountBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 12
+    justifyContent: 'center',
+    gap: 4,
+    minHeight: 32
+  },
+  identityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg
+  },
+  identityStats: {
+    flex: 1
+  },
+  nameBlock: {
+    gap: 4,
+    marginTop: -6
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
   },
   chipRow: {
     flexDirection: 'row',
     gap: 8,
     marginTop: 2,
-    flexWrap: 'wrap',
-    justifyContent: 'center'
+    flexWrap: 'wrap'
   },
-  bio: {
-    textAlign: 'center',
-    marginHorizontal: 20,
-    marginTop: 4
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10
   },
   rewards: {
     gap: 14
@@ -386,8 +434,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 6,
-    flexWrap: 'wrap',
-    justifyContent: 'center'
+    flexWrap: 'wrap'
   },
   socialChip: {
     width: 40,
@@ -395,19 +442,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  statRow: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  statCell: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2
-  },
-  statDivider: {
-    width: StyleSheet.hairlineWidth,
-    alignSelf: 'stretch'
   },
   section: {
     gap: 12

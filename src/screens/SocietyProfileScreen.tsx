@@ -6,9 +6,9 @@ import { ActivityIndicator, Text, View, Pressable, ScrollView, Linking, Image, S
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, FontAwesome } from '@expo/vector-icons';
 import { BadgeChip } from '@/components/BadgeChip';
-import { Card } from '@/components/Card';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { OutlineButton } from '@/components/OutlineButton';
+import { ProfileStatsRow } from '@/components/ProfileStatsRow';
 import { SectionHeader } from '@/components/SectionHeader';
 import { useToast } from '@/components/Toast';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
@@ -31,7 +31,7 @@ export const SocietyProfileScreen = () => {
   const route = useRoute<RouteProp<RootStackParamList, 'SocietyProfile'>>();
   const toast = useToast();
   const { allSocieties, favouritedSocietyIds, toggleFavouriteSociety, mySocietyIds, pendingMembershipSocietyIds, joinSociety, polls } = useLocalAppState();
-  const { adminSocieties } = useUserRoles();
+  const { adminSocieties, switchToSociety } = useUserRoles();
 
   const [localSociety, setLocalSociety] = useState<any>(null);
   const [societyEvents, setSocietyEvents] = useState<EventItem[]>([]);
@@ -162,55 +162,58 @@ export const SocietyProfileScreen = () => {
             </Pressable>
           </View>
 
-          {/* Overlapping logo */}
+          {/* Overlapping logo + IG stats row */}
           <View style={styles.identityWrap}>
-            <View style={[styles.logoRing, { backgroundColor: theme.colors.background }]}>
-              {society.logoUrl ? (
-                <Image
-                  source={{ uri: society.logoUrl }}
-                  style={[styles.logo, { backgroundColor: theme.colors.surfaceSunken }]}
+            <View style={styles.identityRow}>
+              <View style={[styles.logoRing, { backgroundColor: theme.colors.background }]}>
+                {society.logoUrl ? (
+                  <Image
+                    source={{ uri: society.logoUrl }}
+                    style={[styles.logo, { backgroundColor: theme.colors.surfaceSunken }]}
+                  />
+                ) : (
+                  <View style={[styles.logo, { backgroundColor: `${brandPrimary}22`, alignItems: 'center', justifyContent: 'center' }]}>
+                    <Text style={[theme.typography.h3, { color: brandPrimary }]} numberOfLines={1}>
+                      {society.shortName}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.identityStats}>
+                <ProfileStatsRow
+                  stats={[
+                    { label: 'Members', value: society._count?.memberships ?? '—' },
+                    { label: 'Events', value: societyEvents.length },
+                    { label: 'Polls', value: societyPolls.length }
+                  ]}
                 />
-              ) : (
-                <View style={[styles.logo, { backgroundColor: `${brandPrimary}22`, alignItems: 'center', justifyContent: 'center' }]}>
-                  <Text style={[theme.typography.h3, { color: brandPrimary }]} numberOfLines={1}>
-                    {society.shortName}
-                  </Text>
-                </View>
-              )}
+              </View>
             </View>
-            <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, marginTop: 10 }]} numberOfLines={2}>
+
+            <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, marginTop: 12 }]} numberOfLines={2}>
               {society.name}
             </Text>
-            {society.university ? (
-              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 2 }]} numberOfLines={1}>
-                {society.university}
+            <Text style={[theme.typography.caption, { color: theme.colors.textTertiary, marginTop: 2 }]} numberOfLines={1}>
+              @{society.shortName}
+              {society.university ? ` • ${society.university}` : ''}
+            </Text>
+            {society.description ? (
+              <Text style={[theme.typography.body, { color: theme.colors.textPrimary, marginTop: 8 }]}>
+                {society.description}
               </Text>
             ) : null}
           </View>
         </View>
 
         <View style={styles.body}>
-          {/* Stat row */}
-          <Card padding={14}>
-            <View style={styles.statRow}>
-              <View style={styles.statCell}>
-                <Text style={[theme.typography.h2, { color: theme.colors.textPrimary }]}>
-                  {society._count?.memberships ?? '—'}
-                </Text>
-                <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>Members</Text>
-              </View>
-              <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
-              <View style={styles.statCell}>
-                <Text style={[theme.typography.h2, { color: theme.colors.textPrimary }]}>{societyEvents.length}</Text>
-                <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>Events</Text>
-              </View>
-              <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
-              <View style={styles.statCell}>
-                <Text style={[theme.typography.h2, { color: theme.colors.textPrimary }]}>{societyPolls.length}</Text>
-                <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>Polls</Text>
-              </View>
-            </View>
-          </Card>
+          {/* Committee affordance — act AS the society (IG account takeover) */}
+          {canManage ? (
+            <PrimaryButton
+              label="Switch to this account"
+              icon="swap-horiz"
+              onPress={() => switchToSociety(society.id)}
+            />
+          ) : null}
 
           {/* Membership action */}
           {isPendingMembership ? (
@@ -277,14 +280,6 @@ export const SocietyProfileScreen = () => {
             )}
           </View>
 
-          {/* About */}
-          <View style={styles.section}>
-            <SectionHeader title="About" />
-            <Text style={[theme.typography.body, { color: theme.colors.textSecondary }]}>
-              {society.description || 'A student-run community focused on belonging, events, and peer support.'}
-            </Text>
-          </View>
-
           {/* Links */}
           {(society.instagramLink || society.whatsappLink) ? (
             <View style={styles.section}>
@@ -346,26 +341,36 @@ export const SocietyProfileScreen = () => {
             </View>
           )}
 
-          {/* Past events */}
+          {/* Highlights — IG-style content grid of the society's past events */}
           {pastEvents.length > 0 && (
             <View style={styles.section}>
-              <SectionHeader title="Past Events" />
-              <Card padding={0}>
-                {pastEvents.map((event, index) => (
-                  <View key={event.id}>
-                    {index > 0 ? <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} /> : null}
-                    <View style={styles.pastEventRow}>
-                      <MaterialIcons name="history" size={18} color={theme.colors.textTertiary} />
-                      <View style={{ flex: 1, gap: 2 }}>
-                        <Text style={[theme.typography.bodyMedium, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-                          {event.title}
-                        </Text>
-                        <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>{event.date}</Text>
-                      </View>
-                    </View>
-                  </View>
+              <SectionHeader title="Highlights" />
+              <View style={styles.grid}>
+                {pastEvents.slice(0, 9).map((event) => (
+                  <Pressable
+                    key={event.id}
+                    onPress={() => navigation.navigate('EventDetail', { eventId: event.id })}
+                    style={({ pressed }) => [
+                      styles.tile,
+                      { borderRadius: theme.radius.sm, opacity: pressed ? 0.85 : 1 }
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={[`${brandPrimary}E6`, `${brandSecondary}E6`]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.tileFill}
+                    >
+                      <Text style={[theme.typography.captionMedium, styles.tileText]} numberOfLines={4}>
+                        {event.title}
+                      </Text>
+                      <Text style={[theme.typography.micro, styles.tileDate]} numberOfLines={1}>
+                        {event.date}
+                      </Text>
+                    </LinearGradient>
+                  </Pressable>
                 ))}
-              </Card>
+              </View>
             </View>
           )}
         </View>
@@ -410,6 +415,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: -36
   },
+  identityRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 16
+  },
+  identityStats: {
+    flex: 1,
+    paddingBottom: 4
+  },
   logoRing: {
     width: 80,
     height: 80,
@@ -427,19 +441,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     gap: 18
-  },
-  statRow: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  statCell: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2
-  },
-  statDivider: {
-    width: StyleSheet.hairlineWidth,
-    alignSelf: 'stretch'
   },
   membershipRow: {
     alignItems: 'center'
@@ -468,16 +469,25 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 16
   },
-  rowDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: 46
-  },
-  pastEventRow: {
+  grid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 56
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  tile: {
+    width: '31.5%',
+    aspectRatio: 1,
+    overflow: 'hidden'
+  },
+  tileFill: {
+    flex: 1,
+    padding: 10,
+    justifyContent: 'space-between'
+  },
+  tileText: {
+    color: '#FFFFFF'
+  },
+  tileDate: {
+    color: 'rgba(255,255,255,0.85)'
   }
 });

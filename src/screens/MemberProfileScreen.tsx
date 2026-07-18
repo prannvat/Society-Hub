@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { Card } from '@/components/Card';
 import { BadgeChip, BadgeChipVariant } from '@/components/BadgeChip';
@@ -29,7 +29,7 @@ export const MemberProfileScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'MemberProfile'>>();
   const toast = useToast();
-  const { activeSocietyMembers, activeSocietyRole, activeSocietyId, assignMemberRole, profile, currentUserId } = useLocalAppState();
+  const { activeSocietyMembers, activeSocietyRole, activeSocietyId, assignMemberRole, profile, currentUserId, allSocieties } = useLocalAppState();
   const { myRequests } = useCommitteeRequests();
   const member = activeSocietyMembers.find((entry) => entry.id === route.params?.memberId) ?? activeSocietyMembers[0];
 
@@ -65,6 +65,10 @@ export const MemberProfileScreen = () => {
 
   const isVerified = member.universityBadge === 'Verified';
 
+  // IG-style @handle derived from the member's name — display convenience only.
+  const handle = `@${member.name.toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
+  const activeSociety = allSocieties.find((society) => society.id === activeSocietyId);
+
   const requestRoleChange = (nextRole: 'Member' | 'Committee') => {
     if (member.role === nextRole) {
       toast.show(`${member.name} is already ${nextRole}`, 'info');
@@ -95,20 +99,45 @@ export const MemberProfileScreen = () => {
     <ScreenLayout scroll={false}>
       <TopNavBar title="Member" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Identity block */}
+        {/* Identity block — IG-style */}
         <View style={styles.identity}>
-          <Avatar name={member.name} size={88} online={member.online} />
+          <Avatar name={member.name} size={92} online={member.online} />
           <View style={styles.nameRow}>
-            <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, textAlign: 'center' }]}>
+            <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, textAlign: 'center' }]} numberOfLines={1}>
               {member.name}
             </Text>
             {isVerified ? <MaterialIcons name="verified" size={20} color={theme.colors.primary} /> : null}
           </View>
-          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-            {[member.year, member.universityBadge].filter(Boolean).join(' • ')}
-          </Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>{handle}</Text>
+          {[member.year, member.universityBadge].filter(Boolean).length > 0 ? (
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+              {[member.year, member.universityBadge].filter(Boolean).join(' • ')}
+            </Text>
+          ) : null}
           <BadgeChip label={member.role} variant={roleChipVariant[member.role]} />
         </View>
+
+        {/* Their societies — the society this profile is viewed within */}
+        {activeSociety ? (
+          <View style={styles.societyChips}>
+            <Pressable
+              onPress={() => navigation.navigate('SocietyProfile', { societyId: activeSociety.id })}
+              style={({ pressed }) => [
+                styles.societyChip,
+                {
+                  borderRadius: theme.radius.pill,
+                  backgroundColor: theme.colors.surfaceSunken,
+                  opacity: pressed ? 0.7 : 1
+                }
+              ]}
+            >
+              <Avatar name={activeSociety.name} size={22} url={activeSociety.logoUrl ?? undefined} />
+              <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                {activeSociety.shortName || activeSociety.name}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.actionRow}>
           <View style={{ flex: 1 }}>
@@ -230,13 +259,27 @@ const styles = StyleSheet.create({
   },
   identity: {
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     marginBottom: 4
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6
+  },
+  societyChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center'
+  },
+  societyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 6
   },
   actionRow: {
     flexDirection: 'row',
