@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BadgeChip } from '@/components/BadgeChip';
 import { Card } from '@/components/Card';
@@ -39,6 +40,7 @@ const PollResultBar = ({ percent }: { percent: number }) => {
 export const SocietyPollsScreen = () => {
   const theme = useAppTheme();
   const toast = useToast();
+  const navigation = useNavigation();
   const { activeSocietyId, activeSocietyRole, polls, createPoll, voteOnPoll, currentUserId } =
     useLocalAppState();
   const [showComposer, setShowComposer] = React.useState(false);
@@ -105,6 +107,9 @@ export const SocietyPollsScreen = () => {
           gutter={false}
           title="Polls"
           subtitle={`${activePolls.length} active poll${activePolls.length === 1 ? '' : 's'} • ${activeSocietyRole} access`}
+          // Root-stack push with headerShown: false and no tab bar beneath, so
+          // without this the screen has no exit on iOS but the edge swipe.
+          onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
         />
 
         {/* Create-poll entry — mirrors the announcements composer */}

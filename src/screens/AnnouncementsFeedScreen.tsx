@@ -84,6 +84,7 @@ export const AnnouncementsFeedScreen = () => {
         <TopNavBar
           gutter={false}
           title="Announcements"
+          onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
           actionLabel={isSearchOpen ? 'Close' : 'Search'}
           onPressAction={() => {
             setIsSearchOpen((prev) => !prev);

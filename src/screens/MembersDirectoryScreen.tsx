@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar } from '@/components/Avatar';
 import { BadgeChip } from '@/components/BadgeChip';
@@ -29,6 +29,7 @@ export const MembersDirectoryScreen = () => {
   const theme = useAppTheme();
   const toast = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const isPushedRoute = useRoute().name === 'MembersDirectory';
   const { activeSocietyId, activeSocietyMembers, activeSocietyRole, refreshActiveSociety } = useLocalAppState();
   const [query, setQuery] = React.useState('');
   const [activeFilter, setActiveFilter] = React.useState('All');
@@ -119,6 +120,11 @@ export const MembersDirectoryScreen = () => {
           subtitle={`${activeSocietyRole} access`}
           actionLabel={viewMode === 'grid' ? 'List view' : 'Grid view'}
           onPressAction={() => setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))}
+          // Mounted twice under different route names: as the Admin 'Members'
+          // tab (tab bar is the way out) and as the pushed 'MembersDirectory'
+          // stack screen, which has no tab bar and no header — the back arrow is
+          // its only exit.
+          onBack={isPushedRoute ? () => navigation.goBack() : undefined}
         />
 
         {canReviewRequests && requestsFailed ? (
