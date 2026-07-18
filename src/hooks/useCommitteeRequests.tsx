@@ -205,7 +205,8 @@ export const CommitteeRequestsProvider = ({ children }: { children: ReactNode })
       const stats = await getCommitteeRequestStats(selectedUniversityId);
       setRequestStats(stats);
     } catch (error) {
-      console.error('Failed to fetch committee request stats:', error);
+      // Handled/non-fatal: keep prior stats and let the UI show its empty/loading state.
+      console.warn('Failed to fetch committee request stats:', error);
     } finally {
       setIsLoadingStats(false);
     }
