@@ -13,6 +13,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { SocietyPerk } from '@/types';
 import { addSocietyPerk, fetchSocietyPerks, removeSocietyPerk } from '@/services/api/perks';
+import { uploadImage } from '@/services/api/uploads';
 
 export const EditSocietyProfileScreen = () => {
   const theme = useAppTheme();
@@ -27,6 +28,7 @@ export const EditSocietyProfileScreen = () => {
   const [instagramLink, setInstagramLink] = useState(society?.instagramLink || '');
   const [whatsappLink, setWhatsappLink] = useState(society?.whatsappLink || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Member perks — the committee-managed rewards this society offers.
   const societyId = society?.id;
@@ -98,11 +100,19 @@ export const EditSocietyProfileScreen = () => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
-      base64: true,
     });
-    if (!result.canceled && result.assets[0].base64) {
-      const dataUri = `data:image/jpeg;base64,${result.assets[0].base64}`;
-      setLogoUrl(dataUri);
+    if (result.canceled || !society) {
+      return;
+    }
+    // Uploaded up front — the society stores a URL, so the bytes must be in
+    // storage before Save runs.
+    setIsUploadingLogo(true);
+    try {
+      setLogoUrl(await uploadImage(result.assets[0].uri, 'SOCIETY_LOGO', society.id));
+    } catch {
+      toast.show('Could not upload that logo. Please try again.', 'error');
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
@@ -166,7 +176,7 @@ export const EditSocietyProfileScreen = () => {
               onPress={pickLogo}
               suppressHighlighting
             >
-              Change logo
+              {isUploadingLogo ? 'Uploading logo…' : 'Change logo'}
             </Text>
           ) : null}
         </View>
@@ -273,7 +283,12 @@ export const EditSocietyProfileScreen = () => {
           />
         </View>
 
-        <PrimaryButton label="Save Changes" onPress={handleSave} loading={isSaving} />
+        <PrimaryButton
+          label="Save Changes"
+          onPress={handleSave}
+          loading={isSaving}
+          disabled={isUploadingLogo}
+        />
       </View>
     </ScreenLayout>
   );

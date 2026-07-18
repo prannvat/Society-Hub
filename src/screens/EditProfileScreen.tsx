@@ -15,6 +15,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { updateMe } from '@/services/api/me';
+import { uploadImage } from '@/services/api/uploads';
 import { UserLinkInput, profileErrorMessage, updateMyLinks } from '@/services/api/users';
 
 const MAX_BIO_LENGTH = 300;
@@ -33,6 +34,7 @@ export const EditProfileScreen = () => {
   const [year, setYear] = useState(profile.year || '');
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // Handle + links come from the API user, the source of truth for both.
   const [username, setUsername] = useState(user?.username ?? '');
@@ -70,11 +72,19 @@ export const EditProfileScreen = () => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
-      base64: true,
     });
-    if (!result.canceled && result.assets[0].base64) {
-      const dataUri = `data:image/jpeg;base64,${result.assets[0].base64}`;
-      setAvatarUrl(dataUri);
+    if (result.canceled) {
+      return;
+    }
+    // Upload immediately rather than holding bytes in state: the profile
+    // stores a URL, so the image must exist in storage before Save runs.
+    setIsUploadingAvatar(true);
+    try {
+      setAvatarUrl(await uploadImage(result.assets[0].uri, 'AVATAR'));
+    } catch {
+      toast.show('Could not upload that image. Please try again.', 'error');
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -150,7 +160,7 @@ export const EditProfileScreen = () => {
           <Pressable onPress={pickAvatar} hitSlop={8}>
             {({ pressed }) => (
               <Text style={[theme.typography.captionMedium, { color: theme.colors.primary, marginTop: 12, opacity: pressed ? 0.6 : 1 }]}>
-                Change profile photo
+                {isUploadingAvatar ? 'Uploading photo…' : 'Change profile photo'}
               </Text>
             )}
           </Pressable>
@@ -243,7 +253,7 @@ export const EditProfileScreen = () => {
           label="Save Changes"
           onPress={handleSave}
           loading={isSaving}
-          disabled={usernameBlocked}
+          disabled={usernameBlocked || isUploadingAvatar}
           icon="check"
         />
       </ScrollView>
