@@ -2,14 +2,17 @@ import React from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,13 +34,63 @@ type CommentsSheetProps = {
   onClose: () => void;
 };
 
-/** Instagram-style comments: a slide-up bottom sheet with a compact pill composer. */
+/**
+ * Instagram-style comments: a draggable bottom sheet. Opens at ~half height and
+ * can be pulled up to full (or flicked down to dismiss), with a pill composer.
+ */
 export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsSheetProps) => {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  const { height: SCREEN_H } = useWindowDimensions();
   const { currentUserId, profile, announcements } = useLocalAppState();
   const { adminSocieties } = useUserRoles();
+
+  // Snap points expressed as the sheet's TOP offset (smaller = taller sheet).
+  const FULL_TOP = Math.max(insets.top + 8, 48);
+  const HALF_TOP = Math.round(SCREEN_H * 0.5);
+  const CLOSED_TOP = SCREEN_H;
+
+  const topAnim = React.useRef(new Animated.Value(CLOSED_TOP)).current;
+  const currentTop = React.useRef(CLOSED_TOP);
+  const gestureStartTop = React.useRef(CLOSED_TOP);
+
+  const animateTo = React.useCallback(
+    (to: number) => {
+      currentTop.current = to;
+      Animated.timing(topAnim, { toValue: to, duration: 240, useNativeDriver: false }).start();
+    },
+    [topAnim],
+  );
+
+  const close = React.useCallback(() => {
+    currentTop.current = CLOSED_TOP;
+    Animated.timing(topAnim, { toValue: CLOSED_TOP, duration: 200, useNativeDriver: false }).start(() => onClose());
+  }, [CLOSED_TOP, topAnim, onClose]);
+
+  const panResponder = React.useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+      onPanResponderGrant: () => {
+        gestureStartTop.current = currentTop.current;
+      },
+      onPanResponderMove: (_e, g) => {
+        const next = Math.min(Math.max(gestureStartTop.current + g.dy, FULL_TOP), CLOSED_TOP);
+        topAnim.setValue(next);
+      },
+      onPanResponderRelease: (_e, g) => {
+        const endTop = Math.min(Math.max(gestureStartTop.current + g.dy, FULL_TOP), CLOSED_TOP);
+        if (g.vy > 1.2 || endTop > SCREEN_H * 0.72) {
+          close();
+        } else if (g.vy < -0.4 || endTop < (FULL_TOP + HALF_TOP) / 2) {
+          animateTo(FULL_TOP);
+        } else {
+          animateTo(HALF_TOP);
+        }
+      },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ).current;
 
   const [comments, setComments] = React.useState<ApiComment[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -48,6 +101,13 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
   const canModerate = societyId
     ? adminSocieties.some((s) => s.societyId === societyId && (s.role === 'Committee' || s.role === 'President'))
     : false;
+
+  React.useEffect(() => {
+    if (visible) {
+      animateTo(HALF_TOP);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   React.useEffect(() => {
     if (!visible || !announcementId) return;
@@ -109,19 +169,27 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
   const canSend = draft.trim().length > 0 && !sending;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable style={[styles.scrim, { backgroundColor: theme.colors.overlay }]} onPress={onClose}>
-        <Pressable
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
+      <View style={styles.fill}>
+        <Pressable style={[styles.scrim, { backgroundColor: theme.colors.overlay }]} onPress={close} />
+        <Animated.View
           style={[
             styles.sheet,
-            { backgroundColor: theme.colors.surfaceElevated, borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl },
+            {
+              top: topAnim,
+              backgroundColor: theme.colors.surfaceElevated,
+              borderTopLeftRadius: theme.radius.xl,
+              borderTopRightRadius: theme.radius.xl,
+            },
             theme.elevation.e3,
           ]}
-          onPress={(e) => e.stopPropagation()}
         >
-          <View style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]} />
-          <Text style={[theme.typography.h3, styles.title, { color: theme.colors.textPrimary }]}>Comments</Text>
-          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          {/* Grabber + title — drag target */}
+          <View {...panResponder.panHandlers} style={styles.grabArea}>
+            <View style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]} />
+            <Text style={[theme.typography.h3, styles.title, { color: theme.colors.textPrimary }]}>Comments</Text>
+            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          </View>
 
           <KeyboardAvoidingView
             style={styles.body}
@@ -183,6 +251,7 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
                   onChangeText={setDraft}
                   autoCapitalize="sentences"
                   multiline
+                  onFocus={() => animateTo(FULL_TOP)}
                   onSubmitEditing={onSend}
                   returnKeyType="send"
                 />
@@ -203,15 +272,17 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
               </Pressable>
             </View>
           </KeyboardAvoidingView>
-        </Pressable>
-      </Pressable>
+        </Animated.View>
+      </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  scrim: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { height: '82%', paddingTop: spacing.sm },
+  fill: { flex: 1 },
+  scrim: { ...StyleSheet.absoluteFillObject },
+  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  grabArea: { paddingTop: spacing.sm },
   handle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.sm },
   title: { textAlign: 'center', marginBottom: spacing.sm },
   divider: { height: StyleSheet.hairlineWidth },
