@@ -29,8 +29,10 @@ export const AnnouncementDetailScreen = () => {
   const [remoteBody, setRemoteBody] = React.useState<string | null>(null);
   const [remoteAuthor, setRemoteAuthor] = React.useState<string | null>(null);
   const [comments, setComments] = React.useState<ApiComment[]>([]);
-  const announcement = announcements.find((entry) => entry.id === route.params?.announcementId) ?? announcements[0];
-  const announcementId = route.params?.announcementId ?? announcement?.id ?? '';
+  // No fallback to the first announcement: a stale deep link would otherwise
+  // open an unrelated post that reads as the one the user tapped.
+  const announcement = announcements.find((entry) => entry.id === route.params?.announcementId);
+  const announcementId = route.params?.announcementId ?? '';
 
   React.useEffect(() => {
     if (!announcementId) {

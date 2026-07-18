@@ -31,7 +31,9 @@ export const MemberProfileScreen = () => {
   const toast = useToast();
   const { activeSocietyMembers, activeSocietyRole, activeSocietyId, assignMemberRole, profile, currentUserId, allSocieties } = useLocalAppState();
   const { myRequests } = useCommitteeRequests();
-  const member = activeSocietyMembers.find((entry) => entry.id === route.params?.memberId) ?? activeSocietyMembers[0];
+  // No fallback to the first member: this screen assigns roles, so showing a
+  // substitute would let a president promote someone they never selected.
+  const member = activeSocietyMembers.find((entry) => entry.id === route.params?.memberId);
 
   if (!member) {
     return (

@@ -44,8 +44,9 @@ export const SocietyProfileScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
 
-  // Fallback to memory if offline/loading
-  const memoizedSociety = allSocieties.find((entry) => entry.id === route.params?.societyId) ?? allSocieties[0];
+  // Fall back to the in-memory copy while the fetch is in flight, but never to
+  // an arbitrary society — a wrong id must resolve to the not-found state.
+  const memoizedSociety = allSocieties.find((entry) => entry.id === route.params?.societyId);
   const society = localSociety || memoizedSociety;
 
   const isFavourited = society ? favouritedSocietyIds.includes(society.id) : false;
