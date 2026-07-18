@@ -9,6 +9,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LocalAppStateProvider } from '@/hooks/useLocalAppState';
 import { AuthProvider } from '@/hooks/useAuth';
 import { UserRolesProvider } from '@/hooks/useUserRoles';
@@ -36,21 +37,23 @@ export default function App() {
   }
 
   return (
-    <AuthProvider>
-      <UserRolesProvider>
-        <CommitteeRequestsProvider>
-          <LocalAppStateProvider>
-            <ToastProvider>
-              <AccountSwitcherProvider>
-                <CommentsProvider>
-                  <StatusBar style="auto" />
-                  <AppNavigator />
-                </CommentsProvider>
-              </AccountSwitcherProvider>
-            </ToastProvider>
-          </LocalAppStateProvider>
-        </CommitteeRequestsProvider>
-      </UserRolesProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <UserRolesProvider>
+          <CommitteeRequestsProvider>
+            <LocalAppStateProvider>
+              <ToastProvider>
+                <AccountSwitcherProvider>
+                  <CommentsProvider>
+                    <StatusBar style="auto" />
+                    <AppNavigator />
+                  </CommentsProvider>
+                </AccountSwitcherProvider>
+              </ToastProvider>
+            </LocalAppStateProvider>
+          </CommitteeRequestsProvider>
+        </UserRolesProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
