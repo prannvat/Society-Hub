@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUserRoles } from '@/hooks/useUserRoles';
+import { navigationRef } from './navigationRef';
 import { RootStackParamList } from './types';
 import { ConsumerNavigator } from './ConsumerNavigator';
 // Lazy load admin components for better performance
@@ -89,7 +90,7 @@ export const AppNavigator = () => {
   };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={navigationRef} theme={navTheme}>
       <Stack.Navigator
         initialRouteName="Splash"
         screenOptions={{

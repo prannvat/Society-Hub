@@ -14,6 +14,7 @@ import { AuthProvider } from '@/hooks/useAuth';
 import { UserRolesProvider } from '@/hooks/useUserRoles';
 import { CommitteeRequestsProvider } from '@/hooks/useCommitteeRequests';
 import { ToastProvider } from '@/components/Toast';
+import { AccountSwitcherProvider } from '@/hooks/useAccountSwitcher';
 import { AppNavigator } from '@/navigation/AppNavigator';
 
 export default function App() {
@@ -39,8 +40,10 @@ export default function App() {
         <CommitteeRequestsProvider>
           <LocalAppStateProvider>
             <ToastProvider>
-              <StatusBar style="auto" />
-              <AppNavigator />
+              <AccountSwitcherProvider>
+                <StatusBar style="auto" />
+                <AppNavigator />
+              </AccountSwitcherProvider>
             </ToastProvider>
           </LocalAppStateProvider>
         </CommitteeRequestsProvider>

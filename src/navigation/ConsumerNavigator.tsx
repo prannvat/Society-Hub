@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useAccountSwitcher } from '@/hooks/useAccountSwitcher';
 import { getTabNavigatorOptions } from './tabOptions';
 import { FeedScreen } from '@/screens/FeedScreen';
 import { ExploreSocietiesScreen } from '@/screens/ExploreSocietiesScreen';
@@ -19,6 +20,8 @@ const Tab = createBottomTabNavigator<ConsumerTabParamList>();
 
 export const ConsumerNavigator = () => {
   const theme = useAppTheme();
+  const { openSwitcher } = useAccountSwitcher();
+  const lastProfileTap = React.useRef(0);
 
   return (
     <Tab.Navigator
@@ -55,6 +58,15 @@ export const ConsumerNavigator = () => {
         name="Profile"
         component={ProfileScreen}
         options={{ tabBarLabel: 'Profile' }}
+        listeners={{
+          tabPress: () => {
+            const now = Date.now();
+            if (now - lastProfileTap.current < 350) {
+              openSwitcher();
+            }
+            lastProfileTap.current = now;
+          },
+        }}
       />
     </Tab.Navigator>
   );

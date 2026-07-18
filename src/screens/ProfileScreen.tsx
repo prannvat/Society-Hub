@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Alert, Pressable, Share, Text, View, Linking, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
@@ -13,7 +13,7 @@ import { CampusPointsCard } from '@/components/CampusPointsCard';
 import { BadgeRow } from '@/components/BadgeRow';
 import { ProfileStatsRow } from '@/components/ProfileStatsRow';
 import { PrimaryButton } from '@/components/PrimaryButton';
-import { AccountSwitcher } from '@/components/AccountSwitcher';
+import { useAccountSwitcher } from '@/hooks/useAccountSwitcher';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
@@ -55,7 +55,7 @@ export const ProfileScreen = () => {
     switchToSociety,
   } = useUserRoles();
   const { user, signOut } = useAuth();
-  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const { openSwitcher } = useAccountSwitcher();
 
   // Events the user has RSVPed across all loaded events (deduplicated by id).
   const eventsAttended = new Set([
@@ -157,7 +157,7 @@ export const ProfileScreen = () => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* IG-style account bar — tapping your name opens the account switcher */}
         <Pressable
-          onPress={() => setSwitcherOpen(true)}
+          onPress={openSwitcher}
           hitSlop={8}
           style={({ pressed }) => [styles.accountBar, { opacity: pressed ? 0.6 : 1 }]}
         >
@@ -380,8 +380,6 @@ export const ProfileScreen = () => {
           <Text style={[theme.typography.bodyMedium, { color: theme.colors.danger }]}>Sign out</Text>
         </Pressable>
       </ScrollView>
-
-      <AccountSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </ScreenLayout>
   );
 };

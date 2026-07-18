@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,7 +9,7 @@ import { BadgeChip } from '@/components/BadgeChip';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
 import { EmptyState } from '@/components/EmptyState';
-import { AccountSwitcher } from '@/components/AccountSwitcher';
+import { useAccountSwitcher } from '@/hooks/useAccountSwitcher';
 import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
@@ -36,7 +36,7 @@ export const SocietyAccountProfileScreen = () => {
   const navigation = useNavigation<Nav>();
   const { selectedAdminSocietyId } = useUserRoles();
   const { allSocieties, announcements, events, activeSocietyMemberCount } = useLocalAppState();
-  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const { openSwitcher } = useAccountSwitcher();
 
   const societyId = selectedAdminSocietyId ?? '';
   const society = allSocieties.find((s) => s.id === societyId);
@@ -63,7 +63,7 @@ export const SocietyAccountProfileScreen = () => {
       {/* Account bar — tap to switch accounts, IG-style */}
       <Pressable
         style={({ pressed }) => [styles.accountBar, { opacity: pressed ? 0.6 : 1 }]}
-        onPress={() => setSwitcherOpen(true)}
+        onPress={openSwitcher}
         accessibilityRole="button"
         accessibilityLabel={`${society?.shortName || society?.name}. Tap to switch account`}
       >
@@ -176,7 +176,6 @@ export const SocietyAccountProfileScreen = () => {
         </View>
       </View>
 
-      <AccountSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </ScreenLayout>
   );
 };

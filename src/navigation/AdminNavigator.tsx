@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from '@/components/Avatar';
-import { AccountSwitcher } from '@/components/AccountSwitcher';
+import { useAccountSwitcher } from '@/hooks/useAccountSwitcher';
 import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
@@ -33,14 +33,14 @@ const AccountBar = ({ brand }: { brand: string }) => {
   const theme = useAppTheme();
   const { selectedAdminSocietyId } = useUserRoles();
   const { allSocieties } = useLocalAppState();
-  const [open, setOpen] = useState(false);
+  const { openSwitcher } = useAccountSwitcher();
   const society = allSocieties.find((s) => s.id === selectedAdminSocietyId);
 
   return (
     <View style={[styles.bar, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
       <Pressable
         style={({ pressed }) => [styles.barInner, { opacity: pressed ? 0.6 : 1 }]}
-        onPress={() => setOpen(true)}
+        onPress={openSwitcher}
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={`Managing ${society?.name ?? 'society'}. Tap to switch account`}
@@ -59,7 +59,6 @@ const AccountBar = ({ brand }: { brand: string }) => {
         </View>
         <MaterialIcons name="unfold-more" size={20} color={theme.colors.textTertiary} />
       </Pressable>
-      <AccountSwitcher visible={open} onClose={() => setOpen(false)} />
     </View>
   );
 };
@@ -68,6 +67,8 @@ export const AdminNavigator = () => {
   const theme = useAppTheme();
   const { selectedAdminSocietyId } = useUserRoles();
   const { allSocieties, setActiveSocietyId } = useLocalAppState();
+  const { openSwitcher } = useAccountSwitcher();
+  const lastProfileTap = useRef(0);
 
   const society = allSocieties.find((s) => s.id === selectedAdminSocietyId);
   const brand = society?.primaryColor || theme.colors.primary;
@@ -102,7 +103,20 @@ export const AdminNavigator = () => {
         <Tab.Screen name="SocietyHome" component={SocietyHomeScreen} options={{ tabBarLabel: 'Home' }} />
         <Tab.Screen name="Insights" component={SocietyInsightsScreen} options={{ tabBarLabel: 'Insights' }} />
         <Tab.Screen name="Members" component={MembersDirectoryScreen} options={{ tabBarLabel: 'Members' }} />
-        <Tab.Screen name="SocietyAccount" component={SocietyAccountProfileScreen} options={{ tabBarLabel: 'Profile' }} />
+        <Tab.Screen
+          name="SocietyAccount"
+          component={SocietyAccountProfileScreen}
+          options={{ tabBarLabel: 'Profile' }}
+          listeners={{
+            tabPress: () => {
+              const now = Date.now();
+              if (now - lastProfileTap.current < 350) {
+                openSwitcher();
+              }
+              lastProfileTap.current = now;
+            },
+          }}
+        />
       </Tab.Navigator>
     </SafeAreaView>
   );
