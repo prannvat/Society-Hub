@@ -35,6 +35,7 @@ export const MembersDirectoryScreen = () => {
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
   const [membershipRequests, setMembershipRequests] = React.useState<MembershipRequest[]>([]);
   const [actingRequestId, setActingRequestId] = React.useState<string | null>(null);
+  const [requestsFailed, setRequestsFailed] = React.useState(false);
 
   const canReviewRequests = activeSocietyRole === 'President' || activeSocietyRole === 'Committee';
 
@@ -46,8 +47,12 @@ export const MembersDirectoryScreen = () => {
     try {
       const requests = await fetchMembershipRequests(activeSocietyId);
       setMembershipRequests(requests.filter((request) => request.status === 'PENDING'));
+      setRequestsFailed(false);
     } catch {
-      setMembershipRequests([]);
+      // Don't silently show an empty list: "no pending requests" and "we
+      // couldn't load them" look identical to a president, who then leaves
+      // real people waiting for approval indefinitely.
+      setRequestsFailed(true);
     }
   }, [canReviewRequests, activeSocietyId]);
 
@@ -115,6 +120,22 @@ export const MembersDirectoryScreen = () => {
           actionLabel={viewMode === 'grid' ? 'List view' : 'Grid view'}
           onPressAction={() => setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))}
         />
+
+        {canReviewRequests && requestsFailed ? (
+          <View style={styles.section}>
+            <Card style={{ borderColor: theme.colors.warning }}>
+              <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]}>
+                Couldn't load membership requests
+              </Text>
+              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 4 }]}>
+                There may be people waiting for approval.
+              </Text>
+              <View style={{ marginTop: 12, alignSelf: 'flex-start' }}>
+                <PrimaryButton label="Retry" size="sm" variant="ghost" onPress={loadRequests} />
+              </View>
+            </Card>
+          </View>
+        ) : null}
 
         {/* Membership requests — most urgent, so they lead the screen */}
         {canReviewRequests && membershipRequests.length > 0 ? (

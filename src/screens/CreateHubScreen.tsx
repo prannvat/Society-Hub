@@ -8,6 +8,7 @@ import { Card } from '@/components/Card';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TopNavBar } from '@/components/TopNavBar';
 import { EmptyState } from '@/components/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
 import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
@@ -38,7 +39,7 @@ export const CreateHubScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<Nav>();
   const route = useRoute<RouteProp<RootStackParamList, 'CreateHub'>>();
-  const { adminSocieties } = useUserRoles();
+  const { adminSocieties, rolesStatus, refreshUserRoles } = useUserRoles();
   const { setActiveSocietyId } = useLocalAppState();
 
   const [societyId, setSocietyId] = useState<string | null>(
@@ -53,6 +54,28 @@ export const CreateHubScreen = () => {
     setActiveSocietyId(societyId);
     navigation.navigate(screen, { societyId });
   };
+
+  // Only claim the user lacks access once roles have actually loaded — while
+  // loading or after a failed fetch, saying "committee access needed" to a real
+  // committee member is a lie they can't act on.
+  if (adminSocieties.length === 0 && rolesStatus !== 'ready') {
+    return (
+      <ScreenLayout scroll={false}>
+        <TopNavBar title="Create" onBack={() => navigation.goBack()} />
+        {rolesStatus === 'loading' ? (
+          <Skeleton height={120} />
+        ) : (
+          <EmptyState
+            icon="cloud-off"
+            title="Couldn't check your access"
+            subtitle="We couldn't reach the server to confirm your committee roles."
+            actionLabel="Try again"
+            onAction={refreshUserRoles}
+          />
+        )}
+      </ScreenLayout>
+    );
+  }
 
   if (adminSocieties.length === 0) {
     return (

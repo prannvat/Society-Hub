@@ -5,7 +5,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { InputField } from '@/components/InputField';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useToast } from '@/components/Toast';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
+import { profileErrorMessage } from '@/services/api/users';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -39,6 +41,7 @@ const StepIndicator = ({ current }: { current: 1 | 2 }) => {
 export const ProfileSetupScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const toast = useToast();
   const { profile, updateProfile } = useLocalAppState();
 
   const [location, setLocation] = useState(profile.location || '');
@@ -66,7 +69,10 @@ export const ProfileSetupScreen = () => {
       });
       navigation.navigate('InterestSelection');
     } catch (e) {
+      // This is the first flow a new user sees — a silent failure looks like a
+      // dead button and there is no other way out of the step.
       console.error('Failed to update profile', e);
+      toast.show(profileErrorMessage(e), 'error');
     } finally {
       setIsSaving(false);
     }

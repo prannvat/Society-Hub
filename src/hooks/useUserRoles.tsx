@@ -4,8 +4,8 @@ import {
   UserRoleData,
   SocietyAdminRelationship,
   AppMode,
-  MemberRole,
 } from '@/types';
+import { mapMemberRole } from '@/utils/mapMemberRole';
 import { useAuth } from './useAuth';
 
 /**
@@ -21,7 +21,9 @@ type UserRolesContextValue = UserRoleData & {
   setCurrentMode: (mode: AppMode) => Promise<void>;
   selectedAdminSocietyId: string | null;
   setSelectedAdminSocietyId: (societyId: string | null) => void;
+  /** Kept for existing callers; true only while the first/next fetch is in flight. */
   isLoading: boolean;
+  rolesStatus: RolesStatus;
   refreshUserRoles: () => Promise<void>;
   // Account switching (the seamless IG-style identity switch)
   activeAccount: ActiveAccount;
@@ -29,18 +31,13 @@ type UserRolesContextValue = UserRoleData & {
   switchToSociety: (societyId: string) => Promise<void>;
 };
 
-const UserRolesContext = createContext<UserRolesContextValue | undefined>(undefined);
+/**
+ * Whether society roles have actually been established. `error` is distinct from
+ * `ready` with no roles — the UI must not present a failed fetch as "no access".
+ */
+export type RolesStatus = 'loading' | 'ready' | 'error';
 
-const mapApiRoleToMemberRole = (apiRole: string): MemberRole => {
-  switch (apiRole) {
-    case 'PRESIDENT':
-      return 'President';
-    case 'COMMITTEE':
-      return 'Committee';
-    default:
-      return 'Member';
-  }
-};
+const UserRolesContext = createContext<UserRolesContextValue | undefined>(undefined);
 
 const mapApiAdminRolesToSocietyRelationships = (apiRoles: ApiUserAdminRole[]): SocietyAdminRelationship[] => {
   return apiRoles
@@ -48,14 +45,14 @@ const mapApiAdminRolesToSocietyRelationships = (apiRoles: ApiUserAdminRole[]): S
     .map(role => ({
       societyId: role.societyId,
       societyName: role.societyName,
-      role: mapApiRoleToMemberRole(role.role),
+      role: mapMemberRole(role.role),
       canManage: true,
     }));
 };
 
 export const UserRolesProvider = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated, activeUserId } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const [rolesStatus, setRolesStatus] = useState<RolesStatus>('loading');
   const [adminSocieties, setAdminSocieties] = useState<SocietyAdminRelationship[]>([]);
   const [currentMode, setCurrentModeState] = useState<AppMode>('Consumer');
   const [selectedAdminSocietyId, setSelectedAdminSocietyId] = useState<string | null>(null);
@@ -63,26 +60,30 @@ export const UserRolesProvider = ({ children }: { children: ReactNode }) => {
   const refreshUserRoles = async () => {
     if (!isAuthenticated) {
       setAdminSocieties([]);
+      setRolesStatus('ready');
       return;
     }
 
-    setIsLoading(true);
+    setRolesStatus('loading');
     try {
       const userWithRoles = await fetchMeWithRoles();
-      const adminRoles = userWithRoles.adminRoles || [];
-
-      const mappedAdminSocieties = mapApiAdminRolesToSocietyRelationships(adminRoles);
+      const mappedAdminSocieties = mapApiAdminRolesToSocietyRelationships(
+        userWithRoles.adminRoles || [],
+      );
       setAdminSocieties(mappedAdminSocieties);
-
-      // Auto-select first admin society if none selected
-      if (mappedAdminSocieties.length > 0 && !selectedAdminSocietyId) {
-        setSelectedAdminSocietyId(mappedAdminSocieties[0].societyId);
-      }
+      // Functional update so this doesn't read a `selectedAdminSocietyId` captured
+      // before the account switch cleared it, which used to skip auto-selection.
+      setSelectedAdminSocietyId((current) =>
+        current ?? mappedAdminSocieties[0]?.societyId ?? null,
+      );
+      setRolesStatus('ready');
     } catch (error) {
+      // Deliberately NOT clearing adminSocieties: an empty list is how the UI
+      // says "you have no committee access", so wiping it on a network blip
+      // silently demotes a president for the rest of their session. Keep the
+      // last known roles and let callers surface the error instead.
       console.warn('Failed to fetch user roles:', error);
-      setAdminSocieties([]);
-    } finally {
-      setIsLoading(false);
+      setRolesStatus('error');
     }
   };
 
@@ -146,7 +147,8 @@ export const UserRolesProvider = ({ children }: { children: ReactNode }) => {
     setCurrentMode,
     selectedAdminSocietyId,
     setSelectedAdminSocietyId,
-    isLoading,
+    isLoading: rolesStatus === 'loading',
+    rolesStatus,
     refreshUserRoles,
     activeAccount,
     switchToPersonal,
@@ -155,7 +157,7 @@ export const UserRolesProvider = ({ children }: { children: ReactNode }) => {
     userRoleData,
     currentMode,
     selectedAdminSocietyId,
-    isLoading,
+    rolesStatus,
     activeAccount,
   ]);
 
