@@ -16,12 +16,14 @@ import { useUserRoles } from '@/hooks/useUserRoles';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useComments } from '@/hooks/useComments';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { addComment, ApiComment, fetchAnnouncementDetail, fetchComments } from '@/services/api';
 
 export const AnnouncementDetailScreen = () => {
   const theme = useAppTheme();
+  const { openComments } = useComments();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'AnnouncementDetail'>>();
   const toast = useToast();
@@ -150,7 +152,7 @@ export const AnnouncementDetailScreen = () => {
             likeCount={announcement.likeCount ?? 0}
             commentCount={announcement.commentCount ?? 0}
             likedByMe={announcement.likedByMe ?? false}
-            onOpenComments={() => navigation.navigate('Comments', { announcementId })}
+            onOpenComments={() => openComments(announcementId)}
           />
         </Card>
 
@@ -168,14 +170,14 @@ export const AnnouncementDetailScreen = () => {
                 key={comment.id}
                 comment={comment}
                 canDelete={comment.user.id === currentUserId || canModerate}
-                onDelete={() => navigation.navigate('Comments', { announcementId })}
+                onDelete={() => openComments(announcementId)}
               />
             ))
           )}
 
           {totalComments > previewComments.length ? (
             <Text
-              onPress={() => navigation.navigate('Comments', { announcementId })}
+              onPress={() => openComments(announcementId)}
               style={[theme.typography.captionMedium, styles.viewAll, { color: theme.colors.primary }]}
             >
               View all {totalComments} comments

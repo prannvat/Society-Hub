@@ -36,7 +36,6 @@ import { CreatePostScreen } from '@/screens/CreatePostScreen';
 import { CreatePollScreen } from '@/screens/CreatePollScreen';
 import { MembersDirectoryScreen } from '@/screens/MembersDirectoryScreen';
 import { SocietyPollsScreen } from '@/screens/SocietyPollsScreen';
-import { CommentsScreen } from '@/screens/CommentsScreen';
 
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -126,7 +125,6 @@ export const AppNavigator = () => {
         <Stack.Screen name="CreatePoll" component={CreatePollScreen} options={{ presentation: 'modal' }} />
         <Stack.Screen name="MembersDirectory" component={MembersDirectoryScreen} />
         <Stack.Screen name="SocietyPolls" component={SocietyPollsScreen} />
-        <Stack.Screen name="Comments" component={CommentsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

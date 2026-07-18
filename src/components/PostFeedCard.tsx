@@ -1,8 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Card } from './Card';
 import { BadgeChip } from './BadgeChip';
 import { FeedCardHeader } from './FeedCardHeader';
@@ -10,8 +8,8 @@ import { categoryChipVariant } from './AnnouncementCard';
 import { PostActionBar } from './PostActionBar';
 import { FeedSociety } from '@/hooks/useFeed';
 import { AnnouncementCategory } from '@/types';
-import { RootStackParamList } from '@/navigation/types';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useComments } from '@/hooks/useComments';
 
 type PostFeedCardProps = {
   society: FeedSociety;
@@ -46,7 +44,7 @@ export const PostFeedCard = ({
   likedByMe = false
 }: PostFeedCardProps) => {
   const theme = useAppTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { openComments } = useComments();
   const content = (body?.trim() || preview || '').trim();
   const isClamped = content.length > 180;
 
@@ -82,7 +80,7 @@ export const PostFeedCard = ({
           likeCount={likeCount}
           commentCount={commentCount}
           likedByMe={likedByMe}
-          onOpenComments={() => navigation.navigate('Comments', { announcementId: postId })}
+          onOpenComments={() => openComments(postId)}
         />
       ) : null}
     </Card>
