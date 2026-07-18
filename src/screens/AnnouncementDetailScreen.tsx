@@ -1,16 +1,14 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Avatar } from '@/components/Avatar';
 import { BadgeChip } from '@/components/BadgeChip';
 import { categoryChipVariant, formatRelativeTime } from '@/components/AnnouncementCard';
 import { Card } from '@/components/Card';
 import { CommentRow } from '@/components/CommentRow';
-import { InputField } from '@/components/InputField';
 import { PostActionBar } from '@/components/PostActionBar';
-import { PrimaryButton } from '@/components/PrimaryButton';
 import { TopNavBar } from '@/components/TopNavBar';
-import { useToast } from '@/components/Toast';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { RootStackParamList } from '@/navigation/types';
@@ -19,21 +17,18 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useComments } from '@/hooks/useComments';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { addComment, ApiComment, fetchAnnouncementDetail, fetchComments } from '@/services/api';
+import { ApiComment, fetchAnnouncementDetail, fetchComments } from '@/services/api';
 
 export const AnnouncementDetailScreen = () => {
   const theme = useAppTheme();
   const { openComments } = useComments();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'AnnouncementDetail'>>();
-  const toast = useToast();
-  const { announcements, currentUserId } = useLocalAppState();
+  const { announcements, currentUserId, profile } = useLocalAppState();
   const { adminSocieties } = useUserRoles();
   const [remoteBody, setRemoteBody] = React.useState<string | null>(null);
   const [remoteAuthor, setRemoteAuthor] = React.useState<string | null>(null);
   const [comments, setComments] = React.useState<ApiComment[]>([]);
-  const [draft, setDraft] = React.useState('');
-  const [sending, setSending] = React.useState(false);
   const announcement = announcements.find((entry) => entry.id === route.params?.announcementId) ?? announcements[0];
   const announcementId = route.params?.announcementId ?? announcement?.id ?? '';
 
@@ -73,23 +68,6 @@ export const AnnouncementDetailScreen = () => {
       active = false;
     };
   }, [announcementId]);
-
-  const onSendComment = async () => {
-    const bodyText = draft.trim();
-    if (!bodyText || sending) {
-      return;
-    }
-    setSending(true);
-    try {
-      const created = await addComment(announcementId, bodyText);
-      setComments((prev: ApiComment[]) => [...prev, created]);
-      setDraft('');
-    } catch {
-      toast.show('Could not post your comment', 'error');
-    } finally {
-      setSending(false);
-    }
-  };
 
   if (!announcement) {
     return (
@@ -184,25 +162,20 @@ export const AnnouncementDetailScreen = () => {
             </Text>
           ) : null}
 
-          <View style={styles.composerRow}>
-            <View style={styles.composerInput}>
-              <InputField
-                placeholder="Add a comment…"
-                value={draft}
-                onChangeText={setDraft}
-                autoCapitalize="sentences"
-                multiline
-              />
+          <Pressable
+            onPress={() => openComments(announcementId)}
+            style={({ pressed }) => [styles.composerPill, { opacity: pressed ? 0.85 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Add a comment"
+          >
+            <Avatar name={profile.fullName || 'You'} url={profile.avatarUrl} size={28} />
+            <View style={[styles.composerPillInput, { backgroundColor: theme.colors.surfaceSunken, borderColor: theme.colors.border }]}>
+              <Text style={[theme.typography.body, { color: theme.colors.textTertiary }]} numberOfLines={1}>
+                Add a comment…
+              </Text>
+              <MaterialIcons name="send" size={18} color={theme.colors.textTertiary} />
             </View>
-            <PrimaryButton
-              label="Send"
-              size="md"
-              icon="send"
-              onPress={onSendComment}
-              loading={sending}
-              disabled={draft.trim().length === 0}
-            />
-          </View>
+          </Pressable>
         </View>
       </ScrollView>
     </ScreenLayout>
@@ -247,13 +220,21 @@ const styles = StyleSheet.create({
   viewAll: {
     marginTop: 2
   },
-  composerRow: {
+  composerPill: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: 10,
     marginTop: 4
   },
-  composerInput: {
-    flex: 1
+  composerPillInput: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderRadius: 100
   }
 });

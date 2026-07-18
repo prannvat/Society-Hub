@@ -23,6 +23,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import { useToast } from '@/components/Toast';
 import { addComment, ApiComment, deleteComment, fetchComments } from '@/services/api/announcements';
+import { fetchMemberships } from '@/services/api/memberships';
 import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
@@ -34,9 +35,18 @@ type CommentsSheetProps = {
   onClose: () => void;
 };
 
+type ReplyTarget = { rootId: string; name: string };
+type MentionMember = { id: string; fullName: string; avatarUrl?: string | null };
+type Thread = { comment: ApiComment; replies: ApiComment[] };
+
+// Matches a trailing `@query` the user is actively typing (no space yet), which
+// drives the mention autocomplete. Empty query (just typed `@`) still matches.
+const MENTION_QUERY_RE = /@([A-Za-z]*)$/;
+
 /**
  * Instagram-style comments: a draggable bottom sheet. Opens at ~half height and
  * can be pulled up to full (or flicked down to dismiss), with a pill composer.
+ * Supports one level of threaded replies and @mention autocomplete.
  */
 export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsSheetProps) => {
   const theme = useAppTheme();
@@ -54,6 +64,7 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
   const topAnim = React.useRef(new Animated.Value(CLOSED_TOP)).current;
   const currentTop = React.useRef(CLOSED_TOP);
   const gestureStartTop = React.useRef(CLOSED_TOP);
+  const inputRef = React.useRef<TextInput>(null);
 
   const animateTo = React.useCallback(
     (to: number) => {
@@ -96,6 +107,8 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
   const [loading, setLoading] = React.useState(true);
   const [draft, setDraft] = React.useState('');
   const [sending, setSending] = React.useState(false);
+  const [replyTarget, setReplyTarget] = React.useState<ReplyTarget | null>(null);
+  const [members, setMembers] = React.useState<MentionMember[]>([]);
 
   const societyId = announcements.find((a) => a.id === announcementId)?.societyId ?? null;
   const canModerate = societyId
@@ -114,6 +127,7 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
     let active = true;
     setLoading(true);
     setDraft('');
+    setReplyTarget(null);
     (async () => {
       try {
         const result = await fetchComments(announcementId);
@@ -130,14 +144,82 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, announcementId]);
 
+  // Load society members once per open, purely to power @mention autocomplete.
+  // Missing societyId or a failed fetch degrades silently — replies + highlight
+  // still work, typing `@` just stays plain text.
+  React.useEffect(() => {
+    if (!visible || !societyId) {
+      setMembers([]);
+      return;
+    }
+    let active = true;
+    (async () => {
+      try {
+        const result = await fetchMemberships(societyId);
+        if (!active) return;
+        setMembers(
+          result
+            .map((m) => m.user)
+            .filter((u): u is NonNullable<typeof u> => Boolean(u))
+            .map((u) => ({ id: u.id, fullName: u.fullName, avatarUrl: u.avatarUrl })),
+        );
+      } catch {
+        if (active) setMembers([]);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, societyId]);
+
+  // Group the flat list into top-level comments + their replies, preserving the
+  // API's createdAt order (new comments are appended, so array order is stable).
+  const threads = React.useMemo<Thread[]>(() => {
+    const repliesByRoot = new Map<string, ApiComment[]>();
+    for (const c of comments) {
+      if (c.parentId) {
+        const arr = repliesByRoot.get(c.parentId) ?? [];
+        arr.push(c);
+        repliesByRoot.set(c.parentId, arr);
+      }
+    }
+    return comments
+      .filter((c) => !c.parentId)
+      .map((comment) => ({ comment, replies: repliesByRoot.get(comment.id) ?? [] }));
+  }, [comments]);
+
+  // Active `@query` at the end of the draft → matching members (max 5).
+  const mentionMatches = React.useMemo<MentionMember[]>(() => {
+    if (members.length === 0) return [];
+    const match = MENTION_QUERY_RE.exec(draft);
+    if (!match) return [];
+    const query = match[1].toLowerCase();
+    return members.filter((m) => (query ? m.fullName.toLowerCase().includes(query) : true)).slice(0, 5);
+  }, [draft, members]);
+
+  const startReply = (rootId: string, name: string) => {
+    setReplyTarget({ rootId, name });
+    setDraft(`@${name} `);
+    animateTo(FULL_TOP);
+    // Focus after the sheet begins expanding so the keyboard rises into view.
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const applyMention = (member: MentionMember) => {
+    setDraft((prev) => prev.replace(MENTION_QUERY_RE, `@${member.fullName} `));
+    inputRef.current?.focus();
+  };
+
   const onSend = async () => {
     const body = draft.trim();
     if (!body || sending || !announcementId) return;
     setSending(true);
     try {
-      const created = await addComment(announcementId, body);
+      const created = await addComment(announcementId, body, replyTarget?.rootId);
       setComments((prev) => [...prev, created]);
       setDraft('');
+      setReplyTarget(null);
     } catch {
       toast.show('Could not post your comment', 'error');
     } finally {
@@ -208,7 +290,7 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
                   </View>
                 ))}
               </View>
-            ) : comments.length === 0 ? (
+            ) : threads.length === 0 ? (
               <View style={styles.emptyWrap}>
                 <EmptyState
                   icon="chat-bubble-outline"
@@ -218,58 +300,108 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
               </View>
             ) : (
               <FlatList
-                data={comments}
-                keyExtractor={(item) => item.id}
+                data={threads}
+                keyExtractor={(item) => item.comment.id}
                 contentContainerStyle={styles.listContent}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
                 showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => (
-                  <CommentRow
-                    comment={item}
-                    canDelete={item.user.id === currentUserId || canModerate}
-                    onDelete={() => onDelete(item)}
-                  />
+                  <View>
+                    <CommentRow
+                      comment={item.comment}
+                      canDelete={item.comment.user.id === currentUserId || canModerate}
+                      onDelete={() => onDelete(item.comment)}
+                      onReply={() => startReply(item.comment.id, item.comment.user.fullName)}
+                    />
+                    {item.replies.length > 0 ? (
+                      <View style={[styles.replies, { borderLeftColor: theme.colors.border }]}>
+                        {item.replies.map((reply) => (
+                          <CommentRow
+                            key={reply.id}
+                            comment={reply}
+                            isReply
+                            canDelete={reply.user.id === currentUserId || canModerate}
+                            onDelete={() => onDelete(reply)}
+                            onReply={() => startReply(reply.parentId ?? item.comment.id, reply.user.fullName)}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
                 )}
               />
             )}
 
-            {/* Compact pill composer */}
+            {/* Composer stack: autocomplete → reply chip → pill row */}
             <View
               style={[
                 styles.composer,
                 { borderTopColor: theme.colors.border, backgroundColor: theme.colors.surfaceElevated, paddingBottom: Math.max(insets.bottom, 10) },
               ]}
             >
-              <Avatar name={profile.fullName || 'You'} url={profile.avatarUrl} size={32} />
-              <View style={[styles.pill, { backgroundColor: theme.colors.surfaceSunken, borderColor: theme.colors.border, borderRadius: theme.radius.pill }]}>
-                <TextInput
-                  style={[styles.input, { color: theme.colors.textPrimary }]}
-                  placeholder="Add a comment…"
-                  placeholderTextColor={theme.colors.textTertiary}
-                  value={draft}
-                  onChangeText={setDraft}
-                  autoCapitalize="sentences"
-                  multiline
-                  onFocus={() => animateTo(FULL_TOP)}
-                  onSubmitEditing={onSend}
-                  returnKeyType="send"
-                />
+              {mentionMatches.length > 0 ? (
+                <View style={[styles.mentionList, { backgroundColor: theme.colors.surfaceSunken, borderColor: theme.colors.border, borderRadius: theme.radius.lg }]}>
+                  {mentionMatches.map((member) => (
+                    <Pressable
+                      key={member.id}
+                      onPress={() => applyMention(member)}
+                      style={({ pressed }) => [styles.mentionItem, { opacity: pressed ? 0.6 : 1 }]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Mention ${member.fullName}`}
+                    >
+                      <Avatar name={member.fullName} url={member.avatarUrl ?? undefined} size={28} />
+                      <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                        {member.fullName}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+
+              {replyTarget ? (
+                <View style={[styles.replyChip, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radius.pill }]}>
+                  <Text style={[theme.typography.caption, styles.replyChipText, { color: theme.colors.primary }]} numberOfLines={1}>
+                    Replying to @{replyTarget.name}
+                  </Text>
+                  <Pressable onPress={() => setReplyTarget(null)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Cancel reply">
+                    <MaterialIcons name="close" size={16} color={theme.colors.primary} />
+                  </Pressable>
+                </View>
+              ) : null}
+
+              <View style={styles.composerRow}>
+                <Avatar name={profile.fullName || 'You'} url={profile.avatarUrl} size={32} />
+                <View style={[styles.pill, { backgroundColor: theme.colors.surfaceSunken, borderColor: theme.colors.border, borderRadius: theme.radius.pill }]}>
+                  <TextInput
+                    ref={inputRef}
+                    style={[styles.input, { color: theme.colors.textPrimary }]}
+                    placeholder="Add a comment…"
+                    placeholderTextColor={theme.colors.textTertiary}
+                    value={draft}
+                    onChangeText={setDraft}
+                    autoCapitalize="sentences"
+                    multiline
+                    onFocus={() => animateTo(FULL_TOP)}
+                    onSubmitEditing={onSend}
+                    returnKeyType="send"
+                  />
+                </View>
+                <Pressable
+                  onPress={onSend}
+                  disabled={!canSend}
+                  hitSlop={8}
+                  style={[styles.send, { backgroundColor: canSend ? theme.colors.primary : theme.colors.surfaceSunken, opacity: canSend ? 1 : 0.6 }]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Post comment"
+                >
+                  {sending ? (
+                    <ActivityIndicator size="small" color={theme.colors.textOnPrimary} />
+                  ) : (
+                    <MaterialIcons name="arrow-upward" size={20} color={canSend ? theme.colors.textOnPrimary : theme.colors.textTertiary} />
+                  )}
+                </Pressable>
               </View>
-              <Pressable
-                onPress={onSend}
-                disabled={!canSend}
-                hitSlop={8}
-                style={[styles.send, { backgroundColor: canSend ? theme.colors.primary : theme.colors.surfaceSunken, opacity: canSend ? 1 : 0.6 }]}
-                accessibilityRole="button"
-                accessibilityLabel="Post comment"
-              >
-                {sending ? (
-                  <ActivityIndicator size="small" color={theme.colors.textOnPrimary} />
-                ) : (
-                  <MaterialIcons name="arrow-upward" size={20} color={canSend ? theme.colors.textOnPrimary : theme.colors.textTertiary} />
-                )}
-              </Pressable>
             </View>
           </KeyboardAvoidingView>
         </Animated.View>
@@ -291,14 +423,32 @@ const styles = StyleSheet.create({
   emptyWrap: { flex: 1, justifyContent: 'center' },
   skeletonRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: 10 },
   skeletonBody: { flex: 1, gap: 8, paddingTop: 4 },
+  replies: { marginLeft: 18, paddingLeft: spacing.md, borderLeftWidth: StyleSheet.hairlineWidth },
   composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
+    gap: spacing.sm,
   },
+  composerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  mentionList: { borderWidth: 1, overflow: 'hidden' },
+  mentionItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: 12, paddingVertical: 8, minHeight: 44 },
+  replyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    paddingLeft: 12,
+    paddingRight: 8,
+    paddingVertical: 6,
+  },
+  replyChipText: { flexShrink: 1 },
   pill: { flex: 1, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center', minHeight: 40, maxHeight: 120 },
   input: { ...Platform.select({ ios: { paddingTop: 10, paddingBottom: 10 }, default: {} }), fontSize: 15, maxHeight: 100 },
   send: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
