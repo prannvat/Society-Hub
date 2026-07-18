@@ -27,6 +27,7 @@ export type ApiComment = {
   id: string;
   announcementId: string;
   body: string;
+  parentId?: string | null;
   createdAt: string;
   user: {
     id: string;
@@ -76,10 +77,10 @@ export async function fetchComments(announcementId: string) {
   return apiRequest<ApiComment[]>(`/announcements/${encodeURIComponent(announcementId)}/comments`);
 }
 
-export async function addComment(announcementId: string, body: string) {
+export async function addComment(announcementId: string, body: string, parentId?: string) {
   return apiRequest<ApiComment>(`/announcements/${encodeURIComponent(announcementId)}/comments`, {
     method: 'POST',
-    body: { body },
+    body: parentId ? { body, parentId } : { body },
   });
 }
 
