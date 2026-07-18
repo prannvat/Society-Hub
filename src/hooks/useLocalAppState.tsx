@@ -336,19 +336,23 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
     if (!user) {
       return;
     }
-    setProfile((prev) => ({
-      ...prev,
-      fullName: user.fullName || prev.fullName,
-      email: user.email || prev.email,
-      university: user.university || prev.university,
-      course: user.course || prev.course,
-      year: user.year || prev.year,
-      bio: user.bio || prev.bio,
-      instagramLink: user.instagramLink ?? prev.instagramLink,
-      linkedinLink: user.linkedinLink ?? prev.linkedinLink,
-      avatarUrl: user.avatarUrl ?? prev.avatarUrl,
-      isVerifiedStudent: user.isVerifiedStudent ?? prev.isVerifiedStudent,
-    }));
+    // Seeded wholesale from the authenticated user, never merged with the
+    // previous value: `user` changes on account switch (while isAuthenticated
+    // stays true), so a `prev` fallback would leak the previous account's
+    // bio/course/year into any field the new account leaves blank.
+    setProfile({
+      ...emptyProfile,
+      fullName: user.fullName ?? '',
+      email: user.email ?? '',
+      university: user.university ?? '',
+      course: user.course ?? '',
+      year: user.year ?? '',
+      bio: user.bio ?? '',
+      instagramLink: user.instagramLink ?? undefined,
+      linkedinLink: user.linkedinLink ?? undefined,
+      avatarUrl: user.avatarUrl ?? undefined,
+      isVerifiedStudent: user.isVerifiedStudent ?? undefined,
+    });
   }, [user]);
 
   useEffect(() => {
