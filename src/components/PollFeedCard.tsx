@@ -25,9 +25,11 @@ type DisplayOption = {
 type ResultRowProps = {
   option: DisplayOption;
   selected: boolean;
+  onPress: () => void;
+  disabled: boolean;
 };
 
-const ResultRow = ({ option, selected }: ResultRowProps) => {
+const ResultRow = ({ option, selected, onPress, disabled }: ResultRowProps) => {
   const theme = useAppTheme();
   const anim = useRef(new Animated.Value(0)).current;
   const pct = Math.max(0, Math.min(100, option.percentage));
@@ -40,13 +42,18 @@ const ResultRow = ({ option, selected }: ResultRowProps) => {
   const width = anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', `${pct}%`] });
 
   return (
-    <View
-      style={[
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      style={({ pressed }) => [
         styles.resultRow,
         {
           borderRadius: theme.radius.card,
           backgroundColor: theme.colors.surfaceSunken,
-          borderColor: selected ? theme.colors.primary : 'transparent'
+          borderColor: selected ? theme.colors.primary : 'transparent',
+          opacity: pressed ? 0.9 : 1
         }
       ]}
     >
@@ -71,7 +78,7 @@ const ResultRow = ({ option, selected }: ResultRowProps) => {
         </View>
         <Text style={[theme.typography.captionMedium, { color: theme.colors.textSecondary }]}>{pct}%</Text>
       </View>
-    </View>
+    </Pressable>
   );
 };
 
@@ -80,34 +87,40 @@ export const PollFeedCard = ({ society, createdAtIso, poll, onOpenSociety, onVot
   const [optimisticVote, setOptimisticVote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const selectedOptionId = optimisticVote ?? poll.currentUserVote;
+  const serverVote = poll.currentUserVote;
+  const selectedOptionId = optimisticVote ?? serverVote;
   const hasVoted = selectedOptionId != null;
 
-  // When we have an optimistic vote the server hasn't confirmed yet, project the
-  // new tallies locally so results animate in immediately.
+  // Project tallies locally for an unconfirmed vote — whether it's a first vote
+  // or a change from a previous option — so results update immediately.
   const { options, totalVotes } = useMemo<{ options: DisplayOption[]; totalVotes: number }>(() => {
-    const projecting = optimisticVote != null && poll.currentUserVote == null;
-    if (!projecting) {
+    if (optimisticVote == null || optimisticVote === serverVote) {
       return { options: poll.options, totalVotes: poll.totalVotes };
     }
-    const total = poll.totalVotes + 1;
+    const isNewVote = serverVote == null;
+    const total = isNewVote ? poll.totalVotes + 1 : poll.totalVotes;
     const options = poll.options.map((option) => {
-      const count = option.count + (option.id === optimisticVote ? 1 : 0);
+      let count = option.count;
+      if (option.id === optimisticVote) count += 1; // gained the vote
+      if (option.id === serverVote) count -= 1; // moved away from the old option
+      count = Math.max(0, count);
       return { id: option.id, label: option.label, count, percentage: total > 0 ? Math.round((count / total) * 100) : 0 };
     });
     return { options, totalVotes: total };
-  }, [poll, optimisticVote]);
+  }, [poll, optimisticVote, serverVote]);
 
   const handleVote = async (optionId: string) => {
-    if (busy || hasVoted) {
+    // Allow changing the vote; only ignore taps on the current option or while busy.
+    if (busy || optionId === selectedOptionId) {
       return;
     }
+    const previous = optimisticVote;
     setOptimisticVote(optionId);
     setBusy(true);
     try {
       await onVote(optionId);
     } catch {
-      setOptimisticVote(null);
+      setOptimisticVote(previous);
     } finally {
       setBusy(false);
     }
@@ -127,7 +140,13 @@ export const PollFeedCard = ({ society, createdAtIso, poll, onOpenSociety, onVot
       <View style={styles.options}>
         {hasVoted
           ? options.map((option) => (
-              <ResultRow key={option.id} option={option} selected={option.id === selectedOptionId} />
+              <ResultRow
+                key={option.id}
+                option={option}
+                selected={option.id === selectedOptionId}
+                onPress={() => handleVote(option.id)}
+                disabled={busy}
+              />
             ))
           : options.map((option) => (
               <Pressable
@@ -154,7 +173,7 @@ export const PollFeedCard = ({ society, createdAtIso, poll, onOpenSociety, onVot
 
       <Text style={[theme.typography.caption, styles.tally, { color: theme.colors.textTertiary }]}>
         {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
-        {hasVoted ? '' : ' · Tap an option to vote'}
+        {hasVoted ? ' · Tap another option to change your vote' : ' · Tap an option to vote'}
       </Text>
     </Card>
   );
