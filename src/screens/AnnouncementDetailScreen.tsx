@@ -41,7 +41,9 @@ export const AnnouncementDetailScreen = () => {
       try {
         const detail = await fetchAnnouncementDetail(announcementId);
         setRemoteBody(detail.body ?? null);
-        setRemoteAuthor(detail.createdBy?.fullName ?? null);
+        // Posts are published by the society (a shared account), so we never
+        // surface the individual committee member who wrote them.
+        setRemoteAuthor(null);
       } catch {
         setRemoteBody(null);
         setRemoteAuthor(null);

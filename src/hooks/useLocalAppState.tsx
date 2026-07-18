@@ -171,13 +171,18 @@ const mapApiPolls = (polls: ApiPollItem[], currentUserId: string): PollItem[] =>
     };
   });
 
-const mapApiAnnouncement = (announcement: ApiAnnouncement): AnnouncementItem => ({
+/**
+ * Posts belong to the SOCIETY, not the committee member who happened to write
+ * them — a society is a shared account (like an Instagram page), so every
+ * surface attributes content to the society name.
+ */
+const mapApiAnnouncement = (announcement: ApiAnnouncement, societyName?: string): AnnouncementItem => ({
   id: announcement.id,
   title: announcement.title,
   preview: announcement.preview,
   body: announcement.body ?? undefined,
   category: mapAnnouncementCategory(announcement.category),
-  authorName: announcement.createdBy?.fullName ?? 'Committee',
+  authorName: societyName ?? 'Society',
   timestamp: announcement.createdAt,
   readCount: 0,
   likeCount: announcement.likeCount ?? 0,
@@ -314,7 +319,9 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       setEvents(apiEvents.map(mapApiEvent));
       setRsvpedEventIds(apiEvents.filter((entry) => entry.isRsvpedByCurrentUser).map((entry) => entry.id));
       setPolls(mapApiPolls(apiPolls, actorUserId));
-      setAnnouncements(apiAnnouncements.map(mapApiAnnouncement));
+      // Attribute posts to the society (shared account), not the individual poster.
+      const societyName = allSocieties.find((s) => s.id === societyId)?.name;
+      setAnnouncements(apiAnnouncements.map((a) => mapApiAnnouncement(a, societyName)));
       setMembershipsBySocietyId((prev) => ({ ...prev, [societyId]: memberships }));
       const roles = memberships.reduce<Record<string, MemberRole>>((acc, membership) => {
         acc[membership.userId] = mapRole(membership.role);
@@ -322,7 +329,7 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       }, {});
       setMemberRolesBySocietyId((prev) => ({ ...prev, [societyId]: roles }));
     } catch {}
-  }, [actorUserId]);
+  }, [actorUserId, allSocieties]);
 
   // Seed the local profile from the authenticated user; clear all per-user state on logout.
   useEffect(() => {
