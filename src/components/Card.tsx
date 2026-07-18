@@ -9,17 +9,19 @@ type CardProps = {
   onPress?: () => void;
 };
 
-export const Card = ({ children, style, padding = 16, onPress }: CardProps) => {
+// Instagram-flat: content sits on the surface with a hairline, no shadow and
+// only a small radius. It reads as a grouped section, not a raised card. Screens
+// that want a truly borderless row can pass a style overriding borderWidth: 0.
+export const Card = ({ children, style, padding = 14, onPress }: CardProps) => {
   const theme = useAppTheme();
 
   const baseStyle: StyleProp<ViewStyle> = [
     styles.card,
-    theme.elevation.e1,
     {
       padding,
-      borderRadius: theme.radius.lg,
+      borderRadius: theme.radius.card,
       backgroundColor: theme.colors.surface,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border
     },
     style
@@ -30,10 +32,7 @@ export const Card = ({ children, style, padding = 16, onPress }: CardProps) => {
       <Pressable
         onPress={onPress}
         android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: false }}
-        style={({ pressed }) => [
-          ...baseStyle,
-          { opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.99 : 1 }] }
-        ]}
+        style={({ pressed }) => [...baseStyle, { opacity: pressed ? 0.65 : 1 }]}
       >
         {children}
       </Pressable>

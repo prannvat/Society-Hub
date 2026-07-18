@@ -56,7 +56,7 @@ export const PrimaryButton = ({
     danger: {
       background: theme.colors.danger,
       pressed: theme.colors.danger,
-      label: theme.mode === 'dark' ? '#2B0A0A' : '#FFFFFF'
+      label: '#FFFFFF'
     }
   }[variant];
 
@@ -69,9 +69,8 @@ export const PrimaryButton = ({
           minHeight: dims.minHeight,
           paddingHorizontal: dims.paddingHorizontal,
           backgroundColor: pressed && !inert ? palette.pressed : palette.background,
-          borderRadius: theme.radius.pill,
-          opacity: disabled ? 0.45 : pressed && !inert && variant !== 'primary' ? 0.85 : 1,
-          transform: [{ scale: pressed && !inert ? 0.98 : 1 }]
+          borderRadius: theme.radius.input,
+          opacity: disabled ? 0.45 : pressed && !inert && variant !== 'primary' ? 0.7 : 1
         },
         style
       ]}
@@ -107,7 +106,7 @@ const styles = StyleSheet.create({
     gap: 8
   },
   text: {
-    fontWeight: '700',
+    fontWeight: '600',
     includeFontPadding: false
   }
 });

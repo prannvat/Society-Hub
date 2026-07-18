@@ -9,13 +9,15 @@ import type { AppTheme } from '@/config/theme';
  */
 export const getTabNavigatorOptions = (theme: AppTheme): BottomTabNavigationOptions => ({
   headerShown: false,
-  tabBarShowLabel: true,
-  tabBarActiveTintColor: theme.colors.primary,
+  // Instagram tab bar: icon-only, and the active icon is black (textPrimary),
+  // not a colour — the accent blue is reserved for actions, never navigation.
+  tabBarShowLabel: false,
+  tabBarActiveTintColor: theme.colors.textPrimary,
   tabBarInactiveTintColor: theme.colors.textTertiary,
   tabBarStyle: {
-    height: Platform.OS === 'ios' ? 84 : 68,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
-    paddingTop: 8,
+    height: Platform.OS === 'ios' ? 82 : 60,
+    paddingBottom: Platform.OS === 'ios' ? 26 : 8,
+    paddingTop: 10,
     backgroundColor: theme.colors.tabBarBackground,
     borderTopColor: theme.colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -23,11 +25,6 @@ export const getTabNavigatorOptions = (theme: AppTheme): BottomTabNavigationOpti
     shadowOpacity: 0
   },
   tabBarItemStyle: {
-    paddingVertical: 2
-  },
-  tabBarLabelStyle: {
-    ...theme.typography.captionMedium,
-    fontSize: 11,
-    lineHeight: 14
+    paddingVertical: 0
   }
 });

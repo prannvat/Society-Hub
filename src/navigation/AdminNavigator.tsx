@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from '@/components/Avatar';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useAccountSwitcher } from '@/hooks/useAccountSwitcher';
@@ -92,15 +92,20 @@ export const AdminNavigator = () => {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           ...getTabNavigatorOptions(theme),
-          tabBarActiveTintColor: brand,
-          tabBarIcon: ({ color, size }) => {
-            const iconNameMap: Record<keyof AdminTabParamList, keyof typeof MaterialIcons.glyphMap> = {
-              SocietyHome: 'home',
-              Insights: 'insights',
-              Members: 'groups',
-              SocietyAccount: 'account-circle',
+          tabBarIcon: ({ color, size, focused }) => {
+            const iconNameMap: Record<
+              keyof AdminTabParamList,
+              [keyof typeof MaterialCommunityIcons.glyphMap, keyof typeof MaterialCommunityIcons.glyphMap]
+            > = {
+              SocietyHome: ['home-outline', 'home'],
+              Insights: ['chart-line', 'chart-line'],
+              Members: ['account-group-outline', 'account-group'],
+              SocietyAccount: ['account-circle-outline', 'account-circle'],
             };
-            return <MaterialIcons name={iconNameMap[route.name]} size={size ?? 22} color={color} />;
+            const [outline, filled] = iconNameMap[route.name];
+            return (
+              <MaterialCommunityIcons name={focused ? filled : outline} size={size ?? 26} color={color} />
+            );
           },
         })}
       >

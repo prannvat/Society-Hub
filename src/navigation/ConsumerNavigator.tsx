@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAccountSwitcher } from '@/hooks/useAccountSwitcher';
 import { getTabNavigatorOptions } from './tabOptions';
@@ -27,15 +27,22 @@ export const ConsumerNavigator = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         ...getTabNavigatorOptions(theme),
-        tabBarIcon: ({ color, size }) => {
-          const iconNameMap: Record<keyof ConsumerTabParamList, keyof typeof MaterialIcons.glyphMap> = {
-            Home: 'home',
-            Explore: 'explore',
-            Events: 'event',
-            Profile: 'person'
+        // Instagram-style: outline when inactive, filled when the tab is active.
+        tabBarIcon: ({ color, size, focused }) => {
+          const iconNameMap: Record<
+            keyof ConsumerTabParamList,
+            [keyof typeof MaterialCommunityIcons.glyphMap, keyof typeof MaterialCommunityIcons.glyphMap]
+          > = {
+            Home: ['home-outline', 'home'],
+            Explore: ['compass-outline', 'compass'],
+            Events: ['calendar-blank-outline', 'calendar-blank'],
+            Profile: ['account-outline', 'account']
           };
 
-          return <MaterialIcons name={iconNameMap[route.name]} size={size ?? 22} color={color} />;
+          const [outline, filled] = iconNameMap[route.name];
+          return (
+            <MaterialCommunityIcons name={focused ? filled : outline} size={size ?? 26} color={color} />
+          );
         }
       })}
     >
