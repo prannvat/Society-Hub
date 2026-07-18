@@ -154,8 +154,8 @@ export const FeedScreen = () => {
           {storyRow}
           <EmptyState
             icon="dynamic-feed"
-            title="Your feed is quiet"
-            subtitle="Follow societies to see their posts, events, and polls here."
+            title="Your campus feed"
+            subtitle="Posts, events, and polls from societies you join — like, comment, RSVP and vote to get involved."
             actionLabel="Explore societies"
             onAction={() => navigation.navigate('MainTabs', { screen: 'Explore' })}
           />

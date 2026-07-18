@@ -64,13 +64,15 @@ export const UnionDashboardScreen = () => {
   const renderAttentionCard = ({
     icon,
     title,
-    totalLabel,
+    pendingLabel,
+    clearedLabel,
     pending,
     onPress
   }: {
     icon: keyof typeof MaterialIcons.glyphMap;
     title: string;
-    totalLabel: string;
+    pendingLabel: string;
+    clearedLabel: string;
     pending: number;
     onPress: () => void;
   }) => (
@@ -89,7 +91,9 @@ export const UnionDashboardScreen = () => {
         </View>
         <View style={styles.attentionText}>
           <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]}>{title}</Text>
-          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{totalLabel}</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+            {pending > 0 ? pendingLabel : clearedLabel}
+          </Text>
         </View>
         {pending > 0 ? <BadgeChip label={`${pending} pending`} variant="warning" /> : null}
         <MaterialIcons name="chevron-right" size={22} color={theme.colors.textTertiary} />
@@ -113,6 +117,15 @@ export const UnionDashboardScreen = () => {
           subtitle={selectedUniversity?.universityName ?? 'University'}
           accessory={<RoleSwitcher compact showModeText={false} />}
         />
+
+        <Card style={{ borderColor: theme.colors.warningSoft }}>
+          <View style={styles.introRow}>
+            <MaterialIcons name="account-balance" size={18} color={theme.colors.warning} />
+            <Text style={[theme.typography.caption, styles.introText, { color: theme.colors.textSecondary }]}>
+              Approve new societies and committee roles, feature societies across campus, and see university-wide engagement.
+            </Text>
+          </View>
+        </Card>
 
         {isLoading ? (
           <LoadingState />
@@ -151,19 +164,21 @@ export const UnionDashboardScreen = () => {
 
             {/* Approvals */}
             <View style={styles.section}>
-              <SectionHeader title="Needs attention" />
+              <SectionHeader title="Needs your review" />
               <View style={styles.attentionList}>
                 {renderAttentionCard({
                   icon: 'groups',
-                  title: 'Societies',
-                  totalLabel: `${analytics.societies.total} total`,
+                  title: 'Approve new societies',
+                  pendingLabel: 'Societies students want to start — tap to review',
+                  clearedLabel: 'No societies awaiting approval',
                   pending: analytics.societies.pending,
                   onPress: () => navigation.navigate('Societies')
                 })}
                 {renderAttentionCard({
                   icon: 'approval',
-                  title: 'Committee requests',
-                  totalLabel: `${analytics.committeeRequests.total} total`,
+                  title: 'Approve committee roles',
+                  pendingLabel: 'Committee role requests — tap to review',
+                  clearedLabel: 'No committee requests awaiting approval',
                   pending: analytics.committeeRequests.pending,
                   onPress: () => navigation.navigate('Requests')
                 })}
@@ -188,6 +203,14 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: 12
+  },
+  introRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10
+  },
+  introText: {
+    flex: 1
   },
   statsGrid: {
     flexDirection: 'row',

@@ -176,6 +176,10 @@ export const CommitteeRequestsScreen = () => {
       >
         <TopNavBar gutter={false} title="Committee Requests" subtitle={selectedUniversity?.universityName} />
 
+        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+          Approve the committee roles students request to run their societies.
+        </Text>
+
         {/* Stats overview */}
         {requestStats && (
           <View style={styles.statsGrid}>
@@ -233,7 +237,7 @@ export const CommitteeRequestsScreen = () => {
             <EmptyState
               icon="inbox"
               title="No requests found"
-              subtitle={searchQuery ? 'Try adjusting your search terms.' : 'All committee requests will appear here.'}
+              subtitle={searchQuery ? 'Try adjusting your search terms.' : 'No committee role requests yet — student requests will appear here for your review.'}
               actionLabel={searchQuery ? 'Clear search' : undefined}
               onAction={searchQuery ? () => setSearchQuery('') : undefined}
             />

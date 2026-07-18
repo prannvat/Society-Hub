@@ -179,6 +179,10 @@ export const UnionSocietiesScreen = () => {
       >
         <TopNavBar gutter={false} title="Societies" subtitle={selectedUniversity?.universityName} />
 
+        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+          Review and approve societies students want to start. Featured societies appear at the top of Explore.
+        </Text>
+
         {/* Status filter */}
         <FilterChips
           items={FILTERS.map((filter) => filter.label)}
@@ -203,7 +207,7 @@ export const UnionSocietiesScreen = () => {
               title={`No ${statusFilter.toLowerCase()} societies`}
               subtitle={
                 statusFilter === 'PENDING'
-                  ? 'New society registrations awaiting review will appear here.'
+                  ? 'No societies awaiting approval — new requests from students will appear here.'
                   : `Societies you have ${statusFilter.toLowerCase()} will appear here.`
               }
             />

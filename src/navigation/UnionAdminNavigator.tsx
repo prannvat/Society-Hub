@@ -1,8 +1,9 @@
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { RoleSwitcher } from '@/components/RoleSwitcher';
 import { getTabNavigatorOptions } from './tabOptions';
 import { ProfileScreen } from '@/screens/ProfileScreen';
@@ -21,6 +22,33 @@ export type UnionAdminTabParamList = {
 
 const Tab = createBottomTabNavigator<UnionAdminTabParamList>();
 
+/**
+ * Identity bar: names the console so it's unmistakable this is the students' union's
+ * university-wide oversight tool — not a personal or single-society surface. The warning
+ * tint mirrors the mode banner and distinguishes it from student/society brand colours.
+ */
+const UnionIdentityBar = () => {
+  const theme = useAppTheme();
+  const { unionAdminRelationships, selectedUniversityId } = useUserRoles();
+  const university = unionAdminRelationships.find((entry) => entry.universityId === selectedUniversityId);
+
+  return (
+    <View style={[styles.identityBar, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
+      <View style={[styles.identityIcon, { backgroundColor: theme.colors.warningSoft }]}>
+        <MaterialIcons name="account-balance" size={22} color={theme.colors.warning} />
+      </View>
+      <View style={styles.identityText}>
+        <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+          {`${university?.universityName ?? 'University'} · Students’ Union`}
+        </Text>
+        <Text style={[theme.typography.micro, { color: theme.colors.warning }]} numberOfLines={1}>
+          Union admin console
+        </Text>
+      </View>
+    </View>
+  );
+};
+
 export const UnionAdminNavigator = () => {
   const theme = useAppTheme();
 
@@ -28,6 +56,7 @@ export const UnionAdminNavigator = () => {
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {/* Persistent mode banner — the user should always know they are in union-admin mode. */}
       <RoleSwitcher variant="banner" />
+      <UnionIdentityBar />
       <Tab.Navigator
         screenOptions={({ route }) => ({
           ...getTabNavigatorOptions(theme),
@@ -73,3 +102,26 @@ export const UnionAdminNavigator = () => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  identityBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    minHeight: 56,
+    borderBottomWidth: StyleSheet.hairlineWidth
+  },
+  identityIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  identityText: {
+    flex: 1,
+    gap: 1
+  }
+});

@@ -249,6 +249,10 @@ export const UnionSettingsScreen = () => {
         >
           <TopNavBar gutter={false} title="Settings" subtitle={selectedUniversity?.universityName} />
 
+          <Text style={[theme.typography.caption, styles.intro, { color: theme.colors.textSecondary }]}>
+            Set university-wide rules for how students join and create societies.
+          </Text>
+
           {isLoading ? (
             <LoadingState />
           ) : errorMessage || !draft ? (
@@ -348,6 +352,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 24
+  },
+  intro: {
+    marginTop: 12
   },
   sections: {
     marginTop: 16,
