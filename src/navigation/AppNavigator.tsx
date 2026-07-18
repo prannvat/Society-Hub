@@ -10,7 +10,6 @@ import { RootStackParamList } from './types';
 import { ConsumerNavigator } from './ConsumerNavigator';
 // Lazy load admin components for better performance
 const AdminNavigator = React.lazy(() => import('./AdminNavigator').then(module => ({ default: module.AdminNavigator })));
-const UnionAdminNavigator = React.lazy(() => import('./UnionAdminNavigator').then(module => ({ default: module.UnionAdminNavigator })));
 import { SplashScreen } from '@/screens/SplashScreen';
 import { OnboardingScreen } from '@/screens/OnboardingScreen';
 import { LoginScreen } from '@/screens/LoginScreen';
@@ -60,14 +59,6 @@ const MainTabs = () => {
     return (
       <React.Suspense fallback={<NavigatorFallback icon="admin-panel-settings" />}>
         <AdminNavigator />
-      </React.Suspense>
-    );
-  }
-
-  if (currentMode === 'UnionAdmin') {
-    return (
-      <React.Suspense fallback={<NavigatorFallback icon="account-balance" />}>
-        <UnionAdminNavigator />
       </React.Suspense>
     );
   }

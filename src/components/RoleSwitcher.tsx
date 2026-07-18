@@ -28,17 +28,13 @@ export const RoleSwitcher = ({ showModeText = true, compact = false, variant = '
     canSwitchToAdmin,
     adminSocieties,
     selectedAdminSocietyId,
-    setSelectedAdminSocietyId,
-    canSwitchToUnionAdmin,
-    unionAdminRelationships,
-    selectedUniversityId,
-    setSelectedUniversityId
+    setSelectedAdminSocietyId
   } = useUserRoles();
   const [modalVisible, setModalVisible] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
 
   const handleModeSwitch = () => {
-    if (!canSwitchToAdmin && !canSwitchToUnionAdmin) return;
+    if (!canSwitchToAdmin) return;
     setModalVisible(true);
   };
 
@@ -75,22 +71,9 @@ export const RoleSwitcher = ({ showModeText = true, compact = false, variant = '
     }
   };
 
-  const selectUnionAdmin = async (universityId: string) => {
-    if (isSwitching) return;
-    setIsSwitching(true);
-    try {
-      setSelectedUniversityId(universityId);
-      await setCurrentMode('UnionAdmin');
-    } finally {
-      setIsSwitching(false);
-      setModalVisible(false);
-    }
-  };
-
   const selectedSociety = adminSocieties.find(s => s.societyId === selectedAdminSocietyId);
-  const selectedUniversity = unionAdminRelationships.find(u => u.universityId === selectedUniversityId);
 
-  if (!canSwitchToAdmin && !canSwitchToUnionAdmin) {
+  if (!canSwitchToAdmin) {
     return null; // Don't show switcher if user can't switch
   }
 
@@ -227,28 +210,6 @@ export const RoleSwitcher = ({ showModeText = true, compact = false, variant = '
                 )}
               </>
             ) : null}
-
-            {canSwitchToUnionAdmin ? (
-              <>
-                <Text style={[theme.typography.micro, styles.sheetSectionLabel, { color: theme.colors.textTertiary }]}>
-                  Union admin
-                </Text>
-                {unionAdminRelationships.map((university) =>
-                  renderOptionCard({
-                    key: university.universityId,
-                    icon: 'account-balance',
-                    iconColor: theme.colors.warning,
-                    iconBackground: theme.colors.warningSoft,
-                    title: university.universityName,
-                    description: 'Manage committee approvals and university settings',
-                    chipLabel: university.role,
-                    chipVariant: 'warning',
-                    selected: currentMode === 'UnionAdmin' && selectedUniversityId === university.universityId,
-                    onPress: () => selectUnionAdmin(university.universityId)
-                  })
-                )}
-              </>
-            ) : null}
           </ScrollView>
         </View>
       </View>
@@ -256,14 +217,11 @@ export const RoleSwitcher = ({ showModeText = true, compact = false, variant = '
   );
 
   if (variant === 'banner') {
-    const isUnion = currentMode === 'UnionAdmin';
-    const bannerBackground = isUnion ? theme.colors.warningSoft : theme.colors.primarySoft;
-    const bannerTint = isUnion ? theme.colors.warning : theme.colors.primary;
-    const bannerLabel = isUnion
-      ? `Union Admin — ${selectedUniversity?.universityName ?? 'University'}`
-      : currentMode === 'Admin'
-        ? `Managing: ${selectedSociety?.societyName ?? 'Society'}`
-        : 'Student mode';
+    const bannerBackground = theme.colors.primarySoft;
+    const bannerTint = theme.colors.primary;
+    const bannerLabel = currentMode === 'Admin'
+      ? `Managing: ${selectedSociety?.societyName ?? 'Society'}`
+      : 'Student mode';
 
     return (
       <>
@@ -282,11 +240,7 @@ export const RoleSwitcher = ({ showModeText = true, compact = false, variant = '
           ]}
         >
           <View style={styles.bannerRow}>
-            <MaterialIcons
-              name={isUnion ? 'account-balance' : 'admin-panel-settings'}
-              size={16}
-              color={bannerTint}
-            />
+            <MaterialIcons name="admin-panel-settings" size={16} color={bannerTint} />
             <Text style={[theme.typography.captionMedium, styles.bannerLabel, { color: bannerTint }]} numberOfLines={1}>
               {bannerLabel}
             </Text>
@@ -320,25 +274,18 @@ export const RoleSwitcher = ({ showModeText = true, compact = false, variant = '
       >
         <View style={styles.switcherContent}>
           <MaterialIcons
-            name={
-              currentMode === 'Consumer' ? 'person' : currentMode === 'Admin' ? 'admin-panel-settings' : 'account-balance'
-            }
+            name={currentMode === 'Consumer' ? 'person' : 'admin-panel-settings'}
             size={compact ? 16 : 20}
-            color={currentMode === 'UnionAdmin' ? theme.colors.warning : theme.colors.primary}
+            color={theme.colors.primary}
           />
           {showModeText && (
             <View style={styles.modeInfo}>
               <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
-                {currentMode === 'Consumer' ? 'Student' : currentMode === 'Admin' ? 'Society Admin' : 'Union Admin'}
+                {currentMode === 'Consumer' ? 'Student' : 'Society Admin'}
               </Text>
               {currentMode === 'Admin' && selectedSociety && (
                 <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 14 }]} numberOfLines={1}>
                   {selectedSociety.societyName}
-                </Text>
-              )}
-              {currentMode === 'UnionAdmin' && selectedUniversity && (
-                <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 14 }]} numberOfLines={1}>
-                  {selectedUniversity.universityName}
                 </Text>
               )}
             </View>

@@ -23,12 +23,10 @@ export type RequestOptions = {
   body?: unknown;
   requiresAdmin?: boolean;
   societyId?: string;
-  /** Union-admin context: sent as the x-admin-university-id header. */
-  universityId?: string;
 };
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, requiresAdmin, societyId, universityId } = options;
+  const { method = 'GET', body, requiresAdmin, societyId } = options;
   const clientRequestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   const url = `${API_BASE_URL}${path}`;
 
@@ -44,9 +42,6 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   // Add admin context headers if required
   if (requiresAdmin && societyId) {
     headers['x-admin-society-id'] = societyId;
-  }
-  if (universityId) {
-    headers['x-admin-university-id'] = universityId;
   }
 
   if (DEBUG_API) {

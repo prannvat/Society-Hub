@@ -47,11 +47,6 @@ export const ProfileScreen = () => {
   const toast = useToast();
   const {
     adminSocieties,
-    hasUnionAdminAccess,
-    unionAdminRelationships,
-    selectedUniversityId,
-    setSelectedUniversityId,
-    setCurrentMode,
     switchToSociety,
   } = useUserRoles();
   const { user, signOut } = useAuth();
@@ -118,18 +113,6 @@ export const ProfileScreen = () => {
     await Share.share({
       message: `${profile.fullName} is on SocietyHub — member of ${societyCount} ${societyCount === 1 ? 'society' : 'societies'}. Join your university community on SocietyHub!`,
     });
-  };
-
-  const handleEnterUnionConsole = async () => {
-    if (unionAdminRelationships.length === 0) {
-      return;
-    }
-    // Reuse the existing mode-switch mechanism: ensure a university is selected,
-    // then flip into the Union Admin navigator.
-    if (!selectedUniversityId) {
-      setSelectedUniversityId(unionAdminRelationships[0].universityId);
-    }
-    await setCurrentMode('UnionAdmin');
   };
 
   const handleSignOut = () => {
@@ -319,26 +302,6 @@ export const ProfileScreen = () => {
                   />
                 </React.Fragment>
               ))}
-            </Card>
-          </View>
-        ) : null}
-
-        {/* Union console — union admins only */}
-        {hasUnionAdminAccess ? (
-          <View style={styles.section}>
-            <SectionHeader title="Union" />
-            <Card padding={0}>
-              <ListRow
-                title="Union Admin console"
-                subtitle="Approvals, societies, and university settings"
-                leading={
-                  <View style={[styles.consoleIcon, { backgroundColor: theme.colors.warningSoft }]}>
-                    <MaterialIcons name="account-balance" size={22} color={theme.colors.warning} />
-                  </View>
-                }
-                chevron
-                onPress={handleEnterUnionConsole}
-              />
             </Card>
           </View>
         ) : null}

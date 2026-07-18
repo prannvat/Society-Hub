@@ -4,7 +4,7 @@ import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import type { AppTheme } from '@/config/theme';
 
 /**
- * Shared screen options for all bottom tab navigators (consumer, admin, union admin).
+ * Shared screen options for all bottom tab navigators (consumer, society admin).
  * Per-navigator options (like tabBarIcon) are spread on top of this.
  */
 export const getTabNavigatorOptions = (theme: AppTheme): BottomTabNavigationOptions => ({

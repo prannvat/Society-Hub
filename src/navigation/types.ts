@@ -1,12 +1,11 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { ConsumerTabParamList } from './ConsumerNavigator';
 import { AdminTabParamList } from './AdminNavigator';
-import { UnionAdminTabParamList } from './UnionAdminNavigator';
 
-// MainTabs renders one of three tab navigators depending on the current app mode.
-// The intersection makes every tab name across the three navigators addressable
+// MainTabs renders one of two tab navigators depending on the current app mode.
+// The intersection makes every tab name across both navigators addressable
 // via navigation.navigate('MainTabs', { screen: ... }).
-export type MainTabsParamList = ConsumerTabParamList & AdminTabParamList & UnionAdminTabParamList;
+export type MainTabsParamList = ConsumerTabParamList & AdminTabParamList;
 
 export type RootStackParamList = {
   Splash: undefined;

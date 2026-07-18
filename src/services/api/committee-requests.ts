@@ -1,12 +1,7 @@
 import { apiRequest } from './client';
-import {
-  CommitteeRequest,
-  CommitteeRequestStatus,
-  CreateCommitteeRequestInput,
-  MemberRole,
-} from '@/types';
+import { CommitteeRequest, CreateCommitteeRequestInput } from '@/types';
 
-// Committee Request Management APIs
+// Student-facing committee request APIs. Union review happens in the web portal.
 
 /**
  * Create a new committee role request
@@ -53,111 +48,5 @@ export async function updateCommitteeRequest(
   return apiRequest<CommitteeRequest>(`/committee-requests/${requestId}`, {
     method: 'PATCH',
     body: updates,
-  });
-}
-
-// Union Admin APIs for managing committee requests
-
-/**
- * Get committee requests for a university (union admin only)
- */
-export async function getUniversityCommitteeRequests(
-  universityId: string,
-  filters?: {
-    status?: CommitteeRequestStatus;
-    societyId?: string;
-    limit?: number;
-    offset?: number;
-  }
-): Promise<{
-  requests: CommitteeRequest[];
-  total: number;
-  hasMore: boolean;
-}> {
-  const searchParams = new URLSearchParams();
-  if (filters?.status) searchParams.append('status', filters.status);
-  if (filters?.societyId) searchParams.append('societyId', filters.societyId);
-  if (filters?.limit) searchParams.append('limit', filters.limit.toString());
-  if (filters?.offset) searchParams.append('offset', filters.offset.toString());
-
-  const query = searchParams.toString();
-  const url = `/union-admin/universities/${universityId}/committee-requests${query ? '?' + query : ''}`;
-  
-  return apiRequest(url, {
-    requiresAdmin: true,
-    societyId: universityId,
-  });
-}
-
-/**
- * Approve a committee request (union admin only)
- */
-export async function approveCommitteeRequest(
-  requestId: string,
-  comments?: string
-): Promise<CommitteeRequest> {
-  return apiRequest<CommitteeRequest>(`/union-admin/committee-requests/${requestId}/approve`, {
-    method: 'POST',
-    body: comments ? { comments } : undefined,
-    requiresAdmin: true,
-  });
-}
-
-/**
- * Reject a committee request (union admin only)
- */
-export async function rejectCommitteeRequest(
-  requestId: string,
-  reason: string
-): Promise<CommitteeRequest> {
-  return apiRequest<CommitteeRequest>(`/union-admin/committee-requests/${requestId}/reject`, {
-    method: 'POST',
-    body: { reason },
-    requiresAdmin: true,
-  });
-}
-
-/**
- * Bulk approve committee requests (union admin only)
- */
-export async function bulkApproveCommitteeRequests(
-  requestIds: string[],
-  comments?: string
-): Promise<{ approved: string[]; failed: string[] }> {
-  return apiRequest(`/union-admin/committee-requests/bulk-approve`, {
-    method: 'POST',
-    body: { requestIds, comments },
-    requiresAdmin: true,
-  });
-}
-
-/**
- * Bulk reject committee requests (union admin only)
- */
-export async function bulkRejectCommitteeRequests(
-  requestIds: string[],
-  reason: string
-): Promise<{ rejected: string[]; failed: string[] }> {
-  return apiRequest(`/union-admin/committee-requests/bulk-reject`, {
-    method: 'POST',
-    body: { requestIds, reason },
-    requiresAdmin: true,
-  });
-}
-
-/**
- * Get committee request statistics for a university
- */
-export async function getCommitteeRequestStats(universityId: string): Promise<{
-  total: number;
-  pending: number;
-  approved: number;
-  rejected: number;
-  expired: number;
-  byRole: Record<MemberRole, number>;
-  bySociety: Array<{ societyId: string; societyName: string; count: number }>;
-}> {
-  return apiRequest(`/union-admin/universities/${universityId}/committee-requests/stats`, {
-    requiresAdmin: true,
   });
 }

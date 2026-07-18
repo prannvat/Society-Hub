@@ -1,6 +1,5 @@
 import { apiRequest } from './client';
 import { SocietyRole } from './types';
-import { UnionRole } from '@/types/union-admin';
 
 export type ApiMeProfile = {
   id: string;
@@ -25,16 +24,10 @@ export type ApiUserAdminRole = {
   role: SocietyRole;
 };
 
-export type ApiUnionAdminRole = {
-  universityId: string;
-  universityName: string;
-  role: UnionRole;
-  permissions: string[];
-};
-
+// Note: /me also returns `unionAdminRoles` — union administration lives in the
+// separate web portal, so the mobile app deliberately ignores that field.
 export type ApiMeWithRoles = ApiMeProfile & {
   adminRoles?: ApiUserAdminRole[];
-  unionAdminRoles?: ApiUnionAdminRole[];
 };
 
 export async function fetchMe() {

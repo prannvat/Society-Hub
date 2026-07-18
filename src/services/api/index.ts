@@ -11,5 +11,4 @@ export * from './types';
 
 // Admin APIs
 export * from './admin';
-export * from './union-admin';
 export * from './committee-requests';

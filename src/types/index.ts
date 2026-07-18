@@ -42,9 +42,7 @@ export type AnnouncementItem = {
 
 export type MemberRole = 'Member' | 'Committee' | 'President';
 
-export type UserRole = 'Student' | 'Admin';
-
-export type AppMode = 'Consumer' | 'Admin' | 'UnionAdmin';
+export type AppMode = 'Consumer' | 'Admin';
 
 export type SocietyAdminRelationship = {
   societyId: string;
@@ -54,7 +52,6 @@ export type SocietyAdminRelationship = {
 };
 
 export type UserRoleData = {
-  userRole: UserRole;
   adminSocieties: SocietyAdminRelationship[];
   hasAdminAccess: boolean;
   canSwitchToAdmin: boolean;
@@ -122,5 +119,4 @@ export type SocietyPerk = {
   description: string;
 };
 
-// Export union admin types
-export * from './union-admin';
+export * from './committee-requests';
