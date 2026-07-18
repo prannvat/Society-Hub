@@ -17,6 +17,7 @@ import { CommitteeRequestsProvider } from '@/hooks/useCommitteeRequests';
 import { ToastProvider } from '@/components/Toast';
 import { AccountSwitcherProvider } from '@/hooks/useAccountSwitcher';
 import { CommentsProvider } from '@/hooks/useComments';
+import { NotificationsProvider } from '@/hooks/useNotifications';
 import { AppNavigator } from '@/navigation/AppNavigator';
 
 export default function App() {
@@ -44,10 +45,12 @@ export default function App() {
             <LocalAppStateProvider>
               <ToastProvider>
                 <AccountSwitcherProvider>
-                  <CommentsProvider>
-                    <StatusBar style="auto" />
-                    <AppNavigator />
-                  </CommentsProvider>
+                  <NotificationsProvider>
+                    <CommentsProvider>
+                      <StatusBar style="auto" />
+                      <AppNavigator />
+                    </CommentsProvider>
+                  </NotificationsProvider>
                 </AccountSwitcherProvider>
               </ToastProvider>
             </LocalAppStateProvider>

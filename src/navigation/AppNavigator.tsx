@@ -36,6 +36,7 @@ import { CreatePostScreen } from '@/screens/CreatePostScreen';
 import { CreatePollScreen } from '@/screens/CreatePollScreen';
 import { MembersDirectoryScreen } from '@/screens/MembersDirectoryScreen';
 import { SocietyPollsScreen } from '@/screens/SocietyPollsScreen';
+import { NotificationsScreen } from '@/screens/NotificationsScreen';
 
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -106,6 +107,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
         <Stack.Screen name="InterestSelection" component={InterestSelectionScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} />
         <Stack.Screen name="AnnouncementsFeed" component={AnnouncementsFeedScreen} />
         <Stack.Screen name="EventDetail" component={EventDetailScreen} />
         <Stack.Screen name="AnnouncementDetail" component={AnnouncementDetailScreen} />

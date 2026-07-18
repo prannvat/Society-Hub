@@ -8,6 +8,7 @@ import { EventFeedCard } from '@/components/EventFeedCard';
 import { PollFeedCard } from '@/components/PollFeedCard';
 import { SocietyStoryRow } from '@/components/SocietyStoryRow';
 import { EmptyState } from '@/components/EmptyState';
+import { NotificationBell } from '@/components/NotificationBell';
 import { Skeleton } from '@/components/Skeleton';
 import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -123,15 +124,18 @@ export const FeedScreen = () => {
           </View>
           <Text style={[styles.wordmark, theme.typography.h2, { color: theme.colors.textPrimary }]}>SocietyHub</Text>
         </View>
-        {canCreate ? (
-          <Pressable
-            onPress={() => navigation.navigate('CreateHub', undefined)}
-            hitSlop={10}
-            style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.5 : 1 }]}
-          >
-            <MaterialIcons name="add-box" size={26} color={theme.colors.textPrimary} />
-          </Pressable>
-        ) : null}
+        <View style={styles.headerActions}>
+          <NotificationBell />
+          {canCreate ? (
+            <Pressable
+              onPress={() => navigation.navigate('CreateHub', undefined)}
+              hitSlop={10}
+              style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.5 : 1 }]}
+            >
+              <MaterialIcons name="add-box" size={26} color={theme.colors.textPrimary} />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       {isLoading && !hasLoaded ? (
@@ -194,6 +198,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   logomark: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   wordmark: { letterSpacing: -0.3 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },

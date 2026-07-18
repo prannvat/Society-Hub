@@ -77,10 +77,18 @@ export async function fetchComments(announcementId: string) {
   return apiRequest<ApiComment[]>(`/announcements/${encodeURIComponent(announcementId)}/comments`);
 }
 
-export async function addComment(announcementId: string, body: string, parentId?: string) {
+export async function addComment(
+  announcementId: string,
+  body: string,
+  parentId?: string,
+  mentionedUserIds?: string[],
+) {
+  const payload: { body: string; parentId?: string; mentionedUserIds?: string[] } = { body };
+  if (parentId) payload.parentId = parentId;
+  if (mentionedUserIds && mentionedUserIds.length > 0) payload.mentionedUserIds = mentionedUserIds;
   return apiRequest<ApiComment>(`/announcements/${encodeURIComponent(announcementId)}/comments`, {
     method: 'POST',
-    body: parentId ? { body, parentId } : { body },
+    body: payload,
   });
 }
 

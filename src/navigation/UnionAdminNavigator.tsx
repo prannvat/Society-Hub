@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUserRoles } from '@/hooks/useUserRoles';
+import { NotificationBell } from '@/components/NotificationBell';
 import { RoleSwitcher } from '@/components/RoleSwitcher';
 import { getTabNavigatorOptions } from './tabOptions';
 import { ProfileScreen } from '@/screens/ProfileScreen';
@@ -45,6 +46,7 @@ const UnionIdentityBar = () => {
           Union admin console
         </Text>
       </View>
+      <NotificationBell />
     </View>
   );
 };

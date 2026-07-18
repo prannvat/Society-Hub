@@ -109,6 +109,9 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
   const [sending, setSending] = React.useState(false);
   const [replyTarget, setReplyTarget] = React.useState<ReplyTarget | null>(null);
   const [members, setMembers] = React.useState<MentionMember[]>([]);
+  // Members inserted via the @mention autocomplete this composing session. On send
+  // we keep only those whose `@FullName` still survives in the body.
+  const [insertedMentions, setInsertedMentions] = React.useState<MentionMember[]>([]);
 
   const societyId = announcements.find((a) => a.id === announcementId)?.societyId ?? null;
   const canModerate = societyId
@@ -128,6 +131,7 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
     setLoading(true);
     setDraft('');
     setReplyTarget(null);
+    setInsertedMentions([]);
     (async () => {
       try {
         const result = await fetchComments(announcementId);
@@ -208,6 +212,7 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
 
   const applyMention = (member: MentionMember) => {
     setDraft((prev) => prev.replace(MENTION_QUERY_RE, `@${member.fullName} `));
+    setInsertedMentions((prev) => (prev.some((m) => m.id === member.id) ? prev : [...prev, member]));
     inputRef.current?.focus();
   };
 
@@ -215,11 +220,22 @@ export const CommentsSheet = ({ announcementId, visible, onClose }: CommentsShee
     const body = draft.trim();
     if (!body || sending || !announcementId) return;
     setSending(true);
+    // Resolve mention ids by matching still-present `@FullName` tokens against the
+    // members inserted from autocomplete (deduped). Robust to edits/deletions.
+    const mentionedUserIds = Array.from(
+      new Set(insertedMentions.filter((m) => body.includes(`@${m.fullName}`)).map((m) => m.id)),
+    );
     try {
-      const created = await addComment(announcementId, body, replyTarget?.rootId);
+      const created = await addComment(
+        announcementId,
+        body,
+        replyTarget?.rootId,
+        mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
+      );
       setComments((prev) => [...prev, created]);
       setDraft('');
       setReplyTarget(null);
+      setInsertedMentions([]);
     } catch {
       toast.show('Could not post your comment', 'error');
     } finally {

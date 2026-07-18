@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from '@/components/Avatar';
+import { NotificationBell } from '@/components/NotificationBell';
 import { useAccountSwitcher } from '@/hooks/useAccountSwitcher';
 import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -59,6 +60,9 @@ const AccountBar = ({ brand }: { brand: string }) => {
         </View>
         <MaterialIcons name="unfold-more" size={20} color={theme.colors.textTertiary} />
       </Pressable>
+      <View style={styles.barBell}>
+        <NotificationBell />
+      </View>
     </View>
   );
 };
@@ -123,8 +127,9 @@ export const AdminNavigator = () => {
 };
 
 const styles = StyleSheet.create({
-  bar: { borderBottomWidth: StyleSheet.hairlineWidth },
-  barInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, minHeight: 56 },
+  bar: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth },
+  barInner: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, minHeight: 56 },
+  barBell: { paddingRight: spacing.md },
   avatarRing: { padding: 2, borderRadius: 999, borderWidth: 2 },
   barText: { flex: 1, gap: 1 },
   managingRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },

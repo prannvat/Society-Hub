@@ -17,6 +17,7 @@ export type RootStackParamList = {
   ProfileSetup: undefined;
   InterestSelection: undefined;
   MainTabs: NavigatorScreenParams<MainTabsParamList> | undefined;
+  Notifications: undefined;
   AnnouncementsFeed: undefined;
   MemberProfile: { memberId?: string } | undefined;
   SocietyProfile: { societyId?: string } | undefined;
