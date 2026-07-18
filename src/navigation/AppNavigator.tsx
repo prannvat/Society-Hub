@@ -34,6 +34,7 @@ import { CreateHubScreen } from '@/screens/CreateHubScreen';
 import { CreatePostScreen } from '@/screens/CreatePostScreen';
 import { CreatePollScreen } from '@/screens/CreatePollScreen';
 import { MembersDirectoryScreen } from '@/screens/MembersDirectoryScreen';
+import { SocietyMembersScreen } from '@/screens/SocietyMembersScreen';
 import { SocietyPollsScreen } from '@/screens/SocietyPollsScreen';
 import { NotificationsScreen } from '@/screens/NotificationsScreen';
 
@@ -117,6 +118,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="CreatePost" component={CreatePostScreen} options={{ presentation: 'modal' }} />
         <Stack.Screen name="CreatePoll" component={CreatePollScreen} options={{ presentation: 'modal' }} />
         <Stack.Screen name="MembersDirectory" component={MembersDirectoryScreen} />
+        <Stack.Screen name="SocietyMembers" component={SocietyMembersScreen} />
         <Stack.Screen name="SocietyPolls" component={SocietyPollsScreen} />
       </Stack.Navigator>
     </NavigationContainer>

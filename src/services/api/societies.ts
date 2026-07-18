@@ -1,5 +1,5 @@
 import { apiRequest } from './client';
-import { Society } from './types';
+import { PublicSocietyMemberPage, Society } from './types';
 
 export async function fetchSocieties() {
   return apiRequest<Society[]>('/societies');
@@ -7,6 +7,17 @@ export async function fetchSocieties() {
 
 export async function fetchSocietyProfile(societyId: string) {
   return apiRequest<Society>(`/societies/${societyId}`);
+}
+
+/**
+ * A society's public member list — its members are its followers, so any
+ * signed-in user may read it. Ordered president → committee → members.
+ */
+export async function fetchSocietyMembers(societyId: string, page = 1, pageSize = 30) {
+  const query = `?page=${page}&pageSize=${pageSize}`;
+  return apiRequest<PublicSocietyMemberPage>(
+    `/societies/${encodeURIComponent(societyId)}/members${query}`,
+  );
 }
 
 export async function createSociety(input: {

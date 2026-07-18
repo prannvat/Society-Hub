@@ -36,5 +36,7 @@ export type RootStackParamList = {
   CreatePost: { societyId?: string } | undefined;
   CreatePoll: { societyId?: string } | undefined;
   MembersDirectory: { societyId?: string } | undefined;
+  // Public "who has joined" list — readable by any signed-in user.
+  SocietyMembers: { societyId: string };
   SocietyPolls: { societyId?: string } | undefined;
 };

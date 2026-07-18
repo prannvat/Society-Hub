@@ -71,6 +71,33 @@ export type PollItem = {
   options: PollOption[];
 };
 
+/**
+ * A member as shown on a society's public member list. Deliberately has no
+ * email — this list is visible to every signed-in user, like a follower list.
+ */
+export type PublicSocietyMember = {
+  id: string;
+  userId: string;
+  role: SocietyRole;
+  joinedAt: string;
+  user: {
+    id: string;
+    fullName: string;
+    avatarUrl: string | null;
+    course: string | null;
+    year: string | null;
+    isVerifiedStudent: boolean;
+  };
+};
+
+/** Page-based envelope returned by the public member list endpoint. */
+export type PublicSocietyMemberPage = {
+  items: PublicSocietyMember[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 export type Membership = {
   id: string;
   userId: string;

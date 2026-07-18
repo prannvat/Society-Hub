@@ -20,7 +20,9 @@ import { EventCard } from '@/components/EventCard';
 import { PerksList } from '@/components/PerksList';
 import { EventItem, SocietyPerk } from '@/types';
 import { fetchEvents } from '@/services/api/events';
-import { fetchSocietyProfile } from '@/services/api/societies';
+import { MemberAvatarStack } from '@/components/MemberAvatarStack';
+import { fetchSocietyMembers, fetchSocietyProfile } from '@/services/api/societies';
+import { PublicSocietyMember } from '@/services/api/types';
 import { fetchSocietyPerks } from '@/services/api/perks';
 import { joinErrorMessage } from '@/services/api/memberships';
 import { mapApiEvent } from '@/utils/mapApiEvent';
@@ -36,6 +38,9 @@ export const SocietyProfileScreen = () => {
   const [localSociety, setLocalSociety] = useState<any>(null);
   const [societyEvents, setSocietyEvents] = useState<EventItem[]>([]);
   const [perks, setPerks] = useState<SocietyPerk[]>([]);
+  // Social proof for the avatar stack — degrades to nothing if the call fails.
+  const [memberPreview, setMemberPreview] = useState<PublicSocietyMember[]>([]);
+  const [memberTotal, setMemberTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -59,6 +64,12 @@ export const SocietyProfileScreen = () => {
         toast.show(`Request sent — ${society.name} requires approval`, 'info');
       } else {
         toast.show(`Welcome to ${society.name}!`, 'success');
+        // Reflect the new membership in the social-proof stack straight away.
+        const refreshed = await fetchSocietyMembers(society.id, 1, 5).catch(() => null);
+        if (refreshed) {
+          setMemberPreview(refreshed.items);
+          setMemberTotal(refreshed.total);
+        }
       }
     } catch (error) {
       toast.show(joinErrorMessage(error), 'error');
@@ -71,15 +82,18 @@ export const SocietyProfileScreen = () => {
     const loadProfileData = async () => {
       try {
         setIsLoading(true);
-        const [prof, evts, societyPerks] = await Promise.all([
+        const [prof, evts, societyPerks, memberPage] = await Promise.all([
           fetchSocietyProfile(route.params!.societyId!).catch(() => null),
           fetchEvents(route.params!.societyId!).catch(() => []),
           // Rewards layer — degrade to no perks section if the endpoint isn't up yet.
-          fetchSocietyPerks(route.params!.societyId!).catch(() => [] as SocietyPerk[])
+          fetchSocietyPerks(route.params!.societyId!).catch(() => [] as SocietyPerk[]),
+          fetchSocietyMembers(route.params!.societyId!, 1, 5).catch(() => null)
         ]);
         if (prof) setLocalSociety(prof);
         if (evts) setSocietyEvents(evts.map(mapApiEvent));
         setPerks(societyPerks);
+        setMemberPreview(memberPage?.items ?? []);
+        setMemberTotal(memberPage?.total ?? 0);
       } catch (err) {
         console.error('Failed to load detail profile', err);
       } finally {
@@ -121,6 +135,8 @@ export const SocietyProfileScreen = () => {
   const brandPrimary = society.primaryColor || theme.colors.primary;
   const brandSecondary = society.secondaryColor || brandPrimary;
   const societyPolls = polls.filter((poll) => poll.societyId === society.id);
+  // The live member list is authoritative; the cached profile count is the fallback.
+  const memberCount = memberTotal > 0 ? memberTotal : society._count?.memberships ?? null;
 
   const handleOpenLink = async (url?: string | null) => {
     if (url && (await Linking.canOpenURL(url))) {
@@ -182,7 +198,11 @@ export const SocietyProfileScreen = () => {
               <View style={styles.identityStats}>
                 <ProfileStatsRow
                   stats={[
-                    { label: 'Members', value: society._count?.memberships ?? '—' },
+                    {
+                      label: 'Members',
+                      value: memberCount ?? '—',
+                      onPress: () => navigation.navigate('SocietyMembers', { societyId: society.id })
+                    },
                     { label: 'Events', value: societyEvents.length },
                     { label: 'Polls', value: societyPolls.length }
                   ]}
@@ -206,16 +226,14 @@ export const SocietyProfileScreen = () => {
         </View>
 
         <View style={styles.body}>
-          {/* Committee affordance — act AS the society (IG account takeover) */}
-          {canManage ? (
-            <PrimaryButton
-              label="Switch to this account"
-              icon="swap-horiz"
-              onPress={() => switchToSociety(society.id)}
-            />
-          ) : null}
+          {/* Social proof — the people already in, tapping through to the full list. */}
+          <MemberAvatarStack
+            members={memberPreview}
+            total={memberCount ?? memberPreview.length}
+            onPress={() => navigation.navigate('SocietyMembers', { societyId: society.id })}
+          />
 
-          {/* Membership action */}
+          {/* Membership action — the primary thing to do on this screen. */}
           {isPendingMembership ? (
             <View style={styles.membershipRow}>
               <BadgeChip label="Membership pending approval" variant="warning" />
@@ -225,13 +243,30 @@ export const SocietyProfileScreen = () => {
               <BadgeChip label="You're a member" variant="success" />
             </View>
           ) : (
-            <PrimaryButton
-              label="Join Society"
-              icon="person-add"
-              loading={isJoining}
-              onPress={handleJoin}
-            />
+            <View style={styles.joinBlock}>
+              <PrimaryButton
+                label={`Join ${society.shortName}`}
+                icon="person-add"
+                loading={isJoining}
+                onPress={handleJoin}
+              />
+              {society.joinPolicy === 'APPROVAL_REQUIRED' ? (
+                <Text style={[theme.typography.caption, styles.joinHint, { color: theme.colors.textTertiary }]}>
+                  The committee reviews requests before you become a member.
+                </Text>
+              ) : null}
+            </View>
           )}
+
+          {/* Committee affordance — act AS the society (IG account takeover) */}
+          {canManage ? (
+            <PrimaryButton
+              label="Switch to this account"
+              variant="secondary"
+              icon="swap-horiz"
+              onPress={() => switchToSociety(society.id)}
+            />
+          ) : null}
 
           {/* Committee-only management seam — additive, only for admins of this society. */}
           {canManage ? (
@@ -444,6 +479,12 @@ const styles = StyleSheet.create({
   },
   membershipRow: {
     alignItems: 'center'
+  },
+  joinBlock: {
+    gap: 8
+  },
+  joinHint: {
+    textAlign: 'center'
   },
   actionRow: {
     flexDirection: 'row',
