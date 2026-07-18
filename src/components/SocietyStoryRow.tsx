@@ -24,6 +24,7 @@ export const SocietyStoryRow = ({ societies, onPressSociety }: SocietyStoryRowPr
       showsHorizontalScrollIndicator={false}
       data={societies}
       keyExtractor={(society) => society.id}
+      style={[styles.rail, { borderBottomColor: theme.colors.border }]}
       contentContainerStyle={styles.content}
       renderItem={({ item }) => (
         <Pressable
@@ -43,10 +44,13 @@ export const SocietyStoryRow = ({ societies, onPressSociety }: SocietyStoryRowPr
 };
 
 const styles = StyleSheet.create({
+  rail: {
+    borderBottomWidth: StyleSheet.hairlineWidth
+  },
   content: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: spacing.md
+    paddingVertical: spacing.md,
+    gap: spacing.lg
   },
   story: {
     alignItems: 'center',

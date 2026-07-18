@@ -71,46 +71,34 @@ export const EventFeedCard = ({
         trailing={<BadgeChip label={event.isFree ? 'Free' : 'Paid'} variant={event.isFree ? 'success' : 'neutral'} />}
       />
 
+      {/* Edge-to-edge hero, Instagram-style: the poster when there is one,
+          otherwise a dark block with a calendar motif so every event still
+          carries visual weight in the feed. */}
       {hasPoster ? (
         <Image
           source={{ uri: event.posterImageUrl }}
-          style={[styles.poster, { borderRadius: theme.radius.card, backgroundColor: theme.colors.surfaceSunken }]}
+          style={[styles.hero, { backgroundColor: theme.colors.surfaceSunken }]}
           resizeMode="cover"
         />
-      ) : null}
-
-      <View style={styles.mainRow}>
-        <View style={[styles.dateBlock, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radius.card }]}>
-          {eventDate ? (
-            <>
-              <Text style={[theme.typography.h2, { color: theme.colors.primary }]}>{eventDate.getDate()}</Text>
-              <Text style={[theme.typography.micro, { color: theme.colors.primary }]}>
-                {eventDate.toLocaleDateString('en-US', { month: 'short' })}
-              </Text>
-            </>
-          ) : (
-            <MaterialIcons name="event" size={24} color={theme.colors.primary} />
-          )}
+      ) : (
+        <View style={[styles.hero, styles.heroFallback]}>
+          <MaterialIcons name="event" size={44} color="rgba(255,255,255,0.9)" />
         </View>
+      )}
 
-        <View style={styles.info}>
-          <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]} numberOfLines={2}>
-            {event.title}
-          </Text>
-          <View style={styles.metaRow}>
-            <MaterialIcons name="place" size={14} color={theme.colors.textTertiary} />
-            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, flexShrink: 1 }]} numberOfLines={1}>
-              {event.location}
-            </Text>
-          </View>
-          <View style={styles.metaRow}>
-            <MaterialIcons name="schedule" size={14} color={theme.colors.textTertiary} />
-            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-              {event.time}
-            </Text>
-          </View>
-        </View>
-      </View>
+      {/* Caption: bold title then a single meta line (date · time · location). */}
+      <Text style={[theme.typography.bodyMedium, styles.title, { color: theme.colors.textPrimary }]} numberOfLines={2}>
+        {event.title}
+      </Text>
+      <Text style={[theme.typography.caption, styles.meta, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+        {[
+          eventDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null,
+          event.time,
+          event.location
+        ]
+          .filter(Boolean)
+          .join('  ·  ')}
+      </Text>
 
       <View style={styles.footerRow}>
         <View style={styles.metaRow}>
@@ -154,26 +142,22 @@ export const EventFeedCard = ({
 };
 
 const styles = StyleSheet.create({
-  poster: {
-    width: '100%',
-    height: 150,
+  // Cancel the shell's 16px horizontal padding so the hero is edge-to-edge.
+  hero: {
+    height: 260,
+    marginTop: 12,
+    marginHorizontal: -16
+  },
+  heroFallback: {
+    backgroundColor: '#1A1A1A',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  title: {
     marginTop: 12
   },
-  mainRow: {
-    marginTop: 14,
-    flexDirection: 'row',
-    gap: 14
-  },
-  dateBlock: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0
-  },
-  info: {
-    flex: 1,
-    gap: 4
+  meta: {
+    marginTop: 2
   },
   metaRow: {
     flexDirection: 'row',
@@ -181,7 +165,7 @@ const styles = StyleSheet.create({
     gap: 4
   },
   footerRow: {
-    marginTop: 14,
+    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

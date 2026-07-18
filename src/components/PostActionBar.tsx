@@ -80,16 +80,6 @@ export const PostActionBar = ({ postId, likeCount, commentCount, likedByMe, onOp
         >
           <MaterialIcons name="chat-bubble-outline" size={24} color={theme.colors.textPrimary} />
         </Pressable>
-
-        <Pressable
-          onPress={onOpenComments}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Share post"
-          style={({ pressed }) => [styles.action, { opacity: pressed ? 0.5 : 1 }]}
-        >
-          <MaterialIcons name="send" size={22} color={theme.colors.textPrimary} />
-        </Pressable>
       </View>
 
       {count > 0 ? (
