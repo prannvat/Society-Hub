@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,8 +24,12 @@ export type AdminTabParamList = {
 
 const Tab = createBottomTabNavigator<AdminTabParamList>();
 
-/** Identity bar: shows the society account you're acting as; tap to switch accounts. */
-const AccountBar = () => {
+/**
+ * Identity bar: shows the society account you're acting as; tap to switch accounts.
+ * The active society's brand colour tints the avatar ring and the "Managing" pill so
+ * the whole surface reads as that society — exactly like an IG business account.
+ */
+const AccountBar = ({ brand }: { brand: string }) => {
   const theme = useAppTheme();
   const { selectedAdminSocietyId } = useUserRoles();
   const { allSocieties } = useLocalAppState();
@@ -34,15 +38,26 @@ const AccountBar = () => {
 
   return (
     <View style={[styles.bar, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
-      <Pressable style={styles.barInner} onPress={() => setOpen(true)} hitSlop={8}>
-        <Avatar name={society?.name ?? 'Society'} url={society?.logoUrl ?? undefined} size={28} />
-        <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary, maxWidth: 200 }]} numberOfLines={1}>
-          {society?.name ?? 'Society'}
-        </Text>
-        <View style={[styles.badge, { backgroundColor: theme.colors.primarySoft, borderRadius: theme.radius.sm }]}>
-          <Text style={[theme.typography.micro, { color: theme.colors.primary }]}>MANAGING</Text>
+      <Pressable
+        style={({ pressed }) => [styles.barInner, { opacity: pressed ? 0.6 : 1 }]}
+        onPress={() => setOpen(true)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Managing ${society?.name ?? 'society'}. Tap to switch account`}
+      >
+        <View style={[styles.avatarRing, { borderColor: brand }]}>
+          <Avatar name={society?.name ?? 'Society'} url={society?.logoUrl ?? undefined} size={26} />
         </View>
-        <MaterialIcons name="expand-more" size={22} color={theme.colors.textSecondary} />
+        <View style={styles.barText}>
+          <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+            {society?.name ?? 'Society'}
+          </Text>
+          <View style={styles.managingRow}>
+            <View style={[styles.dot, { backgroundColor: brand }]} />
+            <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>MANAGING</Text>
+          </View>
+        </View>
+        <MaterialIcons name="unfold-more" size={20} color={theme.colors.textTertiary} />
       </Pressable>
       <AccountSwitcher visible={open} onClose={() => setOpen(false)} />
     </View>
@@ -51,13 +66,28 @@ const AccountBar = () => {
 
 export const AdminNavigator = () => {
   const theme = useAppTheme();
+  const { selectedAdminSocietyId } = useUserRoles();
+  const { allSocieties, setActiveSocietyId } = useLocalAppState();
+
+  const society = allSocieties.find((s) => s.id === selectedAdminSocietyId);
+  const brand = society?.primaryColor || theme.colors.primary;
+
+  // Keep the loaded-data pointer (activeSocietyId) locked to the account we're managing.
+  // Switching accounts sets selectedAdminSocietyId; this is the single seam that makes
+  // the society tab world's content follow the active account, from any entry point.
+  useEffect(() => {
+    if (selectedAdminSocietyId) {
+      setActiveSocietyId(selectedAdminSocietyId);
+    }
+  }, [selectedAdminSocietyId, setActiveSocietyId]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
-      <AccountBar />
+      <AccountBar brand={brand} />
       <Tab.Navigator
         screenOptions={({ route }) => ({
           ...getTabNavigatorOptions(theme),
+          tabBarActiveTintColor: brand,
           tabBarIcon: ({ color, size }) => {
             const iconNameMap: Record<keyof AdminTabParamList, keyof typeof MaterialIcons.glyphMap> = {
               SocietyHome: 'home',
@@ -80,6 +110,9 @@ export const AdminNavigator = () => {
 
 const styles = StyleSheet.create({
   bar: { borderBottomWidth: StyleSheet.hairlineWidth },
-  barInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
-  badge: { paddingHorizontal: 6, paddingVertical: 2 },
+  barInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, minHeight: 56 },
+  avatarRing: { padding: 2, borderRadius: 999, borderWidth: 2 },
+  barText: { flex: 1, gap: 1 },
+  managingRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
 });

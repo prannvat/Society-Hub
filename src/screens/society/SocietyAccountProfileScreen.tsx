@@ -1,36 +1,55 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from '@/components/Avatar';
+import { BadgeChip } from '@/components/BadgeChip';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { SectionHeader } from '@/components/SectionHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { AccountSwitcher } from '@/components/AccountSwitcher';
 import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { RootStackParamList } from '@/navigation/types';
+import { AnnouncementItem, EventItem } from '@/types';
 import { ScreenLayout } from '../ScreenLayout';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+type GridTile =
+  | { kind: 'post'; id: string; item: AnnouncementItem }
+  | { kind: 'event'; id: string; item: EventItem };
+
+const softTint = (hex: string, fallback: string) =>
+  /^#[0-9a-fA-F]{6}$/.test(hex) ? `${hex}22` : fallback;
+
 /**
  * The society's own profile, Instagram-style, shown when you're acting AS the society.
- * Doubles as the management anchor: Edit, insights, and a grid of the society's posts.
+ * Doubles as the management anchor: identity, owner actions, and a grid of its content.
  */
 export const SocietyAccountProfileScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<Nav>();
   const { selectedAdminSocietyId } = useUserRoles();
-  const { allSocieties, announcements, events, polls, activeSocietyMemberCount } = useLocalAppState();
+  const { allSocieties, announcements, events, activeSocietyMemberCount } = useLocalAppState();
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
   const societyId = selectedAdminSocietyId ?? '';
   const society = allSocieties.find((s) => s.id === societyId);
   const brandPrimary = society?.primaryColor || theme.colors.primary;
   const brandSecondary = society?.secondaryColor || brandPrimary;
+
+  const tiles = useMemo<GridTile[]>(
+    () => [
+      ...announcements.map((a) => ({ kind: 'post' as const, id: `p_${a.id}`, item: a })),
+      ...events.map((e) => ({ kind: 'event' as const, id: `e_${e.id}`, item: e })),
+    ],
+    [announcements, events],
+  );
 
   const stat = (label: string, value: number) => (
     <View style={styles.stat}>
@@ -42,19 +61,29 @@ export const SocietyAccountProfileScreen = () => {
   return (
     <ScreenLayout>
       {/* Account bar — tap to switch accounts, IG-style */}
-      <Pressable style={styles.accountBar} onPress={() => setSwitcherOpen(true)}>
+      <Pressable
+        style={({ pressed }) => [styles.accountBar, { opacity: pressed ? 0.6 : 1 }]}
+        onPress={() => setSwitcherOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`${society?.shortName || society?.name}. Tap to switch account`}
+      >
         <Text style={[theme.typography.bodyMedium, { color: theme.colors.textPrimary }]} numberOfLines={1}>
           {society?.shortName || society?.name}
         </Text>
-        <MaterialIcons name="expand-more" size={22} color={theme.colors.textPrimary} />
+        <MaterialIcons name="unfold-more" size={20} color={theme.colors.textSecondary} />
       </Pressable>
 
-      <LinearGradient colors={[brandPrimary, brandSecondary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.band, { borderRadius: theme.radius.lg }]} />
+      <LinearGradient
+        colors={[brandPrimary, brandSecondary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.band, { borderRadius: theme.radius.lg }]}
+      />
 
       <View style={styles.body}>
         <View style={styles.identity}>
           <View style={[styles.avatarRing, { backgroundColor: theme.colors.background }]}>
-            <Avatar name={society?.name ?? 'Society'} url={society?.logoUrl ?? undefined} size={72} />
+            <Avatar name={society?.name ?? 'Society'} url={society?.logoUrl ?? undefined} size={76} />
           </View>
           <View style={styles.stats}>
             {stat('Members', activeSocietyMemberCount)}
@@ -63,38 +92,87 @@ export const SocietyAccountProfileScreen = () => {
           </View>
         </View>
 
-        <Text style={[theme.typography.h2, { color: theme.colors.textPrimary }]}>{society?.name ?? 'Society'}</Text>
-        <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>{society?.university}</Text>
+        <View style={styles.nameRow}>
+          <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, flexShrink: 1 }]} numberOfLines={2}>
+            {society?.name ?? 'Society'}
+          </Text>
+          {society?.isFeatured ? <BadgeChip label="Featured" variant="warning" /> : null}
+        </View>
+        {society?.shortName ? (
+          <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>@{society.shortName}</Text>
+        ) : null}
+        {society?.university ? (
+          <View style={styles.metaRow}>
+            <MaterialIcons name="school" size={14} color={theme.colors.textTertiary} />
+            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+              {society.university}
+            </Text>
+          </View>
+        ) : null}
         {society?.description ? (
-          <Text style={[theme.typography.body, { color: theme.colors.textPrimary, marginTop: spacing.xs }]}>{society.description}</Text>
+          <Text style={[theme.typography.body, { color: theme.colors.textPrimary, marginTop: spacing.xs }]}>
+            {society.description}
+          </Text>
         ) : null}
 
+        {/* Owner actions */}
         <View style={styles.actions}>
-          <View style={{ flex: 1 }}>
+          <View style={styles.actionCell}>
             <PrimaryButton label="Edit profile" variant="secondary" size="md" icon="edit" onPress={() => navigation.navigate('EditSocietyProfile')} />
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.actionCell}>
             <PrimaryButton label="Create" size="md" icon="add" onPress={() => navigation.navigate('CreateHub', { societyId })} />
           </View>
         </View>
+        <View style={styles.actions}>
+          <View style={styles.actionCell}>
+            <PrimaryButton
+              label="Insights"
+              variant="secondary"
+              size="md"
+              icon="insights"
+              onPress={() => navigation.navigate('MainTabs', { screen: 'Insights' })}
+            />
+          </View>
+          <View style={styles.actionCell}>
+            <PrimaryButton
+              label="View as public"
+              variant="secondary"
+              size="md"
+              icon="visibility"
+              onPress={() => navigation.navigate('SocietyProfile', { societyId })}
+            />
+          </View>
+        </View>
 
-        {/* Posts grid preview */}
-        <Text style={[theme.typography.micro, { color: theme.colors.textTertiary, marginTop: spacing.lg, marginBottom: spacing.xs }]}>RECENT POSTS</Text>
-        <View style={styles.grid}>
-          {announcements.slice(0, 6).map((a) => (
-            <Pressable
-              key={a.id}
-              onPress={() => navigation.navigate('AnnouncementDetail', { announcementId: a.id })}
-              style={[styles.tile, { backgroundColor: theme.colors.surfaceSunken, borderRadius: theme.radius.sm }]}
-            >
-              <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary }]} numberOfLines={4}>
-                {a.title}
-              </Text>
-            </Pressable>
-          ))}
-          {announcements.length === 0 ? (
-            <Text style={[theme.typography.caption, { color: theme.colors.textTertiary }]}>No posts yet — tap Create to publish your first.</Text>
-          ) : null}
+        {/* Content grid */}
+        <View style={styles.gridSection}>
+          <SectionHeader title="Content" />
+          {tiles.length > 0 ? (
+            <View style={styles.grid}>
+              {tiles.map((tile) => (
+                <ContentTile
+                  key={tile.id}
+                  tile={tile}
+                  brand={brandPrimary}
+                  brandSecondary={brandSecondary}
+                  onPress={() =>
+                    tile.kind === 'post'
+                      ? navigation.navigate('AnnouncementDetail', { announcementId: tile.item.id })
+                      : navigation.navigate('EventDetail', { eventId: tile.item.id })
+                  }
+                />
+              ))}
+            </View>
+          ) : (
+            <EmptyState
+              icon="grid-view"
+              title="Nothing published yet"
+              subtitle="Posts and events you publish appear here as a grid, just like an Instagram profile."
+              actionLabel="Create your first"
+              onAction={() => navigation.navigate('CreateHub', { societyId })}
+            />
+          )}
         </View>
       </View>
 
@@ -103,15 +181,91 @@ export const SocietyAccountProfileScreen = () => {
   );
 };
 
+const ContentTile = ({
+  tile,
+  brand,
+  brandSecondary,
+  onPress,
+}: {
+  tile: GridTile;
+  brand: string;
+  brandSecondary: string;
+  onPress: () => void;
+}) => {
+  const theme = useAppTheme();
+  const poster =
+    tile.kind === 'event' && typeof tile.item.posterImageUrl === 'string' && /^https?:\/\//i.test(tile.item.posterImageUrl)
+      ? tile.item.posterImageUrl
+      : undefined;
+  const eventDate =
+    tile.kind === 'event' ? new Date(tile.item.startAtIso ?? tile.item.date) : null;
+  const hasDate = eventDate && !Number.isNaN(eventDate.getTime());
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.tile, { borderRadius: theme.radius.card, opacity: pressed ? 0.85 : 1 }]}
+      accessibilityRole="button"
+      accessibilityLabel={tile.kind === 'post' ? tile.item.title : tile.item.title}
+    >
+      {poster ? (
+        <>
+          <Image source={{ uri: poster }} style={styles.tileImage} resizeMode="cover" />
+          <View style={[styles.tileScrim, { backgroundColor: theme.colors.overlay }]} />
+          <View style={styles.tileFooter}>
+            <MaterialIcons name="event" size={14} color="#FFFFFF" />
+            <Text style={[theme.typography.captionMedium, styles.tileImageText]} numberOfLines={2}>
+              {tile.item.title}
+            </Text>
+          </View>
+        </>
+      ) : tile.kind === 'event' ? (
+        <LinearGradient colors={[brand, brandSecondary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.tileFill}>
+          {hasDate ? (
+            <>
+              <Text style={[theme.typography.h2, styles.tileImageText]}>{eventDate!.getDate()}</Text>
+              <Text style={[theme.typography.micro, styles.tileImageText]}>
+                {eventDate!.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
+              </Text>
+            </>
+          ) : (
+            <MaterialIcons name="event" size={22} color="#FFFFFF" />
+          )}
+          <Text style={[theme.typography.caption, styles.tileImageText, styles.tileEventTitle]} numberOfLines={2}>
+            {tile.item.title}
+          </Text>
+        </LinearGradient>
+      ) : (
+        <View style={[styles.tileFill, { backgroundColor: softTint(brand, theme.colors.surfaceSunken) }]}>
+          <MaterialIcons name="campaign" size={18} color={brand} />
+          <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary, marginTop: 6 }]} numberOfLines={4}>
+            {tile.item.title}
+          </Text>
+        </View>
+      )}
+    </Pressable>
+  );
+};
+
 const styles = StyleSheet.create({
-  accountBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: spacing.sm },
-  band: { height: 72, marginHorizontal: spacing.lg },
-  body: { paddingHorizontal: spacing.lg, gap: spacing.xs, paddingBottom: spacing.xxl },
-  identity: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.lg, marginTop: -32 },
-  avatarRing: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
+  accountBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, minHeight: 44 },
+  band: { height: 88, marginHorizontal: spacing.lg },
+  body: { paddingHorizontal: spacing.lg, gap: 2, paddingBottom: spacing.xxl },
+  identity: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.lg, marginTop: -36 },
+  avatarRing: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
   stats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around', paddingBottom: spacing.xs },
   stat: { alignItems: 'center' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  actionCell: { flex: 1 },
+  gridSection: { marginTop: spacing.xl, gap: spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  tile: { width: '31.5%', aspectRatio: 1, padding: spacing.sm },
+  tile: { width: '31.5%', aspectRatio: 1, overflow: 'hidden', backgroundColor: 'transparent' },
+  tileFill: { flex: 1, padding: spacing.sm, alignItems: 'flex-start', justifyContent: 'center' },
+  tileImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  tileScrim: { ...StyleSheet.absoluteFillObject },
+  tileFooter: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: spacing.sm, gap: 2 },
+  tileImageText: { color: '#FFFFFF' },
+  tileEventTitle: { marginTop: 'auto', opacity: 0.95 },
 });
