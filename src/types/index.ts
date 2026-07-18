@@ -103,7 +103,18 @@ export type SocietyItem = {
   whatsappLink?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  /** Union-granted featured placement — the monetized promotion surface. */
+  isFeatured?: boolean;
+  memberCount?: number;
   _count?: any;
+};
+
+/** A member perk/benefit a society offers — part of the rewards incentive. */
+export type SocietyPerk = {
+  id: string;
+  societyId: string;
+  title: string;
+  description: string;
 };
 
 // Export union admin types

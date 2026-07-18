@@ -79,3 +79,18 @@ export async function rejectUnionSociety(
     universityId,
   });
 }
+
+/**
+ * Feature or unfeature a society — the union's paid promotion lever. Featured
+ * societies surface in Explore's Featured row.
+ */
+export async function setUnionSocietyFeatured(
+  societyId: string,
+  universityId: string,
+  featured: boolean
+): Promise<{ id: string; isFeatured: boolean }> {
+  return apiRequest<{ id: string; isFeatured: boolean }>(
+    `/union-admin/societies/${societyId}/${featured ? 'feature' : 'unfeature'}`,
+    { method: 'POST', universityId },
+  );
+}

@@ -13,6 +13,8 @@ export type Society = {
   logoUrl?: string | null;
   instagramLink?: string | null;
   whatsappLink?: string | null;
+  isFeatured?: boolean;
+  perks?: SocietyPerk[];
   createdAt: string;
   updatedAt: string;
   _count?: {
@@ -21,6 +23,14 @@ export type Society = {
     polls: number;
     announcements: number;
   };
+};
+
+export type SocietyPerk = {
+  id: string;
+  societyId: string;
+  title: string;
+  description: string;
+  createdAt?: string;
 };
 
 export type EventItem = {
