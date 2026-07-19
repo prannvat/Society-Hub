@@ -137,6 +137,9 @@ export function useFeed(societies: SocietyItem[], mySocietyIds: string[]) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  /** True only when EVERY society failed — lets the screen distinguish an
+   *  outage from a genuinely empty feed instead of claiming "no posts". */
+  const [failed, setFailed] = useState(false);
 
   const joined = societies.filter((s) => mySocietyIds.includes(s.id));
   const joinedKey = joined.map((s) => s.id).sort().join(',');
@@ -144,16 +147,29 @@ export function useFeed(societies: SocietyItem[], mySocietyIds: string[]) {
   const refresh = useCallback(async () => {
     if (joined.length === 0) {
       setItems([]);
+      setFailed(false);
       setHasLoaded(true);
       return;
     }
     setIsLoading(true);
     try {
-      const perSociety = await Promise.all(joined.map(loadSocietyFeed));
-      const merged = perSociety
-        .flat()
-        .sort((a, b) => new Date(b.createdAtIso).getTime() - new Date(a.createdAtIso).getTime());
-      setItems(merged);
+      // Settled, not Promise.all: one unreachable society must not blank the
+      // whole feed. Previously a single rejection skipped setItems entirely and
+      // the screen rendered its "you have no posts" empty state mid-outage.
+      const results = await Promise.allSettled(joined.map(loadSocietyFeed));
+      const ok = results.filter(
+        (r): r is PromiseFulfilledResult<FeedItem[]> => r.status === 'fulfilled',
+      );
+
+      if (ok.length === 0) {
+        setFailed(true);
+      } else {
+        setFailed(false);
+        const merged = ok
+          .flatMap((r) => r.value)
+          .sort((a, b) => new Date(b.createdAtIso).getTime() - new Date(a.createdAtIso).getTime());
+        setItems(merged);
+      }
     } finally {
       setIsLoading(false);
       setHasLoaded(true);
@@ -166,5 +182,5 @@ export function useFeed(societies: SocietyItem[], mySocietyIds: string[]) {
     refresh();
   }, [refresh]);
 
-  return { items, isLoading, hasLoaded, refresh, joinedSocieties: joined };
+  return { items, isLoading, hasLoaded, failed, refresh, joinedSocieties: joined };
 }

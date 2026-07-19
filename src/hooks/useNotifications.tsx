@@ -25,6 +25,8 @@ type NotificationsContextValue = {
   refreshUnread: () => Promise<void>;
   notifications: Notification[];
   loadNotifications: () => Promise<void>;
+  /** True when the last fetch failed — lets screens show retry, not "all caught up". */
+  loadFailed: boolean;
   markAllRead: () => Promise<void>;
   markRead: (ids: string[]) => Promise<void>;
 };
@@ -87,6 +89,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   const { isAuthenticated, activeUserId } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loadFailed, setLoadFailed] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refreshUnread = useCallback(async () => {
@@ -105,8 +108,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       const list = await fetchNotifications();
       setNotifications(list);
       setUnreadCount(list.filter((n) => !n.read).length);
+      setLoadFailed(false);
     } catch {
-      // fail silent
+      // Surfaced, not silent: an empty list and a failed fetch look identical
+      // otherwise, and the screen would claim "You're all caught up" mid-outage.
+      setLoadFailed(true);
     }
   }, [isAuthenticated]);
 
@@ -174,8 +180,8 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   }, [isAuthenticated, activeUserId, refreshUnread]);
 
   const value = useMemo(
-    () => ({ unreadCount, refreshUnread, notifications, loadNotifications, markAllRead, markRead }),
-    [unreadCount, refreshUnread, notifications, loadNotifications, markAllRead, markRead],
+    () => ({ unreadCount, refreshUnread, notifications, loadNotifications, markAllRead, markRead, loadFailed }),
+    [unreadCount, refreshUnread, notifications, loadNotifications, markAllRead, markRead, loadFailed],
   );
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;

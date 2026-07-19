@@ -31,7 +31,7 @@ export const FeedScreen = () => {
   const { allSocieties, mySocietyIds, setActiveSocietyId, rsvpedEventIds, toggleRSVP, voteOnPoll } = useLocalAppState();
   const { adminSocieties } = useUserRoles();
   const toast = useToast();
-  const { items, isLoading, hasLoaded, refresh, joinedSocieties } = useFeed(allSocieties, mySocietyIds);
+  const { items, isLoading, hasLoaded, failed, refresh, joinedSocieties } = useFeed(allSocieties, mySocietyIds);
 
   const canCreate = adminSocieties.length > 0;
 
@@ -194,6 +194,18 @@ export const FeedScreen = () => {
               </View>
             ))}
           </View>
+        </View>
+      ) : failed ? (
+        // An outage must not masquerade as "you have no posts".
+        <View style={styles.emptyWrap}>
+          {storyRow}
+          <EmptyState
+            icon="cloud-off"
+            title="Couldn't load your feed"
+            subtitle="Check your connection and try again."
+            actionLabel="Retry"
+            onAction={refresh}
+          />
         </View>
       ) : items.length === 0 ? (
         <View style={styles.emptyWrap}>

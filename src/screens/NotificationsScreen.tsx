@@ -109,7 +109,7 @@ export const NotificationsScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<Nav>();
   const { setActiveSocietyId } = useLocalAppState();
-  const { notifications, loadNotifications, markAllRead, markRead } = useNotifications();
+  const { notifications, loadNotifications, markAllRead, markRead, loadFailed } = useNotifications();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -192,6 +192,17 @@ export const NotificationsScreen = () => {
               </View>
             </View>
           ))}
+        </View>
+      ) : loadFailed && notifications.length === 0 ? (
+        // Don't claim the user is caught up when we simply couldn't load.
+        <View style={styles.emptyWrap}>
+          <EmptyState
+            icon="cloud-off"
+            title="Couldn't load notifications"
+            subtitle="Check your connection and try again."
+            actionLabel="Retry"
+            onAction={loadNotifications}
+          />
         </View>
       ) : notifications.length === 0 ? (
         <View style={styles.emptyWrap}>
