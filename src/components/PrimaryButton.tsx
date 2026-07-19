@@ -77,6 +77,11 @@ export const PrimaryButton = ({
       ]}
       onPress={onPress}
       disabled={inert}
+      // The label lives on the Pressable, not just the child Text, so the button
+      // is still announced while `loading` swaps the label for a spinner.
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: inert, busy: loading }}
     >
       {loading ? (
         <ActivityIndicator size="small" color={palette.label} />

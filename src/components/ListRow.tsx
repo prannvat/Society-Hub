@@ -20,6 +20,8 @@ export const ListRow = ({ title, subtitle, leading, trailing, chevron = false, o
     <Pressable
       onPress={onPress}
       disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? [title, subtitle].filter(Boolean).join(', ') : undefined}
       android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: false }}
       style={({ pressed }) => [
         styles.row,

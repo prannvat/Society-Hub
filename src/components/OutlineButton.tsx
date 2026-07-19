@@ -28,6 +28,9 @@ export const OutlineButton = ({ label, onPress, disabled = false, style }: Outli
       ]}
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
     >
       <Text style={[styles.text, { color: theme.colors.primary }]} numberOfLines={1}>{label}</Text>
     </Pressable>

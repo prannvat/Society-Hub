@@ -21,7 +21,13 @@ export const TopNavBar = ({ title, subtitle, actionLabel, onPressAction, onBack,
     <View style={[styles.row, gutter ? { paddingHorizontal: spacing.lg } : null, { borderBottomColor: theme.colors.border }]}>
       <View style={styles.leftWrap}>
         {onBack && (
-          <Pressable onPress={onBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.back}>
+          <Pressable
+            onPress={onBack}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.back}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
             {({ pressed }) => (
               <MaterialIcons
                 name="chevron-left"

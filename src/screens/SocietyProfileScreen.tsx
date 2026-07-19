@@ -172,10 +172,10 @@ export const SocietyProfileScreen = () => {
         <View>
           <View style={[styles.gradientBand, { backgroundColor: theme.colors.surfaceSunken }]} />
           <View style={styles.bandActions}>
-            <Pressable onPress={() => navigation.goBack()} hitSlop={6} style={overlayButtonStyle}>
+            <Pressable onPress={() => navigation.goBack()} hitSlop={6} style={overlayButtonStyle} accessibilityRole="button" accessibilityLabel="Go back">
               <MaterialIcons name="arrow-back" size={22} color={theme.colors.textPrimary} />
             </Pressable>
-            <Pressable onPress={() => { haptics.tap(); toggleFavouriteSociety(society.id); }} hitSlop={6} style={overlayButtonStyle}>
+            <Pressable onPress={() => { haptics.tap(); toggleFavouriteSociety(society.id); }} hitSlop={6} style={overlayButtonStyle} accessibilityRole="button" accessibilityLabel={isFavourited ? 'Remove from favourites' : 'Add to favourites'}>
               <MaterialIcons
                 name={isFavourited ? 'favorite' : 'favorite-border'}
                 size={22}

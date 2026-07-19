@@ -125,6 +125,8 @@ export const FeedScreen = () => {
             <Pressable
               onPress={() => navigation.navigate('CreateHub', undefined)}
               hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Create a post, event or poll"
               style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.5 : 1 }]}
             >
               <MaterialIcons name="add-box" size={26} color={theme.colors.textPrimary} />

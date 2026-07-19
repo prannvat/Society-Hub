@@ -139,6 +139,8 @@ export const ProfileScreen = () => {
           <Pressable
             onPress={() => navigation.navigate('Settings')}
             hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
             style={({ pressed }) => [styles.headerAction, { opacity: pressed ? 0.5 : 1 }]}
           >
             <MaterialIcons name="settings" size={24} color={theme.colors.textPrimary} />
@@ -151,6 +153,8 @@ export const ProfileScreen = () => {
         <Pressable
           onPress={openSwitcher}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Switch account, currently ${handle}`}
           style={({ pressed }) => [styles.accountBar, { opacity: pressed ? 0.6 : 1 }]}
         >
           <Text style={[theme.typography.h3, { color: theme.colors.textPrimary, flexShrink: 1 }]} numberOfLines={1}>
