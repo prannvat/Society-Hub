@@ -493,7 +493,20 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
     }
     const socket = io(`${WS_BASE_URL}/polls`, { transports: ['websocket'], auth: { token: accessToken } });
     socket.on('connect', () => socket.emit('polls.subscribe', { societyId: activeSocietyId }));
-    socket.on('polls.updated', (payload: ApiPollItem[]) => setPolls(mapApiPolls(payload, actorUserId)));
+    // The server now pushes a delta for the single poll that changed, with no
+    // viewer-specific fields. Merge it in and keep OUR OWN vote — the payload
+    // deliberately carries no `currentUserVote`, because it used to carry the
+    // voter's and every other client rendered it as their own selection.
+    socket.on('polls.updated', (incoming: ApiPollItem) => {
+      if (!incoming?.id) return;
+      setPolls((prev) =>
+        prev.map((poll) => {
+          if (poll.id !== incoming.id) return poll;
+          const myVote = poll.responses[actorUserId] ?? null;
+          return mapApiPolls([{ ...incoming, currentUserVote: myVote }], actorUserId)[0];
+        }),
+      );
+    });
     return () => {
       socket.disconnect();
     };
