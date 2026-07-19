@@ -264,6 +264,23 @@ export const SocietyProfileScreen = () => {
             </View>
           )}
 
+          {/* A plain member's route into helping run the society. Previously the
+              only entry points lived inside committee-only screens, so the very
+              people this flow exists for could never reach it. */}
+          {isMember && !canManage ? (
+            <PrimaryButton
+              label="Request a committee role"
+              variant="secondary"
+              icon="trending-up"
+              onPress={() =>
+                navigation.navigate('CommitteeRequest', {
+                  societyId: society.id,
+                  currentRole: 'Member',
+                })
+              }
+            />
+          ) : null}
+
           {/* Committee affordance — act AS the society (IG account takeover) */}
           {canManage ? (
             <PrimaryButton

@@ -4,6 +4,11 @@ const WS_BASE_URL = process.env.EXPO_PUBLIC_WS_BASE_URL ?? API_ORIGIN;
 let authAccessToken: string | null = null;
 const DEBUG_API = typeof __DEV__ !== 'undefined' ? __DEV__ : true;
 
+/** Long enough for a slow campus network, short enough to not feel hung. */
+const REQUEST_TIMEOUT_MS = 15_000;
+/** 408 Request Timeout — lets callers treat it as a normal transport failure. */
+const REQUEST_TIMEOUT_STATUS = 408;
+
 export class ApiError extends Error {
   statusCode: number;
   code?: string;
@@ -48,11 +53,33 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     console.log('[API] ->', method, url, { requestId: clientRequestId, body });
   }
 
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  // Without a timeout a dead network (captive portal, no signal) leaves the
+  // promise pending for the platform default — which is why loading skeletons
+  // could spin forever with no way out. Abort and surface it as a real error.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new ApiError(
+        'That took too long. Check your connection and try again.',
+        REQUEST_TIMEOUT_STATUS,
+        'REQUEST_TIMEOUT',
+        clientRequestId,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (DEBUG_API) {
     console.log('[API] <-', method, url, { status: response.status, requestId: response.headers.get('x-request-id') ?? clientRequestId });

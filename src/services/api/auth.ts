@@ -50,6 +50,15 @@ export function authErrorMessage(error: unknown): string {
     if (error.code?.startsWith('VALIDATION')) {
       return "Some of those details don't look right. Please double-check and try again.";
     }
+    if (error.code === 'REQUEST_TIMEOUT') {
+      return NETWORK_ERROR_MESSAGE;
+    }
+    // Rate limiting: without this, someone locked out after a few wrong
+    // passwords got a generic "something went wrong" and kept retrying, which
+    // kept the window open and never recovered.
+    if (error.statusCode === 429) {
+      return 'Too many attempts. Please wait a minute and try again.';
+    }
     // Any other API error (404/500/RESOURCE_NOT_FOUND, unparsable bodies, …)
     return GENERIC_ERROR_MESSAGE;
   }
