@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -14,6 +14,8 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { haptics } from '@/utils/haptics';
 import { uploadImage } from '@/services/api/uploads';
+import { fetchAnnouncementDetail, updateAnnouncement } from '@/services/api/announcements';
+import { mapAnnouncementCategory, mapAnnouncementCategoryToApi } from '@/utils/mapAnnouncementCategory';
 import { AnnouncementCategory } from '@/types';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
@@ -27,6 +29,9 @@ export const CreatePostScreen = () => {
   const theme = useAppTheme();
   const navigation = useNavigation<Nav>();
   const toast = useToast();
+  const route = useRoute<RouteProp<RootStackParamList, 'CreatePost'>>();
+  const editPostId = route.params?.editPostId;
+  const isEditing = Boolean(editPostId);
   const { addAnnouncement, allSocieties, activeSocietyId } = useLocalAppState();
 
   const activeSociety = allSocieties.find((s) => s.id === activeSocietyId);
@@ -38,6 +43,32 @@ export const CreatePostScreen = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ title?: string; preview?: string }>({});
+  const [loadingExisting, setLoadingExisting] = useState(isEditing);
+
+  // Editing reuses this composer rather than duplicating it — load the post
+  // once and prefill, so the user edits what's actually stored.
+  useEffect(() => {
+    if (!editPostId) return;
+    let active = true;
+    (async () => {
+      try {
+        const existing = await fetchAnnouncementDetail(editPostId);
+        if (!active) return;
+        setTitle(existing.title);
+        setPreview(existing.body?.trim() || existing.preview);
+        setCategory(mapAnnouncementCategory(existing.category));
+        setImageUrl(existing.imageUrl ?? null);
+      } catch {
+        toast.show('Could not load that post to edit.', 'error');
+        navigation.goBack();
+      } finally {
+        if (active) setLoadingExisting(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [editPostId]);
 
   const pickImage = async () => {
     if (!activeSocietyId) {
@@ -76,17 +107,34 @@ export const CreatePostScreen = () => {
 
     setSubmitting(true);
     try {
-      await addAnnouncement({
-        title: title.trim(),
-        preview: preview.trim(),
-        category,
-        imageUrl: imageUrl ?? undefined,
-      });
-      haptics.success();
-      toast.show('Post published', 'success');
+      if (editPostId) {
+        await updateAnnouncement(editPostId, {
+          title: title.trim(),
+          preview: preview.trim().slice(0, 280),
+          body: preview.trim(),
+          category: mapAnnouncementCategoryToApi(category),
+          imageUrl: imageUrl ?? null,
+        });
+        haptics.success();
+        toast.show('Post updated', 'success');
+      } else {
+        await addAnnouncement({
+          title: title.trim(),
+          preview: preview.trim(),
+          category,
+          imageUrl: imageUrl ?? undefined,
+        });
+        haptics.success();
+        toast.show('Post published', 'success');
+      }
       navigation.goBack();
     } catch {
-      toast.show('Could not publish your post. Please try again.', 'error');
+      toast.show(
+        isEditing
+          ? 'Could not save your changes. Please try again.'
+          : 'Could not publish your post. Please try again.',
+        'error',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -94,7 +142,7 @@ export const CreatePostScreen = () => {
 
   return (
     <ScreenLayout>
-      <TopNavBar title="New post" onBack={() => navigation.goBack()} />
+      <TopNavBar title={isEditing ? 'Edit post' : 'New post'} onBack={() => navigation.goBack()} />
       <View style={styles.body}>
         {activeSociety ? (
           <View style={[styles.context, { backgroundColor: theme.colors.surfaceSunken, borderRadius: theme.radius.card }]}>
@@ -202,7 +250,12 @@ export const CreatePostScreen = () => {
         </View>
 
         <View style={styles.publish}>
-          <PrimaryButton label="Publish post" onPress={submit} loading={submitting} icon="send" />
+          <PrimaryButton
+            label={isEditing ? 'Save changes' : 'Publish post'}
+            onPress={submit}
+            loading={submitting || loadingExisting}
+            icon={isEditing ? 'check' : 'send'}
+          />
         </View>
       </View>
     </ScreenLayout>

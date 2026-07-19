@@ -1,10 +1,11 @@
 import React from 'react';
-import { Image, StyleSheet, Text } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { FeedPostShell } from './FeedPostShell';
 import { BadgeChip } from './BadgeChip';
 import { FeedCardHeader } from './FeedCardHeader';
 import { categoryChipVariant } from './AnnouncementCard';
 import { PostActionBar } from './PostActionBar';
+import { ContentOwnerMenu } from './ContentOwnerMenu';
 import { FeedSociety } from '@/hooks/useFeed';
 import { AnnouncementCategory } from '@/types';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -27,6 +28,10 @@ type PostFeedCardProps = {
   likeCount?: number;
   commentCount?: number;
   likedByMe?: boolean;
+  /** Committee affordances — only rendered when the viewer can manage this post. */
+  canManage?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 };
 
 export const PostFeedCard = ({
@@ -42,7 +47,10 @@ export const PostFeedCard = ({
   postId,
   likeCount = 0,
   commentCount = 0,
-  likedByMe = false
+  likedByMe = false,
+  canManage = false,
+  onEdit,
+  onDelete
 }: PostFeedCardProps) => {
   const theme = useAppTheme();
   const { openComments } = useComments();
@@ -55,7 +63,17 @@ export const PostFeedCard = ({
         society={society}
         createdAtIso={createdAtIso}
         onPressSociety={onOpenSociety}
-        trailing={<BadgeChip label={category} variant={categoryChipVariant(category)} />}
+        trailing={
+          <View style={styles.headerTrailing}>
+            <BadgeChip label={category} variant={categoryChipVariant(category)} />
+            <ContentOwnerMenu
+              noun="post"
+              visible={canManage && Boolean(onDelete)}
+              onEdit={onEdit}
+              onDelete={() => onDelete?.()}
+            />
+          </View>
+        }
       />
 
       {imageUrl ? (
@@ -101,6 +119,11 @@ export const PostFeedCard = ({
 };
 
 const styles = StyleSheet.create({
+  headerTrailing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
   // Edge-to-edge, cancelling the shell's 16px horizontal padding.
   image: {
     height: 320,

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -14,6 +14,7 @@ import { TopNavBar } from '@/components/TopNavBar';
 import { useToast } from '@/components/Toast';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { uploadImage } from '@/services/api/uploads';
+import { fetchEvents, updateEvent } from '@/services/api/events';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -22,7 +23,10 @@ export const CreateEventScreen = () => {
   const theme = useAppTheme();
   const toast = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { addEvent, activeSocietyId } = useLocalAppState();
+  const route = useRoute<RouteProp<RootStackParamList, 'CreateEvent'>>();
+  const editEventId = route.params?.editEventId;
+  const isEditing = Boolean(editEventId);
+  const { addEvent, activeSocietyId, refreshActiveSociety } = useLocalAppState();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
@@ -43,6 +47,41 @@ export const CreateEventScreen = () => {
   const [membersOnly, setMembersOnly] = useState(false);
   const [formError, setFormError] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
+
+  // Editing reuses this composer. The event list for the society is the
+  // cheapest way to read one back — there is no single-event GET endpoint.
+  useEffect(() => {
+    if (!editEventId || !activeSocietyId) return;
+    let active = true;
+    (async () => {
+      try {
+        const events = await fetchEvents(activeSocietyId);
+        const existing = events.find((e) => e.id === editEventId);
+        if (!existing || !active) return;
+        const start = new Date(existing.startAt);
+        setTitle(existing.title);
+        setDescription(existing.description ?? '');
+        setLocation(existing.location ?? '');
+        setLocationPlaceId(existing.locationPlaceId ?? undefined);
+        setLocationLatitude(existing.locationLatitude ?? undefined);
+        setLocationLongitude(existing.locationLongitude ?? undefined);
+        setPosterImageUrl(existing.posterImageUrl ?? undefined);
+        setIsFree(existing.isFree);
+        setMembersOnly(existing.membersOnly);
+        if (!Number.isNaN(start.getTime())) {
+          setSelectedDateValue(start);
+          setSelectedTimeValue(start);
+          setDate(start.toLocaleDateString());
+          setTime(start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+        }
+      } catch {
+        toast.show('Could not load that event to edit.', 'error');
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [editEventId, activeSocietyId]);
 
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
@@ -223,6 +262,26 @@ export const CreateEventScreen = () => {
 
     setIsPublishing(true);
     try {
+      if (editEventId) {
+        await updateEvent(editEventId, {
+          title: title.trim(),
+          description: description.trim(),
+          location: location.trim(),
+          locationPlaceId,
+          locationLatitude,
+          locationLongitude,
+          posterImageUrl: posterImageUrl ?? null,
+          startAt: composedStartAt.toISOString(),
+          isFree,
+          membersOnly,
+        });
+        setFormError('');
+        await refreshActiveSociety();
+        toast.show('Event updated', 'success');
+        navigation.goBack();
+        return;
+      }
+
       const newEventId = await addEvent({
         title: title.trim(),
         description: description.trim(),
@@ -251,7 +310,7 @@ export const CreateEventScreen = () => {
   return (
     <ScreenLayout>
       <View style={styles.formWrap}>
-        <TopNavBar gutter={false} title="Create Event" onBack={() => navigation.goBack()} />
+        <TopNavBar gutter={false} title={isEditing ? 'Edit Event' : 'Create Event'} onBack={() => navigation.goBack()} />
 
         {/* Details */}
         <View style={styles.formSection}>
@@ -453,7 +512,11 @@ export const CreateEventScreen = () => {
           </View>
         ) : null}
 
-        <PrimaryButton label="Publish Event" onPress={publishEvent} loading={isPublishing} />
+        <PrimaryButton
+          label={isEditing ? 'Save changes' : 'Publish Event'}
+          onPress={publishEvent}
+          loading={isPublishing}
+        />
         <PrimaryButton label="Cancel" variant="ghost" size="md" disabled={isPublishing} onPress={() => navigation.goBack()} />
 
         <DateTimePickerModal

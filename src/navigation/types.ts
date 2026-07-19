@@ -26,7 +26,7 @@ export type RootStackParamList = {
   EventDetail: { eventId?: string } | undefined;
   AnnouncementDetail: { announcementId?: string } | undefined;
   Settings: undefined;
-  CreateEvent: { societyId?: string } | undefined;
+  CreateEvent: { societyId?: string; editEventId?: string } | undefined;
   CreateSociety: undefined;
   EditSocietyProfile: undefined;
   EditProfile: undefined;
@@ -34,7 +34,7 @@ export type RootStackParamList = {
   // Committee/creator surface — contextual, reached without a mode switch.
   SocietyManage: { societyId: string };
   CreateHub: { societyId?: string } | undefined;
-  CreatePost: { societyId?: string } | undefined;
+  CreatePost: { societyId?: string; editPostId?: string } | undefined;
   CreatePoll: { societyId?: string } | undefined;
   MembersDirectory: { societyId?: string } | undefined;
   // Public "who has joined" list — readable by any signed-in user.

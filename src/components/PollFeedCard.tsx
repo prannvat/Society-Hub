@@ -4,6 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { FeedPostShell } from './FeedPostShell';
 import { BadgeChip } from './BadgeChip';
 import { FeedCardHeader } from './FeedCardHeader';
+import { ContentOwnerMenu } from './ContentOwnerMenu';
 import { FeedPoll, FeedSociety } from '@/hooks/useFeed';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { haptics } from '@/utils/haptics';
@@ -14,6 +15,8 @@ type PollFeedCardProps = {
   poll: FeedPoll;
   onOpenSociety: () => void;
   onVote: (optionId: string) => Promise<void>;
+  canManage?: boolean;
+  onDelete?: () => void;
 };
 
 type DisplayOption = {
@@ -83,7 +86,7 @@ const ResultRow = ({ option, selected, onPress, disabled }: ResultRowProps) => {
   );
 };
 
-export const PollFeedCard = ({ society, createdAtIso, poll, onOpenSociety, onVote }: PollFeedCardProps) => {
+export const PollFeedCard = ({ society, createdAtIso, poll, onOpenSociety, onVote, canManage = false, onDelete }: PollFeedCardProps) => {
   const theme = useAppTheme();
   const [optimisticVote, setOptimisticVote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -134,7 +137,17 @@ export const PollFeedCard = ({ society, createdAtIso, poll, onOpenSociety, onVot
         society={society}
         createdAtIso={createdAtIso}
         onPressSociety={onOpenSociety}
-        trailing={<BadgeChip label="Poll" variant="primary" />}
+        trailing={
+          <View style={styles.headerTrailing}>
+            <BadgeChip label="Poll" variant="primary" />
+            {/* Delete only — a poll's options are immutable once votes exist. */}
+            <ContentOwnerMenu
+              noun="poll"
+              visible={canManage && Boolean(onDelete)}
+              onDelete={() => onDelete?.()}
+            />
+          </View>
+        }
       />
 
       <Text style={[theme.typography.h3, styles.question, { color: theme.colors.textPrimary }]}>{poll.question}</Text>
@@ -182,6 +195,11 @@ export const PollFeedCard = ({ society, createdAtIso, poll, onOpenSociety, onVot
 };
 
 const styles = StyleSheet.create({
+  headerTrailing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
   question: {
     marginTop: 12
   },

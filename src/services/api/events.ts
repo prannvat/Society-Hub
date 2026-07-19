@@ -36,3 +36,30 @@ export async function removeRsvpFromEvent(eventId: string) {
     method: 'DELETE',
   });
 }
+
+/** Edit an event. Committee/president of the owning society only. */
+export async function updateEvent(
+  eventId: string,
+  input: {
+    title?: string;
+    description?: string;
+    location?: string;
+    locationPlaceId?: string;
+    locationLatitude?: number;
+    locationLongitude?: number;
+    posterImageUrl?: string | null;
+    startAt?: string;
+    endAt?: string | null;
+    membersOnly?: boolean;
+    isFree?: boolean;
+  },
+) {
+  return apiRequest(`/events/${encodeURIComponent(eventId)}`, { method: 'PATCH', body: input });
+}
+
+/** Delete an event, along with its RSVPs. */
+export async function deleteEvent(eventId: string) {
+  return apiRequest<{ success: true }>(`/events/${encodeURIComponent(eventId)}`, {
+    method: 'DELETE',
+  });
+}

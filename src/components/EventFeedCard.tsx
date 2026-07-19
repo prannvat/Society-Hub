@@ -4,6 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { FeedPostShell } from './FeedPostShell';
 import { BadgeChip } from './BadgeChip';
 import { FeedCardHeader } from './FeedCardHeader';
+import { ContentOwnerMenu } from './ContentOwnerMenu';
 import { FeedSociety } from '@/hooks/useFeed';
 import { EventItem } from '@/types';
 import { haptics } from '@/utils/haptics';
@@ -17,6 +18,9 @@ type EventFeedCardProps = {
   onOpenSociety: () => void;
   onOpenDetail: () => void;
   onToggleRSVP: () => Promise<void>;
+  canManage?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 };
 
 const parseEventDate = (event: EventItem): Date | null => {
@@ -37,7 +41,10 @@ export const EventFeedCard = ({
   isGoing,
   onOpenSociety,
   onOpenDetail,
-  onToggleRSVP
+  onToggleRSVP,
+  canManage = false,
+  onEdit,
+  onDelete
 }: EventFeedCardProps) => {
   const theme = useAppTheme();
   const [optimisticGoing, setOptimisticGoing] = useState<boolean | null>(null);
@@ -74,7 +81,17 @@ export const EventFeedCard = ({
         society={society}
         createdAtIso={createdAtIso}
         onPressSociety={onOpenSociety}
-        trailing={<BadgeChip label={event.isFree ? 'Free' : 'Paid'} variant={event.isFree ? 'success' : 'neutral'} />}
+        trailing={
+          <View style={styles.headerTrailing}>
+            <BadgeChip label={event.isFree ? 'Free' : 'Paid'} variant={event.isFree ? 'success' : 'neutral'} />
+            <ContentOwnerMenu
+              noun="event"
+              visible={canManage && Boolean(onDelete)}
+              onEdit={onEdit}
+              onDelete={() => onDelete?.()}
+            />
+          </View>
+        }
       />
 
       {/* Edge-to-edge hero, Instagram-style: the poster when there is one,
@@ -148,6 +165,11 @@ export const EventFeedCard = ({
 };
 
 const styles = StyleSheet.create({
+  headerTrailing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
   // Cancel the shell's 16px horizontal padding so the hero is edge-to-edge.
   hero: {
     height: 260,

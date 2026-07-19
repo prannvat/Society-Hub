@@ -16,6 +16,10 @@ import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useToast } from '@/components/Toast';
 import { FeedItem, useFeed } from '@/hooks/useFeed';
+import { deleteAnnouncement } from '@/services/api/announcements';
+import { deleteEvent } from '@/services/api/events';
+import { deletePoll } from '@/services/api/polls';
+import { haptics } from '@/utils/haptics';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 
@@ -66,6 +70,30 @@ export const FeedScreen = () => {
     [voteOnPoll, refresh, toast],
   );
 
+  /** Committee/president of the society that owns the content. */
+  const canManageSociety = useCallback(
+    (societyId: string) => adminSocieties.some((entry) => entry.societyId === societyId),
+    [adminSocieties],
+  );
+
+  // One handler for all three content types — same shape, same feedback, and a
+  // refresh so the deleted row actually leaves the feed.
+  const handleDelete = useCallback(
+    async (kind: 'post' | 'event' | 'poll', id: string) => {
+      try {
+        if (kind === 'post') await deleteAnnouncement(id);
+        else if (kind === 'event') await deleteEvent(id);
+        else await deletePoll(id);
+        haptics.success();
+        toast.show(`${kind[0].toUpperCase()}${kind.slice(1)} deleted`, 'success');
+        await refresh();
+      } catch {
+        toast.show(`Could not delete that ${kind}. Please try again.`, 'error');
+      }
+    },
+    [refresh, toast],
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: FeedItem }) => {
       if (item.kind === 'post') {
@@ -82,6 +110,11 @@ export const FeedScreen = () => {
             likeCount={item.likeCount}
             commentCount={item.commentCount}
             likedByMe={item.likedByMe}
+            canManage={canManageSociety(item.society.id)}
+            onEdit={() =>
+              navigation.navigate('CreatePost', { societyId: item.society.id, editPostId: item.postId })
+            }
+            onDelete={() => handleDelete('post', item.postId)}
             onOpenSociety={() => openSociety(item.society.id)}
             onReadMore={() => navigation.navigate('AnnouncementDetail', { announcementId: item.postId })}
           />
@@ -98,6 +131,11 @@ export const FeedScreen = () => {
             onOpenSociety={() => openSociety(item.society.id)}
             onOpenDetail={() => navigation.navigate('EventDetail', { eventId: item.event.id })}
             onToggleRSVP={() => handleRSVP(item.event.id, isGoing)}
+            canManage={canManageSociety(item.society.id)}
+            onEdit={() =>
+              navigation.navigate('CreateEvent', { societyId: item.society.id, editEventId: item.event.id })
+            }
+            onDelete={() => handleDelete('event', item.event.id)}
           />
         );
       }
@@ -108,10 +146,12 @@ export const FeedScreen = () => {
           poll={item.poll}
           onOpenSociety={() => openSociety(item.society.id)}
           onVote={(optionId) => handleVote(item.poll.id, optionId)}
+          canManage={canManageSociety(item.society.id)}
+          onDelete={() => handleDelete('poll', item.poll.id)}
         />
       );
     },
-    [openSociety, navigation, rsvpedEventIds, handleRSVP, handleVote],
+    [openSociety, navigation, rsvpedEventIds, handleRSVP, handleVote, canManageSociety, handleDelete],
   );
 
   const storyRow = <SocietyStoryRow societies={joinedSocieties} onPressSociety={openSociety} />;

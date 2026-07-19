@@ -100,3 +100,27 @@ export async function deleteComment(announcementId: string, commentId: string) {
     { method: 'DELETE' },
   );
 }
+
+/** Edit a post. Committee/president of the owning society only. */
+export async function updateAnnouncement(
+  announcementId: string,
+  input: {
+    title?: string;
+    preview?: string;
+    body?: string;
+    imageUrl?: string | null;
+    category?: ApiAnnouncementCategory;
+  },
+) {
+  return apiRequest<ApiAnnouncement>(`/announcements/${encodeURIComponent(announcementId)}`, {
+    method: 'PATCH',
+    body: input,
+  });
+}
+
+/** Delete a post, along with its likes and comments. */
+export async function deleteAnnouncement(announcementId: string) {
+  return apiRequest<{ success: true }>(`/announcements/${encodeURIComponent(announcementId)}`, {
+    method: 'DELETE',
+  });
+}
