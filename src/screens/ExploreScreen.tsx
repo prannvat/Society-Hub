@@ -176,8 +176,7 @@ export const ExploreScreen = () => {
 
   return (
     <ScreenLayout scroll={false}>
-      <View style={styles.header}>
-        <ScreenHeader
+      <ScreenHeader
           title="Events"
           subtitle="What's on across campus"
           accessory={
@@ -210,7 +209,6 @@ export const ExploreScreen = () => {
             </Pressable>
           }
         />
-      </View>
 
       <View style={styles.calendarWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.calendarScroll}>
@@ -308,11 +306,6 @@ export const ExploreScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20
-  },
   favFilterButton: {
     flexDirection: 'row',
     alignItems: 'center',
