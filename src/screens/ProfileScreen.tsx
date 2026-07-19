@@ -8,8 +8,6 @@ import { BadgeChip } from '@/components/BadgeChip';
 import { Card } from '@/components/Card';
 import { ListRow } from '@/components/ListRow';
 import { SectionHeader } from '@/components/SectionHeader';
-import { CampusPointsCard } from '@/components/CampusPointsCard';
-import { BadgeRow } from '@/components/BadgeRow';
 import { ProfileStatsRow } from '@/components/ProfileStatsRow';
 import { ProfileIdentityBlock } from '@/components/ProfileIdentityBlock';
 import { ProfileLinkChips } from '@/components/ProfileLinkChips';
@@ -24,7 +22,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { RootStackParamList } from '@/navigation/types';
 import { MemberRole } from '@/types';
 import { spacing } from '@/config/theme';
-import { computeCampusProgress, CampusBadge } from '@/utils/campusPoints';
+import { computeCampusProgress } from '@/utils/campusPoints';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
@@ -66,13 +64,6 @@ export const ProfileScreen = () => {
     pollsVoted,
   });
 
-  const handleBadgePress = (badge: CampusBadge) => {
-    if (badge.earned) {
-      toast.show(`${badge.label} unlocked`, 'success');
-    } else {
-      toast.show(`${badge.label}: ${badge.hint}`, 'info');
-    }
-  };
 
   const identityCaption = [profile.university, profile.course, profile.year].filter(Boolean).join(' • ');
 
@@ -237,10 +228,19 @@ export const ProfileScreen = () => {
           </View>
         </View>
 
-        {/* Campus Points — rewards / gamification, derived from real activity */}
-        <View style={styles.rewards}>
-          <CampusPointsCard progress={campusProgress} />
-          <BadgeRow badges={campusProgress.badges} onPressBadge={handleBadgePress} />
+        {/* Campus Points — one quiet pill, not a gradient dashboard. The stat
+            count lives in the identity row above; this adds the motivational
+            level + progress without shouting. */}
+        <View style={[styles.pointsPill, { backgroundColor: theme.colors.surfaceSunken, borderRadius: theme.radius.pill }]}>
+          <MaterialIcons name="military-tech" size={16} color={theme.colors.textSecondary} />
+          <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary }]}>
+            {campusProgress.levelTitle}
+          </Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+            {campusProgress.pointsToNextLevel > 0
+              ? `· ${campusProgress.pointsToNextLevel} pts to next level`
+              : '· Max level'}
+          </Text>
         </View>
 
         {/* Your societies — the grid is the visual anchor of the profile */}
@@ -332,6 +332,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  pointsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
   accountBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -348,9 +356,6 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: 10
-  },
-  rewards: {
-    gap: 14
   },
   addLinksHint: {
     flexDirection: 'row',

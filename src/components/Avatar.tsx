@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { fonts } from '@/config/theme';
 
 type AvatarProps = {
   name: string;
@@ -9,30 +10,8 @@ type AvatarProps = {
   url?: string;
 };
 
-// 8 pleasant hues; light mode uses saturated bgs with white text,
-// dark mode uses lifted bgs with a dark ink for contrast.
-const AVATAR_PALETTE: { light: string; dark: string }[] = [
-  { light: '#4F46E5', dark: '#818CF8' }, // indigo
-  { light: '#0D9488', dark: '#2DD4BF' }, // teal
-  { light: '#D97706', dark: '#FBBF24' }, // amber
-  { light: '#DB2777', dark: '#F472B6' }, // pink
-  { light: '#7C3AED', dark: '#A78BFA' }, // violet
-  { light: '#059669', dark: '#34D399' }, // emerald
-  { light: '#0284C7', dark: '#38BDF8' }, // sky
-  { light: '#E11D48', dark: '#FB7185' }  // rose
-];
-
-const hashName = (name: string): number => {
-  let hash = 0;
-  for (let i = 0; i < name.length; i += 1) {
-    hash = (hash * 31 + name.charCodeAt(i)) % 997;
-  }
-  return hash;
-};
-
 export const Avatar = ({ name, online, size = 44, url }: AvatarProps) => {
   const theme = useAppTheme();
-  const isDark = theme.mode === 'dark';
 
   const initials = (name || '')
     .split(' ')
@@ -42,10 +21,9 @@ export const Avatar = ({ name, online, size = 44, url }: AvatarProps) => {
     .slice(0, 2)
     .toUpperCase() || '?';
 
-  const hue = AVATAR_PALETTE[hashName(name || '?') % AVATAR_PALETTE.length];
-  const backgroundColor = isDark ? hue.dark : hue.light;
-  const textColor = isDark ? '#14163A' : '#FFFFFF';
-
+  // One neutral treatment for every placeholder — a soft grey fill with ink
+  // initials, like Instagram. No per-name hues; colour was the loudest source
+  // of visual noise in the feed.
   return (
     <View>
       {url ? (
@@ -54,8 +32,20 @@ export const Avatar = ({ name, online, size = 44, url }: AvatarProps) => {
           style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: theme.colors.surfaceSunken }}
         />
       ) : (
-        <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor }]}>
-          <Text style={[styles.text, { color: textColor, fontSize: Math.max(11, Math.round(size * 0.36)) }]}>
+        <View
+          style={[
+            styles.avatar,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              backgroundColor: theme.colors.surfaceSunken,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: theme.colors.border
+            }
+          ]}
+        >
+          <Text style={[styles.text, { color: theme.colors.textSecondary, fontSize: Math.max(11, Math.round(size * 0.36)) }]}>
             {initials}
           </Text>
         </View>
@@ -73,7 +63,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   text: {
-    fontWeight: '700',
+    fontFamily: fonts.sansSemibold,
     includeFontPadding: false
   },
   dot: {

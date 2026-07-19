@@ -31,7 +31,7 @@ export const SocietyStoryRow = ({ societies, onPressSociety }: SocietyStoryRowPr
           onPress={() => onPressSociety(item.id)}
           style={({ pressed }) => [styles.story, { opacity: pressed ? 0.7 : 1 }]}
         >
-          <View style={[styles.ring, { borderColor: item.primaryColor, backgroundColor: theme.colors.surface }]}>
+          <View style={[styles.ring, { borderColor: theme.colors.borderStrong, backgroundColor: theme.colors.surface }]}>
             <Avatar name={item.name} url={item.logoUrl ?? undefined} size={58} />
           </View>
           <Text style={[theme.typography.caption, styles.label, { color: theme.colors.textSecondary }]} numberOfLines={1}>

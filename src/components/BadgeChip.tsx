@@ -34,14 +34,16 @@ export const BadgeChip = ({ label, variant = 'filled', style }: BadgeChipProps) 
       text: theme.colors.primary,
       border: 'transparent'
     },
+    // success/warning render neutral: a premium monochrome UI reserves colour
+    // for actions and genuinely destructive states, not status decoration.
     success: {
-      background: theme.colors.successSoft,
-      text: theme.colors.success,
+      background: theme.colors.surfaceSunken,
+      text: theme.colors.textSecondary,
       border: 'transparent'
     },
     warning: {
-      background: theme.colors.warningSoft,
-      text: theme.colors.warning,
+      background: theme.colors.surfaceSunken,
+      text: theme.colors.textSecondary,
       border: 'transparent'
     },
     danger: {

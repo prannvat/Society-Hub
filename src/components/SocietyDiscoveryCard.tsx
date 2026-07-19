@@ -46,13 +46,11 @@ export const SocietyDiscoveryCard = ({
   onPress
 }: SocietyDiscoveryCardProps) => {
   const theme = useAppTheme();
-  const brand = society.primaryColor || theme.colors.primary;
   const members = societyMemberCount(society);
   const isNew = !trending && isNewSociety(society.createdAt);
 
   return (
     <Card padding={0} onPress={onPress} style={styles.card}>
-      <View style={[styles.accent, { backgroundColor: brand }]} />
       <View style={styles.body}>
         <View style={styles.topRow}>
           {society.logoUrl ? (
@@ -62,16 +60,16 @@ export const SocietyDiscoveryCard = ({
               resizeMode="cover"
             />
           ) : (
-            <View style={[styles.logo, { borderRadius: theme.radius.card, backgroundColor: `${brand}22` }]}>
-              <Text style={[theme.typography.captionMedium, { color: brand }]} numberOfLines={1}>
+            <View style={[styles.logo, { borderRadius: theme.radius.card, backgroundColor: theme.colors.surfaceSunken }]}>
+              <Text style={[theme.typography.captionMedium, { color: theme.colors.textSecondary }]} numberOfLines={1}>
                 {society.shortName}
               </Text>
             </View>
           )}
           <View style={styles.chiplets}>
             {trending ? (
-              <View style={[styles.chiplet, { backgroundColor: theme.colors.warningSoft }]}>
-                <Text style={[theme.typography.micro, { color: theme.colors.warning }]}>{'🔥 Trending'}</Text>
+              <View style={[styles.chiplet, { backgroundColor: theme.colors.surfaceSunken }]}>
+                <Text style={[theme.typography.micro, { color: theme.colors.textSecondary }]}>Trending</Text>
               </View>
             ) : null}
             {isNew ? (
@@ -117,10 +115,6 @@ const styles = StyleSheet.create({
   card: {
     minHeight: 214,
     overflow: 'hidden'
-  },
-  accent: {
-    height: 4,
-    width: '100%'
   },
   body: {
     flex: 1,

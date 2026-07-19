@@ -1,6 +1,5 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
@@ -41,11 +40,6 @@ const ROLE_BADGE: Partial<Record<SocietyRole, string>> = {
   COMMITTEE: 'Committee',
 };
 
-/** A safe hex fallback so a malformed brand colour can never crash the gradient. */
-const safeColor = (value: string | undefined, fallback: string): string =>
-  typeof value === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim())
-    ? value.trim()
-    : fallback;
 
 const initialsFor = (item: SocietyGridItem): string => {
   const source = item.shortName?.trim() || item.name?.trim() || '?';
@@ -102,8 +96,6 @@ export const SocietyGrid = ({
   return (
     <View style={styles.grid}>
       {societies.map((society) => {
-        const primary = safeColor(society.primaryColor, theme.colors.primary);
-        const secondary = safeColor(society.secondaryColor, theme.colors.accent);
         const badge = society.pending ? 'Pending' : society.role ? ROLE_BADGE[society.role] : undefined;
 
         return (
@@ -121,17 +113,12 @@ export const SocietyGrid = ({
                 },
               ]}
             >
-              <LinearGradient
-                colors={[primary, secondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.fill}
-              >
+              <View style={[styles.fill, { backgroundColor: theme.colors.surfaceSunken }]}>
                 {society.logoUrl ? (
                   <Image source={{ uri: society.logoUrl }} style={styles.logo} resizeMode="cover" />
                 ) : (
                   <View style={styles.initialsWrap}>
-                    <Text style={styles.initials} numberOfLines={1}>
+                    <Text style={[styles.initials, { color: theme.colors.textSecondary }]} numberOfLines={1}>
                       {initialsFor(society)}
                     </Text>
                   </View>
@@ -160,7 +147,7 @@ export const SocietyGrid = ({
                     </Text>
                   </View>
                 ) : null}
-              </LinearGradient>
+              </View>
             </Pressable>
           </View>
         );

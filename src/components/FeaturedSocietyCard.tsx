@@ -1,16 +1,17 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { SocietyItem } from '@/types';
 import { societyMemberCount } from './SocietyDiscoveryCard';
 
-// Translucent glass layers drawn on the brand gradient — intentionally not theme tokens.
-const GLASS_SOFT = 'rgba(255, 255, 255, 0.18)';
-const GLASS_STRONG = 'rgba(255, 255, 255, 0.28)';
+// A deliberate premium dark tile (fixed in both modes, like a featured card on
+// Spotify/IG). White ink on near-black — striking without any brand colour.
+const CARD_BG = '#121212';
+const GLASS_SOFT = 'rgba(255, 255, 255, 0.10)';
+const GLASS_STRONG = 'rgba(255, 255, 255, 0.16)';
 const INK = '#FFFFFF';
-const INK_SOFT = 'rgba(255, 255, 255, 0.82)';
+const INK_SOFT = 'rgba(255, 255, 255, 0.72)';
 
 type FeaturedSocietyCardProps = {
   society: SocietyItem;
@@ -30,8 +31,6 @@ export const FeaturedSocietyCard = ({
   onPress
 }: FeaturedSocietyCardProps) => {
   const theme = useAppTheme();
-  const brand = society.primaryColor || theme.colors.primary;
-  const gradient: [string, string] = [brand, society.secondaryColor || theme.colors.primaryPressed];
   const members = societyMemberCount(society);
 
   return (
@@ -45,12 +44,7 @@ export const FeaturedSocietyCard = ({
         { borderRadius: theme.radius.lg, transform: [{ scale: pressed ? 0.99 : 1 }], opacity: pressed ? 0.96 : 1 }
       ]}
     >
-      <LinearGradient
-        colors={gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.gradient, { borderRadius: theme.radius.lg }]}
-      >
+      <View style={[styles.gradient, { backgroundColor: CARD_BG, borderRadius: theme.radius.lg }]}>
         <View style={styles.headerRow}>
           {society.logoUrl ? (
             <Image source={{ uri: society.logoUrl }} style={styles.logo} resizeMode="cover" />
@@ -104,13 +98,13 @@ export const FeaturedSocietyCard = ({
                 { backgroundColor: INK, opacity: isJoining ? 0.7 : pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }
               ]}
             >
-              <Text style={[theme.typography.captionMedium, { color: brand, fontSize: 13 }]}>
+              <Text style={[theme.typography.captionMedium, { color: CARD_BG, fontSize: 13 }]}>
                 {isJoining ? 'Joining…' : 'Join'}
               </Text>
             </Pressable>
           )}
         </View>
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 };

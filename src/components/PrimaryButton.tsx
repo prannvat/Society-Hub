@@ -45,9 +45,9 @@ export const PrimaryButton = ({
       label: theme.colors.textOnPrimary
     },
     secondary: {
-      background: theme.colors.primarySoft,
-      pressed: theme.colors.primarySoft,
-      label: theme.colors.primary
+      background: theme.colors.surfaceSunken,
+      pressed: theme.colors.border,
+      label: theme.colors.textPrimary
     },
     ghost: {
       background: 'transparent',

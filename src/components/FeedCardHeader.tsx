@@ -26,7 +26,7 @@ export const FeedCardHeader = ({ society, createdAtIso, onPressSociety, trailing
         hitSlop={6}
         style={({ pressed }) => [styles.identity, { opacity: pressed ? 0.7 : 1 }]}
       >
-        <View style={[styles.ring, { borderColor: society.primaryColor }]}>
+        <View style={[styles.ring, { borderColor: theme.colors.border }]}>
           <Avatar name={society.name} url={society.logoUrl ?? undefined} size={38} />
         </View>
         <View style={styles.text}>

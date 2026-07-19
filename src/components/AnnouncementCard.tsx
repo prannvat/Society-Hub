@@ -13,14 +13,12 @@ type AnnouncementCardProps = {
   onPress?: (item: AnnouncementItem) => void;
 };
 
+// Category chips are quiet metadata, not status signals — all neutral except
+// IMPORTANT, which keeps a single restrained accent so it still stands out.
 export const categoryChipVariant = (category: string): BadgeChipVariant => {
   switch (category.toUpperCase()) {
     case 'IMPORTANT':
-      return 'danger';
-    case 'EVENTS':
       return 'primary';
-    case 'COMMITTEE':
-      return 'warning';
     default:
       return 'neutral';
   }
