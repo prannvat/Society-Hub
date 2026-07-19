@@ -16,6 +16,7 @@ import { useUserRoles } from '@/hooks/useUserRoles';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { haptics } from '@/utils/haptics';
 import { EventCard } from '@/components/EventCard';
 import { PerksList } from '@/components/PerksList';
 import { EventItem, SocietyPerk } from '@/types';
@@ -62,8 +63,10 @@ export const SocietyProfileScreen = () => {
     try {
       const result = await joinSociety(society.id);
       if (result === 'PENDING') {
+        haptics.warning();
         toast.show(`Request sent — ${society.name} requires approval`, 'info');
       } else {
+        haptics.success();
         toast.show(`Welcome to ${society.name}!`, 'success');
         // Reflect the new membership in the social-proof stack straight away.
         const refreshed = await fetchSocietyMembers(society.id, 1, 5).catch(() => null);
@@ -170,7 +173,7 @@ export const SocietyProfileScreen = () => {
             <Pressable onPress={() => navigation.goBack()} hitSlop={6} style={overlayButtonStyle}>
               <MaterialIcons name="arrow-back" size={22} color={theme.colors.textPrimary} />
             </Pressable>
-            <Pressable onPress={() => toggleFavouriteSociety(society.id)} hitSlop={6} style={overlayButtonStyle}>
+            <Pressable onPress={() => { haptics.tap(); toggleFavouriteSociety(society.id); }} hitSlop={6} style={overlayButtonStyle}>
               <MaterialIcons
                 name={isFavourited ? 'favorite' : 'favorite-border'}
                 size={22}

@@ -6,6 +6,7 @@ import { BadgeChip } from './BadgeChip';
 import { FeedCardHeader } from './FeedCardHeader';
 import { FeedPoll, FeedSociety } from '@/hooks/useFeed';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { haptics } from '@/utils/haptics';
 
 type PollFeedCardProps = {
   society: FeedSociety;
@@ -115,6 +116,7 @@ export const PollFeedCard = ({ society, createdAtIso, poll, onOpenSociety, onVot
       return;
     }
     const previous = optimisticVote;
+    haptics.select();
     setOptimisticVote(optionId);
     setBusy(true);
     try {

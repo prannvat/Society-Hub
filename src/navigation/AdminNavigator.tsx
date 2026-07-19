@@ -11,6 +11,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { getTabNavigatorOptions } from './tabOptions';
+import { haptics } from '@/utils/haptics';
 import { SocietyHomeScreen } from '@/screens/society/SocietyHomeScreen';
 import { SocietyInsightsScreen } from '@/screens/society/SocietyInsightsScreen';
 import { SocietyAccountProfileScreen } from '@/screens/society/SocietyAccountProfileScreen';
@@ -120,6 +121,7 @@ export const AdminNavigator = () => {
             tabPress: () => {
               const now = Date.now();
               if (now - lastProfileTap.current < 350) {
+                haptics.tap();
                 openSwitcher();
               }
               lastProfileTap.current = now;

@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenLayout } from './ScreenLayout';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { haptics } from '@/utils/haptics';
 import { EventCard } from '@/components/EventCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
@@ -265,7 +266,7 @@ export const ExploreScreen = () => {
                         </Text>
                       </View>
                       <Pressable
-                        onPress={() => toggleFavouriteSociety(event.societyId)}
+                        onPress={() => { haptics.tap(); toggleFavouriteSociety(event.societyId); }}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       >
                         <MaterialIcons

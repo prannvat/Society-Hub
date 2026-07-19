@@ -11,6 +11,7 @@ import { useToast } from '@/components/Toast';
 import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
+import { haptics } from '@/utils/haptics';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 
@@ -57,6 +58,7 @@ export const CreatePollScreen = () => {
     setSubmitting(true);
     try {
       await createPoll({ societyId: activeSocietyId, question: question.trim(), options: cleaned });
+      haptics.success();
       toast.show('Poll published', 'success');
       navigation.goBack();
     } catch {

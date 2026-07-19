@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { likeAnnouncement, unlikeAnnouncement } from '@/services/api/announcements';
 import { useToast } from './Toast';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { haptics } from '@/utils/haptics';
 
 type PostActionBarProps = {
   postId: string;
@@ -26,6 +27,19 @@ export const PostActionBar = ({ postId, likeCount, commentCount, likedByMe, onOp
   const [liked, setLiked] = useState(likedByMe);
   const [count, setCount] = useState(likeCount);
   const [pending, setPending] = useState(false);
+  const heartScale = useRef(new Animated.Value(1)).current;
+
+  // Instagram's heart "pop": a quick overshoot then settle. Native-driven so it
+  // stays smooth regardless of JS work.
+  const popHeart = () => {
+    heartScale.setValue(0.8);
+    Animated.spring(heartScale, {
+      toValue: 1,
+      friction: 3,
+      tension: 140,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const onToggleLike = async () => {
     if (pending) {
@@ -35,7 +49,11 @@ export const PostActionBar = ({ postId, likeCount, commentCount, likedByMe, onOp
     const prevCount = count;
     const nextLiked = !prevLiked;
 
-    // Optimistic flip.
+    // Optimistic flip, with a tactile tick and a pop when the heart fills.
+    haptics.tap();
+    if (nextLiked) {
+      popHeart();
+    }
     setLiked(nextLiked);
     setCount(prevCount + (nextLiked ? 1 : -1));
     setPending(true);
@@ -64,11 +82,13 @@ export const PostActionBar = ({ postId, likeCount, commentCount, likedByMe, onOp
           accessibilityLabel={liked ? 'Unlike post' : 'Like post'}
           style={({ pressed }) => [styles.action, { opacity: pressed ? 0.5 : 1 }]}
         >
-          <MaterialIcons
-            name={liked ? 'favorite' : 'favorite-border'}
-            size={26}
-            color={liked ? theme.colors.danger : theme.colors.textPrimary}
-          />
+          <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+            <MaterialIcons
+              name={liked ? 'favorite' : 'favorite-border'}
+              size={26}
+              color={liked ? theme.colors.danger : theme.colors.textPrimary}
+            />
+          </Animated.View>
         </Pressable>
 
         <Pressable

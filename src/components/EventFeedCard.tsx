@@ -6,6 +6,7 @@ import { BadgeChip } from './BadgeChip';
 import { FeedCardHeader } from './FeedCardHeader';
 import { FeedSociety } from '@/hooks/useFeed';
 import { EventItem } from '@/types';
+import { haptics } from '@/utils/haptics';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 type EventFeedCardProps = {
@@ -51,6 +52,11 @@ export const EventFeedCard = ({
       return;
     }
     const next = !going;
+    if (next) {
+      haptics.success();
+    } else {
+      haptics.tap();
+    }
     setOptimisticGoing(next);
     setBusy(true);
     try {

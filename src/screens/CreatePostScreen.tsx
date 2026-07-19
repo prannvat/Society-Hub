@@ -12,6 +12,7 @@ import { useToast } from '@/components/Toast';
 import { spacing } from '@/config/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
+import { haptics } from '@/utils/haptics';
 import { uploadImage } from '@/services/api/uploads';
 import { AnnouncementCategory } from '@/types';
 import { RootStackParamList } from '@/navigation/types';
@@ -81,6 +82,7 @@ export const CreatePostScreen = () => {
         category,
         imageUrl: imageUrl ?? undefined,
       });
+      haptics.success();
       toast.show('Post published', 'success');
       navigation.goBack();
     } catch {

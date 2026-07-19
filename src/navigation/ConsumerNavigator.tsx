@@ -8,6 +8,7 @@ import { FeedScreen } from '@/screens/FeedScreen';
 import { ExploreSocietiesScreen } from '@/screens/ExploreSocietiesScreen';
 import { ExploreScreen } from '@/screens/ExploreScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
+import { haptics } from '@/utils/haptics';
 
 export type ConsumerTabParamList = {
   Home: undefined;
@@ -69,6 +70,7 @@ export const ConsumerNavigator = () => {
           tabPress: () => {
             const now = Date.now();
             if (now - lastProfileTap.current < 350) {
+              haptics.tap();
               openSwitcher();
             }
             lastProfileTap.current = now;
