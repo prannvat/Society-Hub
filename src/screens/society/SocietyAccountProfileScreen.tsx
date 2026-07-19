@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from '@/components/Avatar';
 import { BadgeChip } from '@/components/BadgeChip';
@@ -24,9 +23,6 @@ type GridTile =
   | { kind: 'post'; id: string; item: AnnouncementItem }
   | { kind: 'event'; id: string; item: EventItem };
 
-const softTint = (hex: string, fallback: string) =>
-  /^#[0-9a-fA-F]{6}$/.test(hex) ? `${hex}22` : fallback;
-
 /**
  * The society's own profile, Instagram-style, shown when you're acting AS the society.
  * Doubles as the management anchor: identity, owner actions, and a grid of its content.
@@ -40,8 +36,6 @@ export const SocietyAccountProfileScreen = () => {
 
   const societyId = selectedAdminSocietyId ?? '';
   const society = allSocieties.find((s) => s.id === societyId);
-  const brandPrimary = society?.primaryColor || theme.colors.primary;
-  const brandSecondary = society?.secondaryColor || brandPrimary;
 
   const tiles = useMemo<GridTile[]>(
     () => [
@@ -73,12 +67,7 @@ export const SocietyAccountProfileScreen = () => {
         <MaterialIcons name="unfold-more" size={20} color={theme.colors.textSecondary} />
       </Pressable>
 
-      <LinearGradient
-        colors={[brandPrimary, brandSecondary]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.band, { borderRadius: theme.radius.lg }]}
-      />
+      <View style={[styles.band, { borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceSunken }]} />
 
       <View style={styles.body}>
         <View style={styles.identity}>
@@ -154,8 +143,6 @@ export const SocietyAccountProfileScreen = () => {
                 <ContentTile
                   key={tile.id}
                   tile={tile}
-                  brand={brandPrimary}
-                  brandSecondary={brandSecondary}
                   onPress={() =>
                     tile.kind === 'post'
                       ? navigation.navigate('AnnouncementDetail', { announcementId: tile.item.id })
@@ -182,13 +169,9 @@ export const SocietyAccountProfileScreen = () => {
 
 const ContentTile = ({
   tile,
-  brand,
-  brandSecondary,
   onPress,
 }: {
   tile: GridTile;
-  brand: string;
-  brandSecondary: string;
   onPress: () => void;
 }) => {
   const theme = useAppTheme();
@@ -219,24 +202,27 @@ const ContentTile = ({
           </View>
         </>
       ) : tile.kind === 'event' ? (
-        <LinearGradient colors={[brand, brandSecondary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.tileFill}>
+        <View style={[styles.tileFill, { backgroundColor: theme.colors.surfaceSunken }]}>
           {hasDate ? (
             <>
-              <Text style={[theme.typography.h2, styles.tileImageText]}>{eventDate!.getDate()}</Text>
-              <Text style={[theme.typography.micro, styles.tileImageText]}>
+              <Text style={[theme.typography.h2, { color: theme.colors.textPrimary }]}>{eventDate!.getDate()}</Text>
+              <Text style={[theme.typography.micro, { color: theme.colors.textTertiary }]}>
                 {eventDate!.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
               </Text>
             </>
           ) : (
-            <MaterialIcons name="event" size={22} color="#FFFFFF" />
+            <MaterialIcons name="event" size={22} color={theme.colors.textSecondary} />
           )}
-          <Text style={[theme.typography.caption, styles.tileImageText, styles.tileEventTitle]} numberOfLines={2}>
+          <Text
+            style={[theme.typography.caption, styles.tileEventTitle, { color: theme.colors.textSecondary }]}
+            numberOfLines={2}
+          >
             {tile.item.title}
           </Text>
-        </LinearGradient>
+        </View>
       ) : (
-        <View style={[styles.tileFill, { backgroundColor: softTint(brand, theme.colors.surfaceSunken) }]}>
-          <MaterialIcons name="campaign" size={18} color={brand} />
+        <View style={[styles.tileFill, { backgroundColor: theme.colors.surfaceSunken }]}>
+          <MaterialIcons name="campaign" size={18} color={theme.colors.textSecondary} />
           <Text style={[theme.typography.captionMedium, { color: theme.colors.textPrimary, marginTop: 6 }]} numberOfLines={4}>
             {tile.item.title}
           </Text>

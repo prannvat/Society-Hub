@@ -2,7 +2,6 @@ import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from '@/components/Avatar';
 import { Card } from '@/components/Card';
@@ -39,8 +38,6 @@ export const SocietyManageScreen = () => {
   const { allSocieties, setActiveSocietyId, activeSocietyMemberCount, events, polls, announcements } = useLocalAppState();
 
   const society = allSocieties.find((s) => s.id === societyId);
-  const brandPrimary = society?.primaryColor || theme.colors.primary;
-  const brandSecondary = society?.secondaryColor || brandPrimary;
 
   useEffect(() => {
     setActiveSocietyId(societyId);
@@ -92,14 +89,9 @@ export const SocietyManageScreen = () => {
     <ScreenLayout>
       <TopNavBar title="Manage" subtitle={society?.name} onBack={() => navigation.goBack()} />
       <View style={styles.body}>
-        {/* Brand-tinted identity header */}
+        {/* Neutral identity header */}
         <View style={styles.identityWrap}>
-          <LinearGradient
-            colors={[brandPrimary, brandSecondary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.brandBand, { borderRadius: theme.radius.lg }]}
-          />
+          <View style={[styles.brandBand, { borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceSunken }]} />
           <View style={styles.identityRow}>
             <View style={[styles.avatarRing, { backgroundColor: theme.colors.background }]}>
               <Avatar name={society?.name ?? 'Society'} url={society?.logoUrl ?? undefined} size={56} />

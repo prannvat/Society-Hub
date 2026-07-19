@@ -2,12 +2,12 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { ActivityIndicator, Text, View, Pressable, ScrollView, Linking, Image, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Text, View, Pressable, ScrollView, Linking, Image, StyleSheet } from 'react-native';
 import { MaterialIcons, FontAwesome } from '@expo/vector-icons';
 import { BadgeChip } from '@/components/BadgeChip';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { OutlineButton } from '@/components/OutlineButton';
+import { Skeleton } from '@/components/Skeleton';
 import { ProfileStatsRow } from '@/components/ProfileStatsRow';
 import { SectionHeader } from '@/components/SectionHeader';
 import { useToast } from '@/components/Toast';
@@ -122,22 +122,29 @@ export const SocietyProfileScreen = () => {
   if (!society) {
     return (
       <ScreenLayout>
-        <View style={styles.notFoundWrap}>
-          {isLoading ? (
-            <ActivityIndicator color={theme.colors.primary} />
-          ) : (
-            <>
-              <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>Society not found</Text>
-              <OutlineButton label="Back" onPress={() => navigation.goBack()} />
-            </>
-          )}
-        </View>
+        {isLoading ? (
+          // Skeleton that mirrors the hero → logo → stats → text layout, so the
+          // marquee screen fades in gracefully instead of popping a spinner.
+          <View>
+            <Skeleton width="100%" height={132} radius={0} />
+            <View style={styles.skeletonBody}>
+              <Skeleton width={80} height={80} circle />
+              <Skeleton width="55%" height={22} />
+              <Skeleton width="35%" height={14} />
+              <Skeleton width="100%" height={44} />
+              <Skeleton width="100%" height={64} />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.notFoundWrap}>
+            <Text style={[theme.typography.h3, { color: theme.colors.textPrimary }]}>Society not found</Text>
+            <OutlineButton label="Back" onPress={() => navigation.goBack()} />
+          </View>
+        )}
       </ScreenLayout>
     );
   }
 
-  const brandPrimary = society.primaryColor || theme.colors.primary;
-  const brandSecondary = society.secondaryColor || brandPrimary;
   const societyPolls = polls.filter((poll) => poll.societyId === society.id);
   // The live member list is authoritative; the cached profile count is the fallback.
   const memberCount = memberTotal > 0 ? memberTotal : society._count?.memberships ?? null;
@@ -161,14 +168,9 @@ export const SocietyProfileScreen = () => {
   return (
     <ScreenLayout scroll={false}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Branded gradient band */}
+        {/* Neutral hero band — a soft grey surface, no brand gradient. */}
         <View>
-          <LinearGradient
-            colors={[brandPrimary, brandSecondary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradientBand}
-          />
+          <View style={[styles.gradientBand, { backgroundColor: theme.colors.surfaceSunken }]} />
           <View style={styles.bandActions}>
             <Pressable onPress={() => navigation.goBack()} hitSlop={6} style={overlayButtonStyle}>
               <MaterialIcons name="arrow-back" size={22} color={theme.colors.textPrimary} />
@@ -192,8 +194,8 @@ export const SocietyProfileScreen = () => {
                     style={[styles.logo, { backgroundColor: theme.colors.surfaceSunken }]}
                   />
                 ) : (
-                  <View style={[styles.logo, { backgroundColor: `${brandPrimary}22`, alignItems: 'center', justifyContent: 'center' }]}>
-                    <Text style={[theme.typography.h3, { color: brandPrimary }]} numberOfLines={1}>
+                  <View style={[styles.logo, { backgroundColor: theme.colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' }]}>
+                    <Text style={[theme.typography.h3, { color: theme.colors.textSecondary }]} numberOfLines={1}>
                       {society.shortName}
                     </Text>
                   </View>
@@ -394,19 +396,20 @@ export const SocietyProfileScreen = () => {
                       { borderRadius: theme.radius.sm, opacity: pressed ? 0.85 : 1 }
                     ]}
                   >
-                    <LinearGradient
-                      colors={[`${brandPrimary}E6`, `${brandSecondary}E6`]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.tileFill}
-                    >
-                      <Text style={[theme.typography.captionMedium, styles.tileText]} numberOfLines={4}>
+                    <View style={[styles.tileFill, { backgroundColor: theme.colors.surfaceSunken }]}>
+                      <Text
+                        style={[theme.typography.captionMedium, styles.tileText, { color: theme.colors.textPrimary }]}
+                        numberOfLines={4}
+                      >
                         {event.title}
                       </Text>
-                      <Text style={[theme.typography.micro, styles.tileDate]} numberOfLines={1}>
+                      <Text
+                        style={[theme.typography.micro, styles.tileDate, { color: theme.colors.textTertiary }]}
+                        numberOfLines={1}
+                      >
                         {event.date}
                       </Text>
-                    </LinearGradient>
+                    </View>
                   </Pressable>
                 ))}
               </View>
@@ -419,6 +422,11 @@ export const SocietyProfileScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  skeletonBody: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 14
+  },
   notFoundWrap: {
     flex: 1,
     paddingHorizontal: 16,
@@ -529,10 +537,6 @@ const styles = StyleSheet.create({
     padding: 10,
     justifyContent: 'space-between'
   },
-  tileText: {
-    color: '#FFFFFF'
-  },
-  tileDate: {
-    color: 'rgba(255,255,255,0.85)'
-  }
+  tileText: {},
+  tileDate: {}
 });

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -159,14 +158,14 @@ export const OnboardingScreen = () => {
         </View>
 
         <Animated.View style={{ opacity: fade }}>
-          <LinearGradient
-            colors={current.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.hero, { borderRadius: theme.radius.xl }, theme.elevation.e2]}
+          <View
+            style={[
+              styles.hero,
+              { borderRadius: theme.radius.xl, backgroundColor: '#121212' }
+            ]}
           >
             <current.Hero theme={theme} />
-          </LinearGradient>
+          </View>
 
           <View style={[styles.textBlock, { marginTop: theme.spacing.xl }]}>
             <Text style={[theme.typography.h1, styles.centeredText, { color: theme.colors.textPrimary }]}>
