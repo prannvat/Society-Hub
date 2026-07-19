@@ -5,6 +5,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { useAuth } from '@/hooks/useAuth';
+import { deleteMyAccount } from '@/services/api/me';
+import { ApiError } from '@/services/api/client';
 import { Card } from '@/components/Card';
 import { ListRow } from '@/components/ListRow';
 import { BadgeChip } from '@/components/BadgeChip';
@@ -94,18 +96,35 @@ export const SettingsScreen = () => {
   };
 
   const deleteAccount = () => {
-    Alert.alert('Delete Account', 'This will permanently delete your account and remove you from all societies.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setPushEnabled(false);
-          await signOut();
-          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-        }
-      }
-    ]);
+    Alert.alert(
+      'Delete Account',
+      'This permanently deletes your account, your posts and comments, and removes you from all societies. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Actually delete server-side before signing out — this used to
+              // only sign the user out while promising permanent deletion.
+              await deleteMyAccount();
+            } catch (error) {
+              Alert.alert(
+                'Account not deleted',
+                error instanceof ApiError && error.code === 'PRESIDENT_MUST_HAND_OVER'
+                  ? error.message
+                  : 'We could not delete your account right now. Please try again.',
+              );
+              return;
+            }
+            setPushEnabled(false);
+            await signOut();
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          },
+        },
+      ],
+    );
   };
 
   const switchTrackColor = { false: theme.colors.borderStrong, true: theme.colors.primary };

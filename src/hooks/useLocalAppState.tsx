@@ -4,7 +4,6 @@ import * as SecureStore from 'expo-secure-store';
 import {
   ApiAnnouncement,
   ApiAnnouncementCategory,
-  ApiError,
   WS_BASE_URL,
   PollItem as ApiPollItem,
   Society as ApiSociety,
@@ -648,31 +647,12 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
       isFree: event.isFree,
     };
 
-    let created;
-    try {
-      created = await createEventRequest(payload);
-    } catch (error) {
-      const shouldRetryLegacy =
-        error instanceof ApiError &&
-        error.statusCode === 400 &&
-        payload.posterImageUrl &&
-        /poster|image|url/i.test(error.message);
-
-      if (!shouldRetryLegacy) {
-        throw error;
-      }
-
-      // Retry with the legacy shape for backends that reject poster media field.
-      created = await createEventRequest({
-        societyId: payload.societyId,
-        title: payload.title,
-        description: payload.description,
-        location: payload.location,
-        startAt: payload.startAt,
-        membersOnly: payload.membersOnly,
-        isFree: payload.isFree,
-      });
-    }
+    // No silent retry. This previously caught a rejected poster and re-sent a
+    // stripped payload — dropping the poster, location and end time — then
+    // reported success, so the user got a broken event and was told it worked.
+    // Posters are uploaded to storage before we get here, so a failure now is
+    // genuine and must surface.
+    const created = await createEventRequest(payload);
 
     await loadSocietyData(activeSocietyId);
     return created.id;

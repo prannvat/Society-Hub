@@ -1,6 +1,6 @@
 import { apiRequest } from './client';
 
-export type UploadKind = 'AVATAR' | 'SOCIETY_LOGO' | 'POST_IMAGE';
+export type UploadKind = 'AVATAR' | 'SOCIETY_LOGO' | 'POST_IMAGE' | 'EVENT_POSTER';
 
 type SignedUpload = {
   uploadUrl: string;

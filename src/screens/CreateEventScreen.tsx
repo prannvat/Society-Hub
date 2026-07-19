@@ -13,6 +13,7 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { TopNavBar } from '@/components/TopNavBar';
 import { useToast } from '@/components/Toast';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
+import { uploadImage } from '@/services/api/uploads';
 import { RootStackParamList } from '@/navigation/types';
 import { ScreenLayout } from './ScreenLayout';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -21,7 +22,7 @@ export const CreateEventScreen = () => {
   const theme = useAppTheme();
   const toast = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { addEvent } = useLocalAppState();
+  const { addEvent, activeSocietyId } = useLocalAppState();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
@@ -37,6 +38,7 @@ export const CreateEventScreen = () => {
   const [posterImageUrl, setPosterImageUrl] = useState<string | undefined>();
   const [posterImageLocalUri, setPosterImageLocalUri] = useState<string | undefined>();
   const [posterPreviewFailed, setPosterPreviewFailed] = useState(false);
+  const [isUploadingPoster, setIsUploadingPoster] = useState(false);
   const [isFree, setIsFree] = useState(true);
   const [membersOnly, setMembersOnly] = useState(false);
   const [formError, setFormError] = useState('');
@@ -60,26 +62,31 @@ export const CreateEventScreen = () => {
       allowsEditing: true,
       aspect: [16, 9],
       quality: 0.7,
-      base64: true,
     });
 
     if (result.canceled || result.assets.length === 0) {
       return;
     }
 
-    const asset = result.assets[0];
-    const mimeType = asset.mimeType || 'image/jpeg';
-    const encoded = asset.base64;
-
-    if (!encoded) {
-      Alert.alert('Image conversion failed', 'Please try another image.');
+    if (!activeSocietyId) {
+      Alert.alert('Pick a society first', 'We need to know which society this event belongs to.');
       return;
     }
 
-    const dataUri = `data:${mimeType};base64,${encoded}`;
+    // Upload to storage and keep the returned URL. The API stores a URL, so a
+    // base64 data URI here would be rejected and the poster silently lost.
+    const asset = result.assets[0];
     setPosterImageLocalUri(asset.uri);
-    setPosterImageUrl(dataUri);
     setPosterPreviewFailed(false);
+    setIsUploadingPoster(true);
+    try {
+      setPosterImageUrl(await uploadImage(asset.uri, 'EVENT_POSTER', activeSocietyId));
+    } catch {
+      setPosterImageLocalUri(undefined);
+      Alert.alert('Upload failed', 'We could not upload that poster. Please try again.');
+    } finally {
+      setIsUploadingPoster(false);
+    }
   };
 
   useEffect(() => {

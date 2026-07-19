@@ -55,3 +55,11 @@ export async function updateMe(input: UpdateMeInput) {
     body: input,
   });
 }
+
+/**
+ * Permanently deletes the signed-in account. Fails with a 409
+ * (PRESIDENT_MUST_HAND_OVER) while the caller still presides over a society.
+ */
+export async function deleteMyAccount() {
+  return apiRequest<{ success: true }>('/me', { method: 'DELETE' });
+}
