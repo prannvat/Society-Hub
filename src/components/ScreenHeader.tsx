@@ -36,11 +36,15 @@ export const ScreenHeader = ({ title, subtitle, accessory, size = 'h1', gutter =
 };
 
 const styles = StyleSheet.create({
+  // Consistent vertical rhythm so every large-title screen (Explore, Events,
+  // Profile) breathes identically.
   row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12
+    gap: 12,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.md
   },
   textWrap: {
     flex: 1

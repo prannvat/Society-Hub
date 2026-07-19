@@ -178,8 +178,8 @@ export const ExploreScreen = () => {
     <ScreenLayout scroll={false}>
       <View style={styles.header}>
         <ScreenHeader
-          title="Explore"
-          subtitle="Discover events across all societies"
+          title="Events"
+          subtitle="What's on across campus"
           accessory={
             <Pressable
               onPress={() => setShowOnlyFavourites(!showOnlyFavourites)}

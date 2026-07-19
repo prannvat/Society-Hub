@@ -125,31 +125,28 @@ const darkColors: ThemeColors = {
 };
 
 // Named font faces. React Native does NOT map fontWeight → a numbered face for
-// custom fonts, so each token must name its exact face. Fraunces (a soft modern
-// serif) carries the big editorial moments; Inter carries everything else.
+// custom fonts, so each token names its exact Inter face. One clean sans across
+// the whole app — consistency is what reads as premium here.
 export const fonts = {
-  serifBold: 'Fraunces_700Bold',
-  serifSemibold: 'Fraunces_600SemiBold',
-  serifMedium: 'Fraunces_500Medium',
   sansRegular: 'Inter_400Regular',
   sansMedium: 'Inter_500Medium',
   sansSemibold: 'Inter_600SemiBold',
   sansBold: 'Inter_700Bold'
 } as const;
 
-// display/h1/h2 are the editorial signature (screen titles, society & person
-// hero names). h3 and everything below stay in Inter — usernames, body, buttons
-// and chips read as clean sans; serif at those sizes would feel fussy.
+// Tight negative tracking on the large sizes is what gives Inter its premium,
+// Instagram-grade feel. Every token names a real face so nothing falls back to
+// the OS font, and every heading shares the same family for consistency.
 const typeScale = {
-  display: { fontFamily: fonts.serifBold, fontSize: 32, lineHeight: 38, letterSpacing: -0.4 },
-  h1: { fontFamily: fonts.serifBold, fontSize: 25, lineHeight: 31, letterSpacing: -0.3 },
-  h2: { fontFamily: fonts.serifSemibold, fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
-  h3: { fontFamily: fonts.sansSemibold, fontSize: 16, fontWeight: '600', lineHeight: 21, letterSpacing: -0.2 },
+  display: { fontFamily: fonts.sansBold, fontSize: 30, fontWeight: '700', lineHeight: 36, letterSpacing: -0.7 },
+  h1: { fontFamily: fonts.sansBold, fontSize: 24, fontWeight: '700', lineHeight: 30, letterSpacing: -0.6 },
+  h2: { fontFamily: fonts.sansBold, fontSize: 19, fontWeight: '700', lineHeight: 25, letterSpacing: -0.4 },
+  h3: { fontFamily: fonts.sansSemibold, fontSize: 16, fontWeight: '600', lineHeight: 21, letterSpacing: -0.3 },
   body: { fontFamily: fonts.sansRegular, fontSize: 14, fontWeight: '400', lineHeight: 20 },
   bodyMedium: { fontFamily: fonts.sansSemibold, fontSize: 14, fontWeight: '600', lineHeight: 20 },
   caption: { fontFamily: fonts.sansRegular, fontSize: 13, fontWeight: '400', lineHeight: 17 },
   captionMedium: { fontFamily: fonts.sansSemibold, fontSize: 13, fontWeight: '600', lineHeight: 17 },
-  micro: { fontFamily: fonts.sansSemibold, fontSize: 11, fontWeight: '600', lineHeight: 14, letterSpacing: 0.4, textTransform: 'uppercase' }
+  micro: { fontFamily: fonts.sansSemibold, fontSize: 11, fontWeight: '600', lineHeight: 14, letterSpacing: 0.3, textTransform: 'uppercase' }
 } satisfies Record<string, TextStyle>;
 
 export type TypographyScale = typeof typeScale;
@@ -225,7 +222,7 @@ export const getTheme = (mode: ThemeMode) => {
       // Raw face names, for the rare spot that needs a family without a full
       // type token. Every token in the scale already carries its own family.
       fontFamily: {
-        heading: fonts.serifBold,
+        heading: fonts.sansBold,
         body: fonts.sansRegular
       },
       ...typeScale

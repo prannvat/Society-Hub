@@ -20,7 +20,7 @@ import { useToast } from '@/components/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalAppState } from '@/hooks/useLocalAppState';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { TopNavBar } from '@/components/TopNavBar';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { RootStackParamList } from '@/navigation/types';
 import { MemberRole } from '@/types';
 import { spacing } from '@/config/theme';
@@ -142,10 +142,17 @@ export const ProfileScreen = () => {
 
   return (
     <ScreenLayout scroll={false}>
-      <TopNavBar
+      <ScreenHeader
         title="Profile"
-        actionLabel="Settings"
-        onPressAction={() => { navigation.navigate('Settings'); }}
+        accessory={
+          <Pressable
+            onPress={() => navigation.navigate('Settings')}
+            hitSlop={10}
+            style={({ pressed }) => [styles.headerAction, { opacity: pressed ? 0.5 : 1 }]}
+          >
+            <MaterialIcons name="settings" size={24} color={theme.colors.textPrimary} />
+          </Pressable>
+        }
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -319,10 +326,16 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
     gap: 18
   },
+  headerAction: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   accountBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     gap: 4,
     minHeight: 32
   },
