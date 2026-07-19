@@ -356,26 +356,50 @@ export const LocalAppStateProvider = ({ children }: { children: ReactNode }) => 
     if (!societyId) {
       return;
     }
-    try {
-      const [apiEvents, apiPolls, memberships, apiAnnouncements] = await Promise.all([
-        fetchEvents(societyId),
-        fetchPolls(societyId),
-        fetchMemberships(societyId),
-        fetchAnnouncements(societyId),
-      ]);
-      setEvents(apiEvents.map(mapApiEvent));
-      setRsvpedEventIds(apiEvents.filter((entry) => entry.isRsvpedByCurrentUser).map((entry) => entry.id));
-      setPolls(mapApiPolls(apiPolls, actorUserId));
+    // Settled individually, NOT Promise.all: polls/announcements/memberships are
+    // members-only, so browsing a society you haven't joined legitimately 403s
+    // on some of them. With Promise.all a single 403 discarded all four results
+    // — which also silently demoted a president to 'Member' for the session
+    // whenever the memberships call hiccuped.
+    const [eventsR, pollsR, membershipsR, announcementsR] = await Promise.allSettled([
+      fetchEvents(societyId),
+      fetchPolls(societyId),
+      fetchMemberships(societyId),
+      fetchAnnouncements(societyId),
+    ]);
+
+    if (eventsR.status === 'fulfilled') {
+      setEvents(eventsR.value.map(mapApiEvent));
+      setRsvpedEventIds(
+        eventsR.value.filter((entry) => entry.isRsvpedByCurrentUser).map((entry) => entry.id),
+      );
+    }
+
+    if (pollsR.status === 'fulfilled') {
+      setPolls(mapApiPolls(pollsR.value, actorUserId));
+    } else {
+      setPolls([]);
+    }
+
+    if (announcementsR.status === 'fulfilled') {
       // Attribute posts to the society (shared account), not the individual poster.
       const societyName = allSocieties.find((s) => s.id === societyId)?.name;
-      setAnnouncements(apiAnnouncements.map((a) => mapApiAnnouncement(a, societyName)));
+      setAnnouncements(announcementsR.value.map((a) => mapApiAnnouncement(a, societyName)));
+    } else {
+      setAnnouncements([]);
+    }
+
+    // Only overwrite roles when we actually got a roster back. Clearing them on
+    // failure is what caused the silent demotion.
+    if (membershipsR.status === 'fulfilled') {
+      const memberships = membershipsR.value;
       setMembershipsBySocietyId((prev) => ({ ...prev, [societyId]: memberships }));
       const roles = memberships.reduce<Record<string, MemberRole>>((acc, membership) => {
         acc[membership.userId] = mapRole(membership.role);
         return acc;
       }, {});
       setMemberRolesBySocietyId((prev) => ({ ...prev, [societyId]: roles }));
-    } catch {}
+    }
   }, [actorUserId, allSocieties]);
 
   // Seed the local profile from the authenticated user; clear all per-user state on logout.
